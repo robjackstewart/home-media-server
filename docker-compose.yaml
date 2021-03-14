@@ -16,20 +16,16 @@ services:
       - 32414:32414/udp
       - 32469:32469
     devices:
-      # mounts the GPU on the host which is needed for hardware transcoding. Wont do anythign on PI 4 as plex doesn't transcode on anythgin other than Intel quicksync. Delete if on any other PI version.
+      # mounts the GPU on the host which is needed for hardware transcoding.
+      # Wont do anythign on PI 4 as plex doesn't transcode on anything other than Intel quicksync, but will throw on oearlier PI versions
       - /dev/dri:/dev/dri
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      # Docker bind mounts are used to store config and media on the host's filesystem. Config for plex will be stored
-      # in ${MOUNT}/appdata/plex/config directory and any transcoding data is stored in a transcode directory
-      - ${MOUNT}/appdata/plex/config:/config # configuration
-      - ${MOUNT}/appdata/plex/transcode:/transcode # transcoding data
-      # Within plex, we are mounting the root of ${MOUNT} to /all_media directory. So within plex, when you look
-      # inside /all_media directory you would see the same file structure as ${MOUNT} on the host
-      - ${MOUNT}:/all_media # 
+      - ${MOUNT}/appdata/plex/config:/config
+      - ${MOUNT}/appdata/plex/transcode:/transcode
 
   transmission:
     image: linuxserver/transmission
@@ -64,19 +60,14 @@ services:
     restart: unless-stopped
     container_name: radarr
     ports:
-      - "7878:7878"
+      - 7878:7878
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      # Radarr needs to know where the downloaded media is. This is told to radarr by transmission
       - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/downloads:/data
-      # config directory
       - ${MOUNT}/appdata/radarr:/config
-      # Movies imported by radarr are stored in ${MOUNT}/movies directory on the host. Radarr sees this directory
-      # as /movies. Within radarr make your root folder as /movies
       - ${MOUNT}/movies:/movies
 
   sonarr:
@@ -90,13 +81,8 @@ services:
       - PGID=${PGID}
       - TZ=${TZ}
     volumes:
-      # sonarr needs to know where the downloaded media is. This is told to sonarr by transmission
       - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/downloads:/data
-      # config directory
       - ${MOUNT}/appdata/sonarr:/config
-      # TV shows imported by sonarr are stored in ${MOUNT}/tv directory on the host. sonarr sees this directory
-      # as /tv. Within sonarr make your root folder as /tv
       - ${MOUNT}/tv:/tv
 
   # tautulli:
