@@ -26,6 +26,7 @@ services:
     volumes:
       - ${MOUNT}/appdata/plex/config:/config
       - ${MOUNT}/appdata/plex/transcode:/transcode
+      - ${MOUNT}/shared:/shared
 
   transmission:
     image: linuxserver/transmission
@@ -39,6 +40,7 @@ services:
     volumes:
       - ${MOUNT}/appdata/transmission:/config
       - ${MOUNT}/downloads:/downloads
+      - ${MOUNT}/shared:/shared
     restart: unless-stopped
 
   jackett:
@@ -54,6 +56,7 @@ services:
     volumes:
       - ${MOUNT}/appdata/jackett:/config
       - ${MOUNT}/downloads:/downloads
+      - ${MOUNT}/shared:/shared
 
   radarr:
     image: linuxserver/radarr:latest
@@ -69,6 +72,7 @@ services:
       - ${MOUNT}/downloads:/downloads
       - ${MOUNT}/appdata/radarr:/config
       - ${MOUNT}/movies:/movies
+      - ${MOUNT}/shared:/shared
 
   sonarr:
     image: linuxserver/sonarr:latest
@@ -84,6 +88,7 @@ services:
       - ${MOUNT}/downloads:/downloads
       - ${MOUNT}/appdata/sonarr:/config
       - ${MOUNT}/tv:/tv
+      - ${MOUNT}/shared:/shared
 
   tautulli:
     image: linuxserver/tautulli:latest
@@ -98,6 +103,7 @@ services:
     volumes:
       - ${MOUNT}/appdata/tautulli:/config
       - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+      - ${MOUNT}/shared:/shared
 
   bazarr:
     image: ghcr.io/linuxserver/bazarr
@@ -110,6 +116,7 @@ services:
       - ${MOUNT}/appdata/bazarr:/config
       - ${MOUNT}/movies:/movies
       - ${MOUNT}/tv:/tv
+      - ${MOUNT}/shared:/shared
     ports:
       - 6767:6767
     restart: unless-stopped
