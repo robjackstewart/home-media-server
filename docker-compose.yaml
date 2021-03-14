@@ -7,24 +7,6 @@ x-extra_hosts:
   # Change this to IP of your RPi
   - "pi:192.168.1.74"
 services:
-  # All the services use docker bind mounts to store config data and media on the host's filesystem. If you're familiar with
-  # docker storage, you can use whatever you want. You can change it to use docker volumes if you want.
-  # I have my external HDD mounted as ${MOUNT}. Hence all the bind mounts use ${MOUNT} as the root. If you want
-  # to use a different directory for bind mount, you can do that by modifying the bind mounts under volumes section of
-  # a service.
-  #
-  # Nearly all the containers can be run as non root. This is controlled by PUID and PGID environment variables.
-  # Make sure any volume directories on the host are owned by the same user you specify to run the container as. Else
-  # you may have permissions issues.
-  #
-  # If you dont want any service, you can delete that section. Alternatively, if you want to use another service or
-  # add more services, you can add/change them in this file.
-  # For example: if you want to use Emby instead of Plex, you can change the plex service to emby. Linuxserver.io
-  # provide most of the docker images that you would need. They provide a docker image for emby as well.
-  #
-  # Each services runs on a different port number. Plex and transmission-openvpn uses host networking mode whereas all
-  # the other services use docker bridge networking and have host ports mapped to container ports. For these you can
-  # change the mapping between host ports and container ports. Port mapping is in the format <host_port>:<container_port>
   plex:
     image: linuxserver/plex:bionic
     restart: always
@@ -41,11 +23,11 @@ services:
     volumes:
       # Docker bind mounts are used to store config and media on the host's filesystem. Config for plex will be stored
       # in ${MOUNT}/appdata/plex/config directory and any transcoding data is stored in a transcode directory
-      - ${MOUNT}/appdata/plex/config:/config
-      - ${MOUNT}/appdata/plex/transcode:/transcode
+      - ${MOUNT}/appdata/plex/config:/config # configuration
+      - ${MOUNT}/appdata/plex/transcode:/transcode # transcoding data
       # Within plex, we are mounting the root of ${MOUNT} to /all_media directory. So within plex, when you look
       # inside /all_media directory you would see the same file structure as ${MOUNT} on the host
-      - ${MOUNT}:/all_media
+      - ${MOUNT}:/all_media # 
 
   transmission:
     image: linuxserver/transmission
@@ -134,57 +116,3 @@ services:
   #     # Tautulli needs access to plex logs. In the plex container we mounted ${MOUNT}/appdata/plex of the host as the
   #     # config directory for plex. Logs are located within this config directory
   #     - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
-
-  # Sonarr at present does not support netimport lists like Radarr does. On Radarr you can setup it up to import movies
-  # from Lists like IMDB lists or themoviedb.org lists. Using these lists, you can just add the movies you want to
-  # these lists and radarr will sync up with these lists and then start downloading and managing the movies.
-  # Similar thing is not available for sonarr. So this service can sync the TV shows from TVDB.com list and add them
-  # to sonarr. So basically you create an account on TVDB.com and then you would get a username and you can create an
-  # API KEY. You would need these to use this service. Once this service is setup, any TV shows that you add to your
-  # favourites list will be fetched at the SYNC_INTERVAL and added to sonarr. Sonarr then would start downloading and
-  # managing this TV show
-  # sonarr_netimport:
-  #   image: thundermagic/sonarr_netimport:latest
-  #   restart: always
-  #   container_name: sonarr_netimport
-  #   extra_hosts: *pi
-  #   environment:
-  #     - TVDB_USERNAME=first.lastb1q
-  #     - TVDB_USER_KEY=user_key
-  #     - TVDB_API_KEY=tvdb_api_key
-  #     # IP address and port number where sonarr can be accessed
-  #     - SONARR_IP=192.168.4.4
-  #     - SONARR_PORT=8989
-  #     # Sonarr app API key. This is on sonarr under settings>general
-  #     - SONARR_API_KEY=sonarr_api_key
-  #     - SYNC_INTERVAL=3600  # Interval at which to sync with TVDB, in seconds
-  #     - SEARCH_MISSING_EPISODES=1  # 1 is True
-  #     - QUALITY_PROFILE_ID=1  # 1 is profile any
-  #     - MONITORED=1  # 1 is True
-  #     - ROOT_FOLDER_PATH=/tv/  # Full path of root folder
-  #     # Below variables are for sending error notification emails. If not needed, delete these
-  #     - EMAIL_ADDRESS=first.last@gmail.com
-  #     - EMAIL_PASSWORD=email_password
-  #     - EMAIL_TO_ADDRESS=first.last@gmail.com
-  #     - SMTP_SERVER=smtp.gmail.com
-  #     - SMTP_SERVER_PORT=587
-
-  # # Similar to sonarr_netimport but for radarr. Radarr has this feature built-in but radarr uses TMDB API v3 and
-  # # I have noticed that if using v3 API, TMDB only returns maximum of 500 movies in the list.
-  # # This is resolved if using TMDB API v4.
-  # radarr_netimport:
-  #   image: thundermagic/radarr_netimport:latest
-  #   restart: on-failure
-  #   container_name: radarr_netimport
-  #   environment:
-  #     - TMDB_ACCESS_TOKEN=sampletoken
-  #     - TMDB_API_KEY=tvdb_api_key
-  #     - TMDB_LIST_ID=12345
-  #     # IP address and port number where radarr can be accessed
-  #     - RADARR_IP=192.168.4.4
-  #     - RADARR_PORT=7878
-  #     # radarr API key. This is on radarr under settings>general
-  #     - RADARR_API_KEY=radarr_api_key
-  #     - SYNC_INTERVAL=3600  # Interval at which to sync with TMDB, in seconds
-  #     - QUALITY_PROFILE_ID=1  # 1 is profile any
-  #     - ROOT_FOLDER_PATH=/movies/  # Full path of root folder
