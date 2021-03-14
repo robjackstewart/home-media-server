@@ -1,18 +1,20 @@
-version: "3"
-x-extra_hosts:
-  # This is added so that within each service you can communicate to another service by using the DNS name of pi rather
-  # than using IP address. Makes it easy if the IP address changes. For example, when configuring Radarr, you can
-  # configure the transmission client url as http://pi:9091
-  &pi
-  # Change this to IP of your RPi
-  - "pi:192.168.1.74"
+version: "3.8"
 services:
   plex:
     image: linuxserver/plex:bionic
     restart: always
     container_name: plex
-    network_mode: host
-    extra_hosts: *pi
+    ports:
+      - 32400:32400
+      - 1900:1900/udp
+      - 3005:3005
+      # - 5353:5353/udp # being use by avahi-daemon, seems to be unneeded.
+      - 8324:8324
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+      - 32469:32469
     devices:
       # mounts the GPU on the host which is needed for hardware transcoding. Wont do anythign on PI 4 as plex doesn't transcode on anythgin other than Intel quicksync. Delete if on any other PI version.
       - /dev/dri:/dev/dri
