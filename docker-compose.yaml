@@ -9,7 +9,7 @@ x-extra_hosts:
 services:
   # All the services use docker bind mounts to store config data and media on the host's filesystem. If you're familiar with
   # docker storage, you can use whatever you want. You can change it to use docker volumes if you want.
-  # I have my external HDD mounted as /media/wd-black. Hence all the bind mounts use /media/wd-black as the root. If you want
+  # I have my external HDD mounted as ${MOUNT}. Hence all the bind mounts use ${MOUNT} as the root. If you want
   # to use a different directory for bind mount, you can do that by modifying the bind mounts under volumes section of
   # a service.
   #
@@ -31,59 +31,21 @@ services:
     container_name: plex
     network_mode: host
     extra_hosts: *pi
-    # NOTE: Please delete this entire `devices` section if your device does not have /dev/dri device. If you using something
-    # like RPi3, you would need to delete this section else you will get an error when trying to run this container.
     devices:
-      # This basically mounts the GPU device on the host to the container, needed for hardware transcoding.
-      # For a RPi 4 this won't do anything as plex does not support transcoding on anything other than Intel quicksync.
-      # You can comment or delete this if you want. Leaving it as it is won't do any harm.
-      - "/dev/dri:/dev/dri"
+      # mounts the GPU on the host which is needed for hardware transcoding. Wont do anythign on PI 4 as plex doesn't transcode on anythgin other than Intel quicksync. Delete if on any other PI version.
+      - /dev/dri:/dev/dri
     environment:
-      # The container is run as the user with this PUID and PGID (user and group id).
-      - PUID=1000
-      - PGID=1000
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       # Docker bind mounts are used to store config and media on the host's filesystem. Config for plex will be stored
-      # in /media/wd-black/appdata/plex/config directory and any transcoding data is stored in a transcode directory
-      - /media/wd-black/appdata/plex/config:/config
-      - /media/wd-black/appdata/plex/transcode:/transcode
-      # Within plex, we are mounting the root of /media/wd-black to /all_media directory. So within plex, when you look
-      # inside /all_media directory you would see the same file structure as /media/wd-black on the host
-      - /media/wd-black:/all_media
-
-  # nginx:
-  #   image: nginx
-  #   container_name: nginx
-  #   volumes:
-  #   - /media/wd-black/appdata/nginx:/etc/nginx
-  #   - /etc/ssl/certs:/etc/ssl/private
-  #   ports:
-  #   - 80
-
-  # wireguard:
-  #   image: linuxserver/wireguard
-  #   container_name: wireguard
-  #   privileged: true
-  #   sysctls:
-  #     - net.ipv4.conf.all.src_valid_mark=1
-  #     - "net.ipv6.conf.all.disable_ipv6=0"
-  #   cap_add:
-  #     - NET_ADMIN
-  #     - SYS_MODULE
-  #   ports:
-  #     - 8989:8989 # sonarr
-  #     - 9117:9117 # jackett
-  #     - 7878:7878 # radarr
-  #     - 9091:9091 # transmission
-  #     - 51820:51820/udp
-  #   environment:
-  #     - PUID=1000
-  #     - PGID=1000
-  #     - TZ=Europe/London
-  #   volumes:
-  #     - /media/wd-black/appdata/wireguard/config:/config
-  #     - /lib/modules:/lib/modules
-  #   restart: unless-stopped
+      # in ${MOUNT}/appdata/plex/config directory and any transcoding data is stored in a transcode directory
+      - ${MOUNT}/appdata/plex/config:/config
+      - ${MOUNT}/appdata/plex/transcode:/transcode
+      # Within plex, we are mounting the root of ${MOUNT} to /all_media directory. So within plex, when you look
+      # inside /all_media directory you would see the same file structure as ${MOUNT} on the host
+      - ${MOUNT}:/all_media
 
   transmission:
     image: linuxserver/transmission
@@ -91,12 +53,12 @@ services:
     ports:
       - 9091:9091
     environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - /media/wd-black/appdata/transmission:/config
-      - /media/wd-black/downloads:/downloads
+      - ${MOUNT}/appdata/transmission:/config
+      - ${MOUNT}/downloads:/downloads
     restart: unless-stopped
 
   jackett:
@@ -106,13 +68,12 @@ services:
     ports:
       - 9117:9117
     environment:
-      # The container is run as the user with this PUID and PGID (user and group id).
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
-      - /media/wd-black/appdata/jackett:/config
-      - /media/wd-black/downloads:/downloads
+      - ${MOUNT}/appdata/jackett:/config
+      - ${MOUNT}/downloads:/downloads
 
   radarr:
     image: linuxserver/radarr:latest
@@ -121,19 +82,18 @@ services:
     ports:
       - "7878:7878"
     environment:
-      # The container is run as the user with this PUID and PGID (user and group id).
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       # Radarr needs to know where the downloaded media is. This is told to radarr by transmission
-      - /media/wd-black/downloads:/downloads
-      - /media/wd-black/downloads:/data
+      - ${MOUNT}/downloads:/downloads
+      - ${MOUNT}/downloads:/data
       # config directory
-      - /media/wd-black/appdata/radarr:/config
-      # Movies imported by radarr are stored in /media/wd-black/movies directory on the host. Radarr sees this directory
+      - ${MOUNT}/appdata/radarr:/config
+      # Movies imported by radarr are stored in ${MOUNT}/movies directory on the host. Radarr sees this directory
       # as /movies. Within radarr make your root folder as /movies
-      - /media/wd-black/movies:/movies
+      - ${MOUNT}/movies:/movies
 
   sonarr:
     image: linuxserver/sonarr:latest
@@ -142,19 +102,18 @@ services:
     ports:
       - 8989:8989
     environment:
-      # The container is run as the user with this PUID and PGID (user and group id).
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/London
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
     volumes:
       # sonarr needs to know where the downloaded media is. This is told to sonarr by transmission
-      - /media/wd-black/downloads:/downloads
-      - /media/wd-black/downloads:/data
+      - ${MOUNT}/downloads:/downloads
+      - ${MOUNT}/downloads:/data
       # config directory
-      - /media/wd-black/appdata/sonarr:/config
-      # TV shows imported by sonarr are stored in /media/wd-black/tv directory on the host. sonarr sees this directory
+      - ${MOUNT}/appdata/sonarr:/config
+      # TV shows imported by sonarr are stored in ${MOUNT}/tv directory on the host. sonarr sees this directory
       # as /tv. Within sonarr make your root folder as /tv
-      - /media/wd-black/tv:/tv
+      - ${MOUNT}/tv:/tv
 
   # tautulli:
   #   image: linuxserver/tautulli:latest
@@ -171,10 +130,10 @@ services:
   #     - TZ=Europe/London
   #   volumes:
   #     # config directory
-  #     - /media/wd-black/appdata/tautulli:/config
-  #     # Tautulli needs access to plex logs. In the plex container we mounted /media/wd-black/appdata/plex of the host as the
+  #     - ${MOUNT}/appdata/tautulli:/config
+  #     # Tautulli needs access to plex logs. In the plex container we mounted ${MOUNT}/appdata/plex of the host as the
   #     # config directory for plex. Logs are located within this config directory
-  #     - /media/wd-black/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+  #     - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
 
   # Sonarr at present does not support netimport lists like Radarr does. On Radarr you can setup it up to import movies
   # from Lists like IMDB lists or themoviedb.org lists. Using these lists, you can just add the movies you want to
