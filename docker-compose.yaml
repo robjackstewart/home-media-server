@@ -1,0 +1,231 @@
+version: "3"
+x-extra_hosts:
+  # This is added so that within each service you can communicate to another service by using the DNS name of pi rather
+  # than using IP address. Makes it easy if the IP address changes. For example, when configuring Radarr, you can
+  # configure the transmission client url as http://pi:9091
+  &pi
+  # Change this to IP of your RPi
+  - "pi:192.168.1.74"
+services:
+  # All the services use docker bind mounts to store config data and media on the host's filesystem. If you're familiar with
+  # docker storage, you can use whatever you want. You can change it to use docker volumes if you want.
+  # I have my external HDD mounted as /media/wd-black. Hence all the bind mounts use /media/wd-black as the root. If you want
+  # to use a different directory for bind mount, you can do that by modifying the bind mounts under volumes section of
+  # a service.
+  #
+  # Nearly all the containers can be run as non root. This is controlled by PUID and PGID environment variables.
+  # Make sure any volume directories on the host are owned by the same user you specify to run the container as. Else
+  # you may have permissions issues.
+  #
+  # If you dont want any service, you can delete that section. Alternatively, if you want to use another service or
+  # add more services, you can add/change them in this file.
+  # For example: if you want to use Emby instead of Plex, you can change the plex service to emby. Linuxserver.io
+  # provide most of the docker images that you would need. They provide a docker image for emby as well.
+  #
+  # Each services runs on a different port number. Plex and transmission-openvpn uses host networking mode whereas all
+  # the other services use docker bridge networking and have host ports mapped to container ports. For these you can
+  # change the mapping between host ports and container ports. Port mapping is in the format <host_port>:<container_port>
+  plex:
+    image: linuxserver/plex:bionic
+    restart: always
+    container_name: plex
+    network_mode: host
+    extra_hosts: *pi
+    # NOTE: Please delete this entire `devices` section if your device does not have /dev/dri device. If you using something
+    # like RPi3, you would need to delete this section else you will get an error when trying to run this container.
+    devices:
+      # This basically mounts the GPU device on the host to the container, needed for hardware transcoding.
+      # For a RPi 4 this won't do anything as plex does not support transcoding on anything other than Intel quicksync.
+      # You can comment or delete this if you want. Leaving it as it is won't do any harm.
+      - "/dev/dri:/dev/dri"
+    environment:
+      # The container is run as the user with this PUID and PGID (user and group id).
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      # Docker bind mounts are used to store config and media on the host's filesystem. Config for plex will be stored
+      # in /media/wd-black/appdata/plex/config directory and any transcoding data is stored in a transcode directory
+      - /media/wd-black/appdata/plex/config:/config
+      - /media/wd-black/appdata/plex/transcode:/transcode
+      # Within plex, we are mounting the root of /media/wd-black to /all_media directory. So within plex, when you look
+      # inside /all_media directory you would see the same file structure as /media/wd-black on the host
+      - /media/wd-black:/all_media
+
+  # nginx:
+  #   image: nginx
+  #   container_name: nginx
+  #   volumes:
+  #   - /media/wd-black/appdata/nginx:/etc/nginx
+  #   - /etc/ssl/certs:/etc/ssl/private
+  #   ports:
+  #   - 80
+
+  # wireguard:
+  #   image: linuxserver/wireguard
+  #   container_name: wireguard
+  #   privileged: true
+  #   sysctls:
+  #     - net.ipv4.conf.all.src_valid_mark=1
+  #     - "net.ipv6.conf.all.disable_ipv6=0"
+  #   cap_add:
+  #     - NET_ADMIN
+  #     - SYS_MODULE
+  #   ports:
+  #     - 8989:8989 # sonarr
+  #     - 9117:9117 # jackett
+  #     - 7878:7878 # radarr
+  #     - 9091:9091 # transmission
+  #     - 51820:51820/udp
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Europe/London
+  #   volumes:
+  #     - /media/wd-black/appdata/wireguard/config:/config
+  #     - /lib/modules:/lib/modules
+  #   restart: unless-stopped
+
+  transmission:
+    image: linuxserver/transmission
+    container_name: transmission
+    ports:
+      - 9091:9091
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /media/wd-black/appdata/transmission:/config
+      - /media/wd-black/downloads:/downloads
+    restart: unless-stopped
+
+  jackett:
+    image: linuxserver/jackett:latest
+    restart: unless-stopped
+    container_name: jackett
+    ports:
+      - 9117:9117
+    environment:
+      # The container is run as the user with this PUID and PGID (user and group id).
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      - /media/wd-black/appdata/jackett:/config
+      - /media/wd-black/downloads:/downloads
+
+  radarr:
+    image: linuxserver/radarr:latest
+    restart: unless-stopped
+    container_name: radarr
+    ports:
+      - "7878:7878"
+    environment:
+      # The container is run as the user with this PUID and PGID (user and group id).
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      # Radarr needs to know where the downloaded media is. This is told to radarr by transmission
+      - /media/wd-black/downloads:/downloads
+      - /media/wd-black/downloads:/data
+      # config directory
+      - /media/wd-black/appdata/radarr:/config
+      # Movies imported by radarr are stored in /media/wd-black/movies directory on the host. Radarr sees this directory
+      # as /movies. Within radarr make your root folder as /movies
+      - /media/wd-black/movies:/movies
+
+  sonarr:
+    image: linuxserver/sonarr:latest
+    restart: unless-stopped
+    container_name: sonarr
+    ports:
+      - 8989:8989
+    environment:
+      # The container is run as the user with this PUID and PGID (user and group id).
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+    volumes:
+      # sonarr needs to know where the downloaded media is. This is told to sonarr by transmission
+      - /media/wd-black/downloads:/downloads
+      - /media/wd-black/downloads:/data
+      # config directory
+      - /media/wd-black/appdata/sonarr:/config
+      # TV shows imported by sonarr are stored in /media/wd-black/tv directory on the host. sonarr sees this directory
+      # as /tv. Within sonarr make your root folder as /tv
+      - /media/wd-black/tv:/tv
+
+  # tautulli:
+  #   image: linuxserver/tautulli:latest
+  #   restart: unless-stopped
+  #   container_name: tautulli
+  #   extra_hosts: *pi
+  #   ports:
+  #     # Host port 8181 is mapped to container port 8181
+  #     - "8181:8181"
+  #   environment:
+  #     # The container is run as the user with this PUID and PGID (user and group id).
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=Europe/London
+  #   volumes:
+  #     # config directory
+  #     - /media/wd-black/appdata/tautulli:/config
+  #     # Tautulli needs access to plex logs. In the plex container we mounted /media/wd-black/appdata/plex of the host as the
+  #     # config directory for plex. Logs are located within this config directory
+  #     - /media/wd-black/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+
+  # Sonarr at present does not support netimport lists like Radarr does. On Radarr you can setup it up to import movies
+  # from Lists like IMDB lists or themoviedb.org lists. Using these lists, you can just add the movies you want to
+  # these lists and radarr will sync up with these lists and then start downloading and managing the movies.
+  # Similar thing is not available for sonarr. So this service can sync the TV shows from TVDB.com list and add them
+  # to sonarr. So basically you create an account on TVDB.com and then you would get a username and you can create an
+  # API KEY. You would need these to use this service. Once this service is setup, any TV shows that you add to your
+  # favourites list will be fetched at the SYNC_INTERVAL and added to sonarr. Sonarr then would start downloading and
+  # managing this TV show
+  # sonarr_netimport:
+  #   image: thundermagic/sonarr_netimport:latest
+  #   restart: always
+  #   container_name: sonarr_netimport
+  #   extra_hosts: *pi
+  #   environment:
+  #     - TVDB_USERNAME=first.lastb1q
+  #     - TVDB_USER_KEY=user_key
+  #     - TVDB_API_KEY=tvdb_api_key
+  #     # IP address and port number where sonarr can be accessed
+  #     - SONARR_IP=192.168.4.4
+  #     - SONARR_PORT=8989
+  #     # Sonarr app API key. This is on sonarr under settings>general
+  #     - SONARR_API_KEY=sonarr_api_key
+  #     - SYNC_INTERVAL=3600  # Interval at which to sync with TVDB, in seconds
+  #     - SEARCH_MISSING_EPISODES=1  # 1 is True
+  #     - QUALITY_PROFILE_ID=1  # 1 is profile any
+  #     - MONITORED=1  # 1 is True
+  #     - ROOT_FOLDER_PATH=/tv/  # Full path of root folder
+  #     # Below variables are for sending error notification emails. If not needed, delete these
+  #     - EMAIL_ADDRESS=first.last@gmail.com
+  #     - EMAIL_PASSWORD=email_password
+  #     - EMAIL_TO_ADDRESS=first.last@gmail.com
+  #     - SMTP_SERVER=smtp.gmail.com
+  #     - SMTP_SERVER_PORT=587
+
+  # # Similar to sonarr_netimport but for radarr. Radarr has this feature built-in but radarr uses TMDB API v3 and
+  # # I have noticed that if using v3 API, TMDB only returns maximum of 500 movies in the list.
+  # # This is resolved if using TMDB API v4.
+  # radarr_netimport:
+  #   image: thundermagic/radarr_netimport:latest
+  #   restart: on-failure
+  #   container_name: radarr_netimport
+  #   environment:
+  #     - TMDB_ACCESS_TOKEN=sampletoken
+  #     - TMDB_API_KEY=tvdb_api_key
+  #     - TMDB_LIST_ID=12345
+  #     # IP address and port number where radarr can be accessed
+  #     - RADARR_IP=192.168.4.4
+  #     - RADARR_PORT=7878
+  #     # radarr API key. This is on radarr under settings>general
+  #     - RADARR_API_KEY=radarr_api_key
+  #     - SYNC_INTERVAL=3600  # Interval at which to sync with TMDB, in seconds
+  #     - QUALITY_PROFILE_ID=1  # 1 is profile any
+  #     - ROOT_FOLDER_PATH=/movies/  # Full path of root folder
