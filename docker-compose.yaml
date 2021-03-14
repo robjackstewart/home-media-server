@@ -98,3 +98,18 @@ services:
     volumes:
       - ${MOUNT}/appdata/tautulli:/config
       - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+
+  bazarr:
+    image: ghcr.io/linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${MOUNT}/appdata/bazarr:/config
+      - ${MOUNT}/movies:/movies
+      - ${MOUNT}/tv:/tv
+    ports:
+      - 6767:6767
+    restart: unless-stopped
