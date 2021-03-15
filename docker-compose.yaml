@@ -26,6 +26,8 @@ services:
     volumes:
       - ${MOUNT}/appdata/plex/config:/config
       - ${MOUNT}/appdata/plex/transcode:/transcode
+      - ${MOUNT}/movies:/libraries/movies
+      - ${MOUNT}/tv:/libraries/tv
       - ${MOUNT}/shared:/shared
 
   transmission:
