@@ -1,5 +1,28 @@
 version: "3.8"
 services:
+
+  letsencrypt:
+    image: linuxserver/letsencrypt
+    container_name: nginx
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - URL=robjackstewart.com
+      - SUBDOMAINS=home-media
+      - VALIDATION=http
+      - EMAIL=robjackstewart@gmail.com
+      - STAGING=false
+    volumes:
+      - ./yourdomainname.conf:/config/nginx/site-confs/yourdomainname.conf
+      - ./nginx.conf:/config/nginx/nginx.conf
+    ports:
+      - 80:80
+      - 443:443
+    restart: unless-stopped
+
   plex:
     image: linuxserver/plex:bionic
     restart: unless-stopped
