@@ -4,17 +4,7 @@ services:
     image: linuxserver/plex:bionic
     restart: unless-stopped
     container_name: plex
-    ports:
-      - 32400:32400
-      - 1900:1900/udp
-      - 3005:3005
-      # - 5353:5353/udp # being use by avahi-daemon, seems to be unneeded.
-      - 8324:8324
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
-      - 32469:32469
+    network_mode: host
     devices:
       # mounts the GPU on the host which is needed for hardware transcoding.
       # Wont do anythign on PI 4 as plex doesn't transcode on anything other than Intel quicksync, but will throw on oearlier PI versions
