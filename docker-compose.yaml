@@ -1,7 +1,7 @@
 version: "3.8"
 services:
   plex:
-    image: linuxserver/plex:bionic
+    image: linuxserver/plex:latest
     restart: unless-stopped
     container_name: plex
     network_mode: host
@@ -17,7 +17,7 @@ services:
       - ${MOUNT}/shared:/shared
 
   transmission:
-    image: linuxserver/transmission
+    image: linuxserver/transmission:latest
     container_name: transmission
     ports:
       - 9091:9091
