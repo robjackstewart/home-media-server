@@ -5,10 +5,6 @@ services:
     restart: unless-stopped
     container_name: plex
     network_mode: host
-    devices:
-      # mounts the GPU on the host which is needed for hardware transcoding.
-      # Wont do anythign on PI 4 as plex doesn't transcode on anything other than Intel quicksync, but will throw on oearlier PI versions
-      - /dev/dri:/dev/dri
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
