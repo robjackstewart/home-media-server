@@ -29,6 +29,35 @@ services:
       - TZ=${TZ}
     restart: unless-stopped
 
+  traefik:
+    image: traefik:v2.4.2
+    command:
+      # - "--log.level=DEBUG"
+      - --api
+      - --api.dashboard
+      - --api.insecure # Don't do that in production
+      - --providers.docker
+      - --entrypoints.web.address=:80
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 8080
+        published: 8080
+        protocol: tcp
+        mode: host
+
+  whoami:
+    image: traefik/whoami
+    labels:
+      - traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)
+
   transmission:
     image: linuxserver/transmission:latest
     container_name: transmission
