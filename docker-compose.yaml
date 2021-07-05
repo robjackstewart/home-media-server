@@ -16,11 +16,39 @@ services:
       - ${MOUNT}/tv:/libraries/tv
       - ${MOUNT}/shared:/shared
 
+  traefik:
+    image: traefik:latest
+    command:
+      - "--log.level=DEBUG"
+      - --api
+      - --api.dashboard
+      - --api.insecure # Don't do that in production
+      - --providers.docker
+      # - --entrypoints.websecure.address=:443
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+    ports:
+      - 8989:8989
+      - 80:80
+      - 443:443
+      - 8080:8080
+    labels:
+      - traefik.enable=false
+
   portainer:
     image: portainer/portainer
     container_name: portainer
-    ports:
-      - 9000:9000
+    # ports:
+    #   - 9000:9000
+    labels:
+      - traefik.enable=true
+      - traefik.port=9000
+      - traefik.backend=portainer
+      - traefik.passHostHeader=true
+      - traefik.http.routers.portainer.rule=Path(`/portainer`)
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOUNT}/appdata/portainer:/data
@@ -29,40 +57,19 @@ services:
       - TZ=${TZ}
     restart: unless-stopped
 
-  traefik:
-    image: traefik:v2.4.2
-    command:
-      # - "--log.level=DEBUG"
-      - --api
-      - --api.dashboard
-      - --api.insecure # Don't do that in production
-      - --providers.docker
-      - --entrypoints.web.address=:80
-    volumes:
-      - type: bind
-        source: /var/run/docker.sock
-        target: /var/run/docker.sock
-        read_only: true
-    ports:
-      - target: 80
-        published: 80
-        protocol: tcp
-        mode: host
-      - target: 8080
-        published: 8080
-        protocol: tcp
-        mode: host
-
   whoami:
     image: traefik/whoami
     labels:
-      - traefik.http.routers.whoami.rule=Host(`whoami.docker.localhost`)
+      - traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)
+      - traefik.http.routers.whoami.rule=Host(`whoami.localhost`)
 
   transmission:
     image: linuxserver/transmission:latest
     container_name: transmission
     ports:
       - 9091:9091
+    labels:
+      - traefik.http.routers.transmission.rule=PathPrefix(`/transmission`)
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -79,6 +86,8 @@ services:
     container_name: jackett
     ports:
       - 9117:9117
+    labels:
+      - traefik.http.routers.jackett.rule=PathPrefix(`/jackett`)
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -94,6 +103,8 @@ services:
     container_name: radarr
     ports:
       - 7878:7878
+    labels:
+      - traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -108,8 +119,13 @@ services:
     image: linuxserver/sonarr:latest
     restart: unless-stopped
     container_name: sonarr
-    ports:
-      - 8989:8989
+    # ports:
+    #   - 8989:8989
+    labels:
+      - traefik.enable=true
+      - traefik.port=8989
+      - traefik.docker.network=traefik_proxy
+      - traefik.http.routers.sonarr.rule=Path(`/sonarr`)
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -126,6 +142,8 @@ services:
     container_name: tautulli
     ports:
       - 8181:8181
+    labels:
+      - traefik.http.routers.tautulli.rule=PathPrefix(`/tautulli`)
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -149,4 +167,10 @@ services:
       - ${MOUNT}/shared:/shared
     ports:
       - 6767:6767
+    labels:
+      - traefik.http.routers.bazarr.rule=PathPrefix(`/bazarr`)
     restart: unless-stopped
+
+networks:
+  traefik_proxy:
+    external: true
