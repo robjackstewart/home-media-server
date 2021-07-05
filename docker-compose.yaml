@@ -16,6 +16,19 @@ services:
       - ${MOUNT}/tv:/libraries/tv
       - ${MOUNT}/shared:/shared
 
+  portainer:
+    image: portainer/portainer
+    container_name: portainer
+    ports:
+      - 9000:9000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${MOUNT}/appdata.portainer:/data
+      - ${MOUNT}/shared:/shared
+    environment:
+      - TZ=${TZ}
+    restart: unless-stopped
+
   transmission:
     image: linuxserver/transmission:latest
     container_name: transmission
