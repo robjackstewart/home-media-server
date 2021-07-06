@@ -150,6 +150,7 @@ services:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+    restart: unless-stopped
     volumes:
       - ${MOUNT}/appdata/tautulli:/config
       - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
