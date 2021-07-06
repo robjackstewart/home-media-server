@@ -19,12 +19,11 @@ services:
   traefik:
     image: traefik:latest
     command:
-      - "--log.level=DEBUG"
+      - --log.level=$TRAEFIK_LOG_LEVEL
       - --api
       - --api.dashboard
-      - --api.insecure # Don't do that in production
+      - --api.insecure
       - --providers.docker
-      # - --entrypoints.websecure.address=:443
     volumes:
       - type: bind
         source: /var/run/docker.sock
