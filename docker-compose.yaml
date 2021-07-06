@@ -31,7 +31,6 @@ services:
         target: /var/run/docker.sock
         read_only: true
     ports:
-      - 8989:8989
       - 80:80
       - 443:443
       - 8080:8080
@@ -41,14 +40,13 @@ services:
   portainer:
     image: portainer/portainer
     container_name: portainer
-    # ports:
-    #   - 9000:9000
+    ports:
+      - 9000:9000
     labels:
-      - traefik.enable=true
-      - traefik.port=9000
-      - traefik.backend=portainer
-      - traefik.passHostHeader=true
-      - traefik.http.routers.portainer.rule=Path(`/portainer`)
+      - traefik.http.routers.portainer.rule=PathPrefix(`/portainer`)
+      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^$DOMAIN/portainer$$
+      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=$DOMAIN:9000/$${1}
+      - traefik.http.routers.portainer.middlewares=portainer-prefix-to-port
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${MOUNT}/appdata/portainer:/data
@@ -57,12 +55,6 @@ services:
       - TZ=${TZ}
     restart: unless-stopped
 
-  whoami:
-    image: traefik/whoami
-    labels:
-      - traefik.http.routers.whoami.rule=PathPrefix(`/whoami`)
-      - traefik.http.routers.whoami.rule=Host(`whoami.localhost`)
-
   transmission:
     image: linuxserver/transmission:latest
     container_name: transmission
@@ -70,6 +62,9 @@ services:
       - 9091:9091
     labels:
       - traefik.http.routers.transmission.rule=PathPrefix(`/transmission`)
+      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^$DOMAIN/transmission$$
+      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=$DOMAIN:9091/$${1}
+      - traefik.http.routers.transmission.middlewares=transmission-prefix-to-port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -88,6 +83,9 @@ services:
       - 9117:9117
     labels:
       - traefik.http.routers.jackett.rule=PathPrefix(`/jackett`)
+      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^$DOMAIN/jackett$$
+      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=$DOMAIN:9117/$${1}
+      - traefik.http.routers.jackett.middlewares=jackett-prefix-to-port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -105,6 +103,9 @@ services:
       - 7878:7878
     labels:
       - traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)
+      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^$DOMAIN/radarr$$
+      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=$DOMAIN:7878/$${1}
+      - traefik.http.routers.radarr.middlewares=radarr-prefix-to-port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -119,13 +120,13 @@ services:
     image: linuxserver/sonarr:latest
     restart: unless-stopped
     container_name: sonarr
-    # ports:
-    #   - 8989:8989
+    ports:
+      - 8989:8989
     labels:
-      - traefik.enable=true
-      - traefik.port=8989
-      - traefik.docker.network=traefik_proxy
-      - traefik.http.routers.sonarr.rule=Path(`/sonarr`)
+      - traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)
+      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^$DOMAIN/sonarr$$
+      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=$DOMAIN:8989/$${1}
+      - traefik.http.routers.sonarr.middlewares=sonarr-prefix-to-port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -144,6 +145,9 @@ services:
       - 8181:8181
     labels:
       - traefik.http.routers.tautulli.rule=PathPrefix(`/tautulli`)
+      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.regex=^$DOMAIN/tautulli$$
+      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.replacement=$DOMAIN:8181/$${1}
+      - traefik.http.routers.tautulli.middlewares=tautulli-prefix-to-port
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -169,8 +173,7 @@ services:
       - 6767:6767
     labels:
       - traefik.http.routers.bazarr.rule=PathPrefix(`/bazarr`)
+      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^$DOMAIN/bazarr$$
+      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=$DOMAIN:6767/$${1}
+      - traefik.http.routers.bazarr.middlewares=bazarr-prefix-to-port
     restart: unless-stopped
-
-networks:
-  traefik_proxy:
-    external: true
