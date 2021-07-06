@@ -1,0 +1,6 @@
+PGID= # the PGID of the user on which the applications shoudl run
+PUID= # the PUID of the user on which the applications shoudl run
+TZ= # the timezone you are in
+MOUNT= # the top directory in which all data should be stored
+DOMAIN= # domain at which your server is accessible
+TRAEFIK_LOG_LEVEL= # the level at which traefik shoukd log (DEBUG, PANIC, FATAL, ERROR, WARN, and INFO)
