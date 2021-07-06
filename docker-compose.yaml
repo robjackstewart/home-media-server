@@ -6,15 +6,15 @@ services:
     container_name: plex
     network_mode: host
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/appdata/plex/config:/config
-      - ${MOUNT}/appdata/plex/transcode:/transcode
-      - ${MOUNT}/movies:/libraries/movies
-      - ${MOUNT}/tv:/libraries/tv
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/plex/config:/config
+      - $MOUNT/appdata/plex/transcode:/transcode
+      - $MOUNT/movies:/libraries/movies
+      - $MOUNT/tv:/libraries/tv
+      - $MOUNT/shared:/shared
 
   traefik:
     image: traefik:latest
@@ -43,14 +43,14 @@ services:
     labels:
       - traefik.http.routers.portainer.rule=PathPrefix(`/portainer`)
       - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^$DOMAIN/portainer$$
-      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=$DOMAIN:9000/$${1}
+      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=$DOMAIN:9000
       - traefik.http.routers.portainer.middlewares=portainer-prefix-to-port
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${MOUNT}/appdata/portainer:/data
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/portainer:/data
+      - $MOUNT/shared:/shared
     environment:
-      - TZ=${TZ}
+      - TZ=$TZ
     restart: unless-stopped
 
   transmission:
@@ -61,16 +61,16 @@ services:
     labels:
       - traefik.http.routers.transmission.rule=PathPrefix(`/transmission`)
       - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^$DOMAIN/transmission$$
-      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=$DOMAIN:9091/$${1}
+      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=$DOMAIN:9091
       - traefik.http.routers.transmission.middlewares=transmission-prefix-to-port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/appdata/transmission:/config
-      - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/transmission:/config
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/shared:/shared
     restart: unless-stopped
 
   jackett:
@@ -82,16 +82,16 @@ services:
     labels:
       - traefik.http.routers.jackett.rule=PathPrefix(`/jackett`)
       - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^$DOMAIN/jackett$$
-      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=$DOMAIN:9117/$${1}
+      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=$DOMAIN:9117
       - traefik.http.routers.jackett.middlewares=jackett-prefix-to-port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/appdata/jackett:/config
-      - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/jackett:/config
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/shared:/shared
 
   radarr:
     image: linuxserver/radarr:latest
@@ -102,17 +102,17 @@ services:
     labels:
       - traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)
       - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^$DOMAIN/radarr$$
-      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=$DOMAIN:7878/$${1}
+      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=$DOMAIN:7878
       - traefik.http.routers.radarr.middlewares=radarr-prefix-to-port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/appdata/radarr:/config
-      - ${MOUNT}/movies:/movies
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/radarr:/config
+      - $MOUNT/movies:/movies
+      - $MOUNT/shared:/shared
 
   sonarr:
     image: linuxserver/sonarr:latest
@@ -123,17 +123,17 @@ services:
     labels:
       - traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)
       - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^$DOMAIN/sonarr$$
-      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=$DOMAIN:8989/$${1}
+      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=$DOMAIN:8989
       - traefik.http.routers.sonarr.middlewares=sonarr-prefix-to-port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/downloads:/downloads
-      - ${MOUNT}/appdata/sonarr:/config
-      - ${MOUNT}/tv:/tv
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/sonarr:/config
+      - $MOUNT/tv:/tv
+      - $MOUNT/shared:/shared
 
   tautulli:
     image: linuxserver/tautulli:latest
@@ -144,35 +144,35 @@ services:
     labels:
       - traefik.http.routers.tautulli.rule=PathPrefix(`/tautulli`)
       - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.regex=^$DOMAIN/tautulli$$
-      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.replacement=$DOMAIN:8181/$${1}
+      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.replacement=$DOMAIN:8181
       - traefik.http.routers.tautulli.middlewares=tautulli-prefix-to-port
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     restart: unless-stopped
     volumes:
-      - ${MOUNT}/appdata/tautulli:/config
-      - ${MOUNT}/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/tautulli:/config
+      - $MOUNT/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+      - $MOUNT/shared:/shared
 
   bazarr:
     image: ghcr.io/linuxserver/bazarr
     container_name: bazarr
     environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     volumes:
-      - ${MOUNT}/appdata/bazarr:/config
-      - ${MOUNT}/movies:/movies
-      - ${MOUNT}/tv:/tv
-      - ${MOUNT}/shared:/shared
+      - $MOUNT/appdata/bazarr:/config
+      - $MOUNT/movies:/movies
+      - $MOUNT/tv:/tv
+      - $MOUNT/shared:/shared
     ports:
       - 6767:6767
     labels:
       - traefik.http.routers.bazarr.rule=PathPrefix(`/bazarr`)
       - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^$DOMAIN/bazarr$$
-      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=$DOMAIN:6767/$${1}
+      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=$DOMAIN:6767
       - traefik.http.routers.bazarr.middlewares=bazarr-prefix-to-port
     restart: unless-stopped
