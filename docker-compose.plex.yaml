@@ -1,0 +1,53 @@
+version: "3.8"
+services:
+  plex:
+    image: linuxserver/plex:latest
+    restart: unless-stopped
+    container_name: plex
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    ports:
+      - 32400:32400
+      - 1900:1900/udp
+      - 3005:3005
+      - 5353:5353/udp
+      - 8324:8324
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+      - 32469:32469
+    volumes:
+      - $MOUNT/appdata/plex/config:/config
+      - $MOUNT/appdata/plex/transcode:/transcode
+      - $MOUNT/movies:/libraries/movies
+      - $MOUNT/tv:/libraries/tv
+      - $MOUNT/shared:/shared
+    labels:
+      - traefik.http.routers.plex.rule=PathPrefix(`/plex`)
+      - traefik.http.middlewares.plex-prefix-to-port.redirectregex.regex=^$DOMAIN/plex$$
+      - traefik.http.middlewares.plex-prefix-to-port.redirectregex.replacement=$DOMAIN:32400
+      - traefik.http.routers.plex.middlewares=plex-prefix-to-port
+
+  tautulli:
+    image: linuxserver/tautulli:latest
+    restart: unless-stopped
+    container_name: tautulli
+    ports:
+        - 8181:8181
+    labels:
+        - traefik.http.routers.tautulli.rule=PathPrefix(`/tautulli`)
+        - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.regex=^$DOMAIN/tautulli$$
+        - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.replacement=$DOMAIN:8181
+        - traefik.http.routers.tautulli.middlewares=tautulli-prefix-to-port
+    environment:
+        - PUID=$PUID
+        - PGID=$PGID
+        - TZ=$TZ
+    restart: unless-stopped
+    volumes:
+        - $MOUNT/appdata/tautulli:/config
+        - $MOUNT/appdata/plex/config/Library/Application Support/Plex Media Server/Logs:/logs
+        - $MOUNT/shared:/shared
