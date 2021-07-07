@@ -1,5 +1,12 @@
 version: "3.8"
 
+networks:
+  traefik_proxy:
+    name: traefik_proxy
+    driver: bridge
+  default:
+    driver: bridge
+
 services:
 
   traefik:
@@ -15,8 +22,7 @@ services:
       - --log.level=$TRAEFIK_LOG_LEVEL
       - --accessLog=true
       - --accessLog.filePath=/traefik.log
-      - --accessLog.bufferingSize=100 # Configuring a buffer of 100 lines
-      # - --accessLog.filters.statusCodes=400-499
+      - --accessLog.bufferingSize=100
 
       # docker settings
       - --providers.docker
@@ -32,12 +38,12 @@ services:
       - --entrypoints.https.forwardedHeaders.trustedIPs=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22
       - --entryPoints.traefik.address=:8080
 
-      # Add dns-cloudflare as default certresolver for all services. Also enables TLS and no need to specify on individual services
+      # DNS setup
       - --entrypoints.https.http.tls.certresolver=dns-cloudflare
       - --entrypoints.https.http.tls.domains[0].main=$DOMAIN
       - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAIN
 
-      # - --certificatesResolvers.dns-cloudflare.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory # LetsEncrypt Staging Server - uncomment when testing
+      # Certificates
       - --certificatesResolvers.dns-cloudflare.acme.email=$CLOUDFLARE_EMAIL
       - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
@@ -50,8 +56,6 @@ services:
         target: /var/run/docker.sock
         read_only: true
     ports:
-      # - 80:80
-      # - 8080:8080
       - target: 80
         published: 80
         protocol: tcp
@@ -75,8 +79,10 @@ services:
       # HTTP Routers
       - traefik.http.routers.traefik-rtr.entrypoints=https
       - traefik.http.routers.traefik-rtr.rule=Host(`traefik.$DOMAIN`)
-      ## Services - API
+      # Services - API
       - traefik.http.routers.traefik-rtr.service=api@internal
+      #Auth
+      - traefik.http.routers.traefik-rtr.middlewares=chain-oauth
   
   cloudflare-ddns:
     image: oznu/cloudflare-ddns:latest
@@ -107,17 +113,63 @@ services:
       - DOMAIN1=$DOMAIN
       - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID # Copy from Cloudflare Overview page
       - DOMAIN1_PROXIED=true
+    labels:
+      - traefik.enable=false
+
+  oauth:
+    container_name: oauth
+    image: thomseddon/traefik-forward-auth:2.2-arm64
+    restart: always
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 4181:4181
+    environment:
+      - PROVIDERS_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+      - SECRET=$OAUTH_SECRET
+      - COOKIE_DOMAIN=$DOMAIN
+      - INSECURE_COOKIE=false
+      - AUTH_HOST=oauth.$DOMAIN
+      - URL_PATH=/_oauth
+      - WHITELIST=$WHITELIST
+      - LOG_LEVEL=warn
+      - LOG_FORMAT=text
+      - LIFETIME=86400
+      - DEFAULT_ACTION=auth
+      - DEFAULT_PROVIDER=google
+    labels:
+      - traefik.enable=true
+      # HTTP Routers
+      - traefik.http.routers.oauth-rtr.entrypoints=https
+      - traefik.http.routers.oauth-rtr.rule=Host(`oauth.$DOMAIN`)
+      # Middlewares
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.address=http://oauth:4181
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.trustForwardHeader=true
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.authResponseHeaders=X-Forwarded-User
+      - traefik.http.middlewares.chain-oauth.chain.middlewares=middlewares-oauth
+      - traefik.http.routers.oauth-rtr.middlewares=chain-oauth
+      # HTTP Services
+      - traefik.http.routers.oauth-rtr.service=oauth-svc
+      - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
+      
 
   portainer:
     image: portainer/portainer
     container_name: portainer
     ports:
       - 9000:9000
+    networks:
+      - traefik_proxy
     labels:
       - traefik.enable=true
       ## HTTP Routers
       - traefik.http.routers.portainer-rtr.entrypoints=https
       - traefik.http.routers.portainer-rtr.rule=Host(`portainer.$DOMAIN`)
+      # Middlewares
+      - traefik.http.routers.portainer-rtr.middlewares=chain-oauth
       ## HTTP Services
       - traefik.http.routers.portainer-rtr.service=portainer-svc
       - traefik.http.services.portainer-svc.loadbalancer.server.port=9000
@@ -141,6 +193,8 @@ services:
       ## HTTP Routers
       - traefik.http.routers.transmission-rtr.entrypoints=https
       - traefik.http.routers.transmission-rtr.rule=Host(`transmission.$DOMAIN`)
+      # Middlewares
+      - traefik.http.routers.transmission-rtr.middlewares=chain-oauth
       ## HTTP Services
       - traefik.http.routers.transmission-rtr.service=transmission-svc
       - traefik.http.services.transmission-svc.loadbalancer.server.port=9091
@@ -167,6 +221,8 @@ services:
       ## HTTP Routers
       - traefik.http.routers.jackett-rtr.entrypoints=https
       - traefik.http.routers.jackett-rtr.rule=Host(`jackett.$DOMAIN`)
+      # Middlewares
+      - traefik.http.routers.jackett-rtr.middlewares=chain-oauth
       ## HTTP Services
       - traefik.http.routers.jackett-rtr.service=jackett-svc
       - traefik.http.services.jackett-svc.loadbalancer.server.port=9117
@@ -189,11 +245,13 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      ## HTTP Routers
+      # HTTP Routers
       - traefik.http.routers.radarr-rtr.entrypoints=https
       - traefik.http.routers.radarr-rtr.rule=Host(`radarr.$DOMAIN`)
-      ## HTTP Services
-      - traefik.http.routers.radarr-rtr.service=jackett-svc
+      # Middlewares
+      - traefik.http.routers.radarr-rtr.middlewares=chain-oauth
+      # HTTP Services
+      - traefik.http.routers.radarr-rtr.service=radarr-svc
       - traefik.http.services.radarr-svc.loadbalancer.server.port=7878
     environment:
       - PUID=$PUID
@@ -215,10 +273,12 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      ## HTTP Routers
+      # HTTP Routers
       - traefik.http.routers.sonarr-rtr.entrypoints=https
       - traefik.http.routers.sonarr-rtr.rule=Host(`sonarr.$DOMAIN`)
-      ## HTTP Services
+      # Middlewares
+      - traefik.http.routers.sonarr-rtr.middlewares=chain-oauth
+      # HTTP Services
       - traefik.http.routers.sonarr-rtr.service=sonarr-svc
       - traefik.http.services.sonarr-svc.loadbalancer.server.port=8989
     environment:
@@ -249,10 +309,12 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      ## HTTP Routers
+      # HTTP Routers
       - traefik.http.routers.bazarr-rtr.entrypoints=https
       - traefik.http.routers.bazarr-rtr.rule=Host(`bazarr.$DOMAIN`)
-      ## HTTP Services
+      # Middlewares
+      - traefik.http.routers.bazarr-rtr.middlewares=chain-oauth
+      # HTTP Services
       - traefik.http.routers.bazarr-rtr.service=bazarr-svc
       - traefik.http.services.bazarr-svc.loadbalancer.server.port=6767
     restart: unless-stopped

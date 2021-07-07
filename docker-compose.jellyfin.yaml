@@ -16,11 +16,18 @@ services:
       - 8920:8920
       - 7359:7359/udp
       - 1900:1900/udp
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.jellyfin.rule=PathPrefix(`/jellyfin`)
-      - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.regex=^$DOMAIN/jellyfin$$
-      - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.replacement=$DOMAIN:8096
-      - traefik.http.routers.jellyfin.middlewares=jellyfin-prefix-to-port
+      - traefik.enable=true
+      ## HTTP Routers
+      - traefik.http.routers.jellyfin-rtr.entrypoints=https
+      - traefik.http.routers.jellyfin-rtr.rule=Host(`jellyfin.$DOMAIN`)
+      # Middlewares
+      - traefik.http.routers.jellyfin-rtr.middlewares=chain-oauth
+      ## HTTP Services
+      - traefik.http.routers.jellyfin-rtr.service=jellyfin-svc
+      - traefik.http.services.jellyfin-svc.loadbalancer.server.port=8096
     devices:
       - /dev/vcsm-cma:/dev/vcsm
       - /dev/vchiq:/dev/vchiq
