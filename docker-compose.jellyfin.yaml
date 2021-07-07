@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  jellyfin:
+    image: ghcr.io/linuxserver/jellyfin
+    container_name: jellyfin
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/jellyfin/config:/config
+      - $MOUNT/tv:/data/tvshows
+      - $MOUNT/movies:/data/movies
+    ports:
+      - 8096:8096
+      - 8920:8920
+      - 7359:7359/udp
+      - 1900:1900/udp
+    labels:
+      - traefik.http.routers.jellyfin.rule=PathPrefix(`/jellyfin`)
+      - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.regex=^$DOMAIN/jellyfin$$
+      - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.replacement=$DOMAIN:8096
+      - traefik.http.routers.jellyfin.middlewares=jellyfin-prefix-to-port
+    devices:
+      - /dev/vcsm-cma:/dev/vcsm
+      - /dev/vchiq:/dev/vchiq
+      - /dev/video10:/dev/video10
+      - /dev/video11:/dev/video11
+      - /dev/video12:/dev/video12
+    restart: unless-stopped
