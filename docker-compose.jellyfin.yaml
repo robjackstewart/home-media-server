@@ -8,7 +8,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     volumes:
-      - $MOUNT/appdata/jellyfin/config:/config
+      - $MOUNT/appdata/jellyfin:/config
       - $MOUNT/tv:/data/tvshows
       - $MOUNT/movies:/data/movies
     ports:
