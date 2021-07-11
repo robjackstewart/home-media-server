@@ -48,7 +48,7 @@ services:
       - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
-      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90 # To delay DNS check and reduce LE hitrate
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90
 
     volumes:
       - type: bind
@@ -68,7 +68,7 @@ services:
       - traefik_proxy
     environment:
       - CF_API_EMAIL=$CLOUDFLARE_EMAIL
-      - CF_API_KEY=$CLOUDFLARE_API_KEY
+      - CF_API_KEY=$CLOUDFLARE_API_TOKEN
     labels:
       - traefik.enable=false
       - traefik.http.routers.http-catchall.entrypoints=http
@@ -97,17 +97,17 @@ services:
   cloudflare-companion:
     container_name: cloudflare-companion
     image: tiredofit/traefik-cloudflare-companion:latest
-    restart: always
+    restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TIMEZONE=$TZ
       - TRAEFIK_VERSION=2
-      - CF_EMAIL=$CLOUDFLARE_EMAIL # Same as traefik
-      - CF_TOKEN=$CLOUDFLARE_API_KEY # Same as traefik
+      - CF_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_TOKEN=$CLOUDFLARE_API_TOKEN
       - TARGET_DOMAIN=$DOMAIN
       - DOMAIN1=$DOMAIN
-      - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID # Copy from Cloudflare Overview page
+      - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID 
       - DOMAIN1_PROXIED=true
     labels:
       - traefik.enable=false
@@ -115,7 +115,7 @@ services:
   oauth:
     container_name: oauth
     image: thomseddon/traefik-forward-auth:2.2-arm64
-    restart: always
+    restart: unless-stopped
     networks:
       - traefik_proxy
     security_opt:
@@ -187,6 +187,7 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
+
       # remote
       - traefik.http.routers.transmission-remote.entrypoints=https
       - traefik.http.routers.transmission-remote.rule=Host(`transmission.$DOMAIN`)
