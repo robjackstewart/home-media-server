@@ -12,6 +12,7 @@ services:
   traefik:
     image: traefik:latest
     container_name: traefik
+    restart: unless-stopped
     command:
       # api
       - --api=true
@@ -39,7 +40,7 @@ services:
       - --entryPoints.traefik.address=:8080
 
       # DNS setup
-      - --entrypoints.https.http.tls.ceremoteesolver=dns-cloudflare
+      - --entrypoints.https.http.tls.certresolver=dns-cloudflare
       - --entrypoints.https.http.tls.domains[0].main=$DOMAIN
       - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAIN
 
@@ -91,6 +92,8 @@ services:
       - RRTYPE=A
       - DELETE_ON_STOP=false
       - DNS_SERVER=1.1.1.1
+      - PUID=$PUID
+      - PGID=$PGID
     labels:
       - traefik.enable=false
 
