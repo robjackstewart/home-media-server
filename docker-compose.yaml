@@ -1,37 +1,178 @@
 version: "3.8"
 
+networks:
+  traefik_proxy:
+    name: traefik_proxy
+    driver: bridge
+  default:
+    driver: bridge
+
 services:
 
   traefik:
     image: traefik:latest
     container_name: traefik
+    restart: unless-stopped
     command:
+      # api
+      - --api=true
+      - --api.dashboard=true
+
+      # logging
+      - --log=true
       - --log.level=$TRAEFIK_LOG_LEVEL
-      - --api
-      - --api.dashboard
-      - --api.insecure
+      - --accessLog=true
+      - --accessLog.filePath=/traefik.log
+      - --accessLog.bufferingSize=100
+
+      # docker settings
       - --providers.docker
+      - --providers.docker.network=traefik_proxy
+      - --providers.docker.swarmMode=false
+
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=true
+      - --entryPoints.http.address=:80
+      - --entryPoints.https.address=:443
+
+      # Allow cloudflare IP's
+      - --entrypoints.https.forwardedHeaders.trustedIPs=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22
+      - --entryPoints.traefik.address=:8080
+
+      # DNS setup
+      - --entrypoints.https.http.tls.certresolver=dns-cloudflare
+      - --entrypoints.https.http.tls.domains[0].main=$DOMAIN
+      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAIN
+
+      # Certificates
+      - --certificatesResolvers.dns-cloudflare.acme.email=$CLOUDFLARE_EMAIL
+      - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90
+
     volumes:
       - type: bind
         source: /var/run/docker.sock
         target: /var/run/docker.sock
         read_only: true
     ports:
-      - 80:80
-      - 8080:8080
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    networks:
+      - traefik_proxy
+    environment:
+      - CF_API_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_API_KEY=$CLOUDFLARE_API_TOKEN
     labels:
       - traefik.enable=false
+      - traefik.http.routers.http-catchall.entrypoints=http
+      - traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)
+      - traefik.http.routers.http-catchall.middlewares=redirect-to-https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.routers.traefik-remote.entrypoints=https
+      - traefik.http.routers.traefik-remote.rule=Host(`traefik.$DOMAIN`)
+      - traefik.http.routers.traefik-remote.service=api@internal
+      - traefik.http.routers.traefik-remote.middlewares=chain-oauth
+  
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
+    container_name: cloudflare-ddns
+    restart: unless-stopped
+    environment:
+      - API_KEY=$CLOUDFLARE_API_TOKEN
+      - ZONE=$DOMAIN
+      - PROXIED=true
+      - RRTYPE=A
+      - DELETE_ON_STOP=false
+      - DNS_SERVER=1.1.1.1
+      - PUID=$PUID
+      - PGID=$PGID
+    labels:
+      - traefik.enable=false
+
+  cloudflare-companion:
+    container_name: cloudflare-companion
+    image: tiredofit/traefik-cloudflare-companion:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TIMEZONE=$TZ
+      - TRAEFIK_VERSION=2
+      - CF_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_TOKEN=$CLOUDFLARE_API_TOKEN
+      - TARGET_DOMAIN=$DOMAIN
+      - DOMAIN1=$DOMAIN
+      - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID 
+      - DOMAIN1_PROXIED=true
+    labels:
+      - traefik.enable=false
+
+  oauth:
+    container_name: oauth
+    image: thomseddon/traefik-forward-auth:2.2-arm64
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 4181:4181
+    environment:
+      - PROVIDERS_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+      - SECRET=$OAUTH_SECRET
+      - COOKIE_DOMAIN=$DOMAIN
+      - INSECURE_COOKIE=false
+      - AUTH_HOST=oauth.$DOMAIN
+      - URL_PATH=/_oauth
+      - WHITELIST=$WHITELIST
+      - LOG_LEVEL=warn
+      - LOG_FORMAT=text
+      - LIFETIME=86400
+      - DEFAULT_ACTION=auth
+      - DEFAULT_PROVIDER=google
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.oauth-remote.entrypoints=https
+      - traefik.http.routers.oauth-remote.rule=Host(`oauth.$DOMAIN`)
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.address=http://oauth:4181
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.trustForwardHeader=true
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.authResponseHeaders=X-Forwarded-User
+      - traefik.http.middlewares.chain-oauth.chain.middlewares=middlewares-oauth
+      - traefik.http.routers.oauth-remote.middlewares=chain-oauth
+      - traefik.http.routers.oauth-remote.service=oauth-svc
+      - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
 
   portainer:
     image: portainer/portainer
     container_name: portainer
     ports:
       - 9000:9000
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.portainer.rule=PathPrefix(`/portainer`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.portainer-remote.entrypoints=https
+      - traefik.http.routers.portainer-remote.rule=Host(`portainer.$DOMAIN`)
+      - traefik.http.routers.portainer-remote.middlewares=chain-oauth
+      - traefik.http.routers.portainer-remote.service=portainer-svc
+      - traefik.http.services.portainer-svc.loadbalancer.server.port=9000
+
+      # local
+      - traefik.http.routers.portainer-local.rule=PathPrefix(`/portainer`)
       - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^$DOMAIN/portainer$$
       - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=$DOMAIN:9000
-      - traefik.http.routers.portainer.middlewares=portainer-prefix-to-port
+      - traefik.http.routers.portainer-local.middlewares=portainer-prefix-to-port
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - $MOUNT/appdata/portainer:/data
@@ -45,11 +186,23 @@ services:
     container_name: transmission
     ports:
       - 9091:9091
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.transmission.rule=PathPrefix(`/transmission`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.transmission-remote.entrypoints=https
+      - traefik.http.routers.transmission-remote.rule=Host(`transmission.$DOMAIN`)
+      - traefik.http.routers.transmission-remote.middlewares=chain-oauth
+      - traefik.http.routers.transmission-remote.service=transmission-svc
+      - traefik.http.services.transmission-svc.loadbalancer.server.port=9091
+
+      # local
+      - traefik.http.routers.transmission-local.rule=PathPrefix(`/transmission`)
       - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^$DOMAIN/transmission$$
       - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=$DOMAIN:9091
-      - traefik.http.routers.transmission.middlewares=transmission-prefix-to-port
+      - traefik.http.routers.transmission-local.middlewares=transmission-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -66,11 +219,23 @@ services:
     container_name: jackett
     ports:
       - 9117:9117
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.jackett.rule=PathPrefix(`/jackett`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.jackett-remote.entrypoints=https
+      - traefik.http.routers.jackett-remote.rule=Host(`jackett.$DOMAIN`)
+      - traefik.http.routers.jackett-remote.middlewares=chain-oauth
+      - traefik.http.routers.jackett-remote.service=jackett-svc
+      - traefik.http.services.jackett-svc.loadbalancer.server.port=9117
+
+      # local
+      - traefik.http.routers.jackett-local.rule=PathPrefix(`/jackett`)
       - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^$DOMAIN/jackett$$
       - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=$DOMAIN:9117
-      - traefik.http.routers.jackett.middlewares=jackett-prefix-to-port
+      - traefik.http.routers.jackett-local.middlewares=jackett-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -86,11 +251,23 @@ services:
     container_name: radarr
     ports:
       - 7878:7878
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.radarr.rule=PathPrefix(`/radarr`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.radarr-remote.entrypoints=https
+      - traefik.http.routers.radarr-remote.rule=Host(`radarr.$DOMAIN`)
+      - traefik.http.routers.radarr-remote.middlewares=chain-oauth
+      - traefik.http.routers.radarr-remote.service=radarr-svc
+      - traefik.http.services.radarr-svc.loadbalancer.server.port=7878
+
+      # local
+      - traefik.http.routers.radarr-local.rule=PathPrefix(`/radarr`)
       - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^$DOMAIN/radarr$$
       - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=$DOMAIN:7878
-      - traefik.http.routers.radarr.middlewares=radarr-prefix-to-port
+      - traefik.http.routers.radarr-local.middlewares=radarr-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -107,11 +284,23 @@ services:
     container_name: sonarr
     ports:
       - 8989:8989
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.sonarr.rule=PathPrefix(`/sonarr`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.sonarr-remote.entrypoints=https
+      - traefik.http.routers.sonarr-remote.rule=Host(`sonarr.$DOMAIN`)
+      - traefik.http.routers.sonarr-remote.middlewares=chain-oauth
+      - traefik.http.routers.sonarr-remote.service=sonarr-svc
+      - traefik.http.services.sonarr-svc.loadbalancer.server.port=8989
+
+      # local
+      - traefik.http.routers.sonarr-local.rule=PathPrefix(`/sonarr`)
       - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^$DOMAIN/sonarr$$
       - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=$DOMAIN:8989
-      - traefik.http.routers.sonarr.middlewares=sonarr-prefix-to-port
+      - traefik.http.routers.sonarr-local.middlewares=sonarr-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -136,9 +325,21 @@ services:
       - $MOUNT/shared:/shared
     ports:
       - 6767:6767
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.bazarr.rule=PathPrefix(`/bazarr`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.bazarr-remote.entrypoints=https
+      - traefik.http.routers.bazarr-remote.rule=Host(`bazarr.$DOMAIN`)
+      - traefik.http.routers.bazarr-remote.middlewares=chain-oauth
+      - traefik.http.routers.bazarr-remote.service=bazarr-svc
+      - traefik.http.services.bazarr-svc.loadbalancer.server.port=6767
+
+      # local
+      - traefik.http.routers.bazarr-local.rule=PathPrefix(`/bazarr`)
       - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^$DOMAIN/bazarr$$
       - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=$DOMAIN:6767
-      - traefik.http.routers.bazarr.middlewares=bazarr-prefix-to-port
+      - traefik.http.routers.bazarr-local.middlewares=bazarr-prefix-to-port
     restart: unless-stopped

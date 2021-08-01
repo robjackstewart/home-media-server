@@ -8,7 +8,7 @@ services:
       - PGID=$PGID
       - TZ=$TZ
     volumes:
-      - $MOUNT/appdata/jellyfin/config:/config
+      - $MOUNT/appdata/jellyfin:/config
       - $MOUNT/tv:/data/tvshows
       - $MOUNT/movies:/data/movies
     ports:
@@ -16,11 +16,23 @@ services:
       - 8920:8920
       - 7359:7359/udp
       - 1900:1900/udp
+    networks:
+      - traefik_proxy
     labels:
-      - traefik.http.routers.jellyfin.rule=PathPrefix(`/jellyfin`)
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.jellyfin-remote.entrypoints=https
+      - traefik.http.routers.jellyfin-remote.rule=Host(`jellyfin.$DOMAIN`)
+      - traefik.http.routers.jellyfin-remote.middlewares=chain-oauth
+      - traefik.http.routers.jellyfin-remote.service=jellyfin-svc
+      - traefik.http.services.jellyfin-svc.loadbalancer.server.port=8096
+
+      # local
+      - traefik.http.routers.jellyfin-local.rule=PathPrefix(`/jellyfin`)
       - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.regex=^$DOMAIN/jellyfin$$
       - traefik.http.middlewares.jellyfin-prefix-to-port.redirectregex.replacement=$DOMAIN:8096
-      - traefik.http.routers.jellyfin.middlewares=jellyfin-prefix-to-port
+      - traefik.http.routers.jellyfin-local.middlewares=jellyfin-prefix-to-port
     devices:
       - /dev/vcsm-cma:/dev/vcsm
       - /dev/vchiq:/dev/vchiq
