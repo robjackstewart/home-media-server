@@ -86,7 +86,7 @@ services:
     container_name: cloudflare-ddns
     restart: unless-stopped
     environment:
-      - API_KEY=$CLOUDFLARE_API_TOKEN
+      - API_KEY=$CLOUDFLARE_DDNS_TOKEN
       - ZONE=$DOMAIN
       - PROXIED=true
       - RRTYPE=A
