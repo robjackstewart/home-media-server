@@ -11,3 +11,4 @@ GOOGLE_CLIENT_ID= # the client id of the oauth application
 GOOGLE_CLIENT_SECRET= # the client secret of the oauth application
 OAUTH_SECRET= # the secret used to sign the cookies, best to use the output of 'openssl rand -hex 16'
 WHITELIST= # comma separate emails to which you wish to allow access
+HOSTNAME= # the hostname or ip address of your home server has been given by your router

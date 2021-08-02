@@ -170,8 +170,8 @@ services:
 
       # local
       - traefik.http.routers.portainer-local.rule=PathPrefix(`/portainer`)
-      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^$DOMAIN/portainer$$
-      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=$DOMAIN:9000
+      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/portainer$$
+      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9000
       - traefik.http.routers.portainer-local.middlewares=portainer-prefix-to-port
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -200,8 +200,8 @@ services:
 
       # local
       - traefik.http.routers.transmission-local.rule=PathPrefix(`/transmission`)
-      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^$DOMAIN/transmission$$
-      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=$DOMAIN:9091
+      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/transmission$$
+      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9091
       - traefik.http.routers.transmission-local.middlewares=transmission-prefix-to-port
     environment:
       - PUID=$PUID
@@ -233,8 +233,8 @@ services:
 
       # local
       - traefik.http.routers.jackett-local.rule=PathPrefix(`/jackett`)
-      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^$DOMAIN/jackett$$
-      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=$DOMAIN:9117
+      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/jackett$$
+      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9117
       - traefik.http.routers.jackett-local.middlewares=jackett-prefix-to-port
     environment:
       - PUID=$PUID
@@ -265,8 +265,8 @@ services:
 
       # local
       - traefik.http.routers.radarr-local.rule=PathPrefix(`/radarr`)
-      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^$DOMAIN/radarr$$
-      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=$DOMAIN:7878
+      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/radarr$$
+      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:7878
       - traefik.http.routers.radarr-local.middlewares=radarr-prefix-to-port
     environment:
       - PUID=$PUID
@@ -298,8 +298,8 @@ services:
 
       # local
       - traefik.http.routers.sonarr-local.rule=PathPrefix(`/sonarr`)
-      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^$DOMAIN/sonarr$$
-      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=$DOMAIN:8989
+      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/sonarr$$
+      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:8989
       - traefik.http.routers.sonarr-local.middlewares=sonarr-prefix-to-port
     environment:
       - PUID=$PUID
@@ -339,7 +339,39 @@ services:
 
       # local
       - traefik.http.routers.bazarr-local.rule=PathPrefix(`/bazarr`)
-      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^$DOMAIN/bazarr$$
-      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=$DOMAIN:6767
+      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/bazarr$$
+      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:6767
       - traefik.http.routers.bazarr-local.middlewares=bazarr-prefix-to-port
     restart: unless-stopped
+
+  heimdall:
+    container_name: heimdall
+    image: linuxserver/heimdall:latest
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 90:80
+    volumes:
+      - $MOUNT/appdata/heimdall:/config
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    labels:
+      - traefik.enable=true
+
+      # remote
+      - traefik.http.routers.heimdall-remote.entrypoints=https
+      - traefik.http.routers.heimdall-remote.rule=Host(`heimdall.$DOMAIN`)
+      - traefik.http.routers.heimdall-remote.middlewares=chain-oauth
+      - traefik.http.routers.heimdall-remote.service=heimdall-svc
+      - traefik.http.services.heimdall-svc.loadbalancer.server.port=80
+
+      # local
+      - traefik.http.routers.heimdall-local.rule=PathPrefix(`/heimdall`)
+      - traefik.http.middlewares.heimdall-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/heimdall$$
+      - traefik.http.middlewares.heimdall-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:90
+      - traefik.http.routers.heimdall-local.middlewares=heimdall-prefix-to-port
