@@ -180,12 +180,16 @@ services:
     restart: unless-stopped
 
   transmission:
-    image: linuxserver/transmission:latest
-    container_name: transmission
+    image: haugene/transmission-openvpn:latest
+    container_name: transmission-openvpn
     ports:
       - 9091:9091
+    cap_add:
+      - NET_ADMIN
     networks:
       - traefik_proxy
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
     labels:
       - traefik.enable=true
 
@@ -205,10 +209,34 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - CREATE_TUN_DEVICE=true
+      - OPENVPN_PROVIDER=$OPEN_VPN_PROVIDER
+      - OPENVPN_CONFIG=gb_all
+      - OPENVPN_USERNAME=$OPEN_VPN_USERNAME
+      - OPENVPN_PASSWORD=$OPEN_VPN_PASSWORD
+      - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
+      - WEBPROXY_ENABLED=false
+      - TRANSMISSION_SCRAPE_PAUSED_TORRENTS_ENABLED=false
+      - TRANSMISSION_WEB_UI=flood-for-transmission
+      - TRANSMISSION_RATIO_LIMIT=0.01
+      - TRANSMISSION_RATIO_LIMIT_ENABLED=true
+      - TRANSMISSION_ALT_SPEED_DOWN=40000
+      - TRANSMISSION_ALT_SPEED_ENABLED=false
+      - TRANSMISSION_ALT_SPEED_UP=250
+      - TRANSMISSION_SPEED_LIMIT_DOWN=80000
+      - TRANSMISSION_SPEED_LIMIT_DOWN_ENABLED=true
+      - TRANSMISSION_SPEED_LIMIT_UP=500
+      - TRANSMISSION_SPEED_LIMIT_UP_ENABLED=true
+      - TRANSMISSION_INCOMPLETE_DIR=/downloads/incomplete
+      - TRANSMISSION_INCOMPLETE_DIR_ENABLED=true
+      - TRANSMISSION_WATCH_DIR=/downloads/torrents
+      - TRANSMISSION_WATCH_DIR_ENABLED=true
+      - TRANSMISSION_DOWNLOAD_DIR=/downloads/complete
     volumes:
       - $MOUNT/appdata/transmission:/config
       - $MOUNT/downloads:/downloads
       - $MOUNT/shared:/shared
+      - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
 
   jackett:
