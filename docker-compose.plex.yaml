@@ -29,19 +29,11 @@ services:
       - $MOUNT/shared:/shared
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.plex-remote.entrypoints=https
       - traefik.http.routers.plex-remote.rule=Host(`plex.$DOMAIN`)
       - traefik.http.routers.plex-remote.middlewares=chain-oauth
       - traefik.http.routers.plex-remote.service=plex-svc
       - traefik.http.services.plex-svc.loadbalancer.server.port=32400
-
-      # local
-      - traefik.http.routers.plex-local.rule=PathPrefix(`/plex`)
-      - traefik.http.middlewares.plex-prefix-to-port.redirectregex.regex=^$DOMAIN/plex$$
-      - traefik.http.middlewares.plex-prefix-to-port.redirectregex.replacement=$DOMAIN:9000
-      - traefik.http.routers.plex-local.middlewares=plex-prefix-to-port
 
   tautulli:
     image: linuxserver/tautulli:latest
@@ -51,19 +43,11 @@ services:
         - 8181:8181
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.tautulli-remote.entrypoints=https
       - traefik.http.routers.tautulli-remote.rule=Host(`tautulli.$DOMAIN`)
       - traefik.http.routers.tautulli-remote.middlewares=chain-oauth
       - traefik.http.routers.tautulli-remote.service=tautulli-svc
       - traefik.http.services.tautulli-svc.loadbalancer.server.port=8181
-
-      # local
-      - traefik.http.routers.tautulli-local.rule=PathPrefix(`/tautulli`)
-      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.regex=^$DOMAIN/tautulli$$
-      - traefik.http.middlewares.tautulli-prefix-to-port.redirectregex.replacement=$DOMAIN:8181
-      - traefik.http.routers.tautulli-local.middlewares=tautulli-prefix-to-port
     environment:
         - PUID=$PUID
         - PGID=$PGID
