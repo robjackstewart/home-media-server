@@ -56,14 +56,11 @@ services:
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90
     ports:
-      - target: 80
-        published: 80
-        protocol: tcp
-        mode: host
       - target: 443
         published: 443
         protocol: tcp
         mode: host
+      - 8080:8080
     networks:
       - traefik_proxy
       - socket_proxy
@@ -159,19 +156,11 @@ services:
     command: -H tcp://socket-proxy:2375
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.portainer-remote.entrypoints=https
       - traefik.http.routers.portainer-remote.rule=Host(`portainer.$DOMAIN`)
       - traefik.http.routers.portainer-remote.middlewares=chain-oauth
       - traefik.http.routers.portainer-remote.service=portainer-svc
       - traefik.http.services.portainer-svc.loadbalancer.server.port=9000
-
-      # local
-      - traefik.http.routers.portainer-local.rule=PathPrefix(`/portainer`)
-      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/portainer$$
-      - traefik.http.middlewares.portainer-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9000
-      - traefik.http.routers.portainer-local.middlewares=portainer-prefix-to-port
     volumes:
       - $MOUNT/appdata/portainer:/data
       - $MOUNT/shared:/shared
@@ -192,19 +181,11 @@ services:
       - net.ipv6.conf.all.disable_ipv6=0
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.transmission-remote.entrypoints=https
       - traefik.http.routers.transmission-remote.rule=Host(`transmission.$DOMAIN`)
       - traefik.http.routers.transmission-remote.middlewares=chain-oauth
       - traefik.http.routers.transmission-remote.service=transmission-svc
       - traefik.http.services.transmission-svc.loadbalancer.server.port=9091
-
-      # local
-      - traefik.http.routers.transmission-local.rule=PathPrefix(`/transmission`)
-      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/transmission$$
-      - traefik.http.middlewares.transmission-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9091
-      - traefik.http.routers.transmission-local.middlewares=transmission-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -249,19 +230,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.jackett-remote.entrypoints=https
       - traefik.http.routers.jackett-remote.rule=Host(`jackett.$DOMAIN`)
       - traefik.http.routers.jackett-remote.middlewares=chain-oauth
       - traefik.http.routers.jackett-remote.service=jackett-svc
       - traefik.http.services.jackett-svc.loadbalancer.server.port=9117
-
-      # local
-      - traefik.http.routers.jackett-local.rule=PathPrefix(`/jackett`)
-      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/jackett$$
-      - traefik.http.middlewares.jackett-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:9117
-      - traefik.http.routers.jackett-local.middlewares=jackett-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -281,19 +254,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.radarr-remote.entrypoints=https
       - traefik.http.routers.radarr-remote.rule=Host(`radarr.$DOMAIN`)
       - traefik.http.routers.radarr-remote.middlewares=chain-oauth
       - traefik.http.routers.radarr-remote.service=radarr-svc
       - traefik.http.services.radarr-svc.loadbalancer.server.port=7878
-
-      # local
-      - traefik.http.routers.radarr-local.rule=PathPrefix(`/radarr`)
-      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/radarr$$
-      - traefik.http.middlewares.radarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:7878
-      - traefik.http.routers.radarr-local.middlewares=radarr-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -314,19 +279,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.sonarr-remote.entrypoints=https
       - traefik.http.routers.sonarr-remote.rule=Host(`sonarr.$DOMAIN`)
       - traefik.http.routers.sonarr-remote.middlewares=chain-oauth
       - traefik.http.routers.sonarr-remote.service=sonarr-svc
       - traefik.http.services.sonarr-svc.loadbalancer.server.port=8989
-
-      # local
-      - traefik.http.routers.sonarr-local.rule=PathPrefix(`/sonarr`)
-      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/sonarr$$
-      - traefik.http.middlewares.sonarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:8989
-      - traefik.http.routers.sonarr-local.middlewares=sonarr-prefix-to-port
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -355,19 +312,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.bazarr-remote.entrypoints=https
       - traefik.http.routers.bazarr-remote.rule=Host(`bazarr.$DOMAIN`)
       - traefik.http.routers.bazarr-remote.middlewares=chain-oauth
       - traefik.http.routers.bazarr-remote.service=bazarr-svc
       - traefik.http.services.bazarr-svc.loadbalancer.server.port=6767
-
-      # local
-      - traefik.http.routers.bazarr-local.rule=PathPrefix(`/bazarr`)
-      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/bazarr$$
-      - traefik.http.middlewares.bazarr-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:6767
-      - traefik.http.routers.bazarr-local.middlewares=bazarr-prefix-to-port
     restart: unless-stopped
 
   heimdall:
@@ -388,19 +337,11 @@ services:
       - TZ=$TZ
     labels:
       - traefik.enable=true
-
-      # remote
       - traefik.http.routers.heimdall-remote.entrypoints=https
       - traefik.http.routers.heimdall-remote.rule=Host(`heimdall.$DOMAIN`)
       - traefik.http.routers.heimdall-remote.middlewares=chain-oauth
       - traefik.http.routers.heimdall-remote.service=heimdall-svc
       - traefik.http.services.heimdall-svc.loadbalancer.server.port=80
-
-      # local
-      - traefik.http.routers.heimdall-local.rule=PathPrefix(`/heimdall`)
-      - traefik.http.middlewares.heimdall-prefix-to-port.redirectregex.regex=^http://$HOSTNAME/heimdall$$
-      - traefik.http.middlewares.heimdall-prefix-to-port.redirectregex.replacement=http://$HOSTNAME:90
-      - traefik.http.routers.heimdall-local.middlewares=heimdall-prefix-to-port
 
   socket-proxy:
     container_name: socket-proxy
