@@ -405,11 +405,10 @@ services:
   rclone:
     container_name: rclone
     image: rclone/rclone
-    command: copy /data personal:/home-media-server
+    command: copy /data personal:/home-media-server --progress --max-depth 4
     environment:
       - RCLONE_OPENDRIVE_USERNAME=$OPENDRIVE_USERNAME
       - RCLONE_OPENDRIVE_PASSWORD=$OPENDRIVE_PASSWORD
-      - RCLONE_MAX_DEPTH=4
       - RCLONE_CONFIG_PERSONAL_TYPE=opendrive
     volumes:
       - $MOUNT/appdata/rclone:/config/rclone
