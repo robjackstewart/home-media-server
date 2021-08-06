@@ -60,7 +60,6 @@ services:
         published: 443
         protocol: tcp
         mode: host
-      - 8080:8080
     networks:
       - traefik_proxy
       - socket_proxy
@@ -377,3 +376,28 @@ services:
       - SYSTEM=0
       - TASKS=1
       - VOLUMES=1
+
+  hydra:
+    image: linuxserver/nzbhydra2:latest
+    container_name: hydra
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 5076:5076
+    volumes:
+      - $MOUNT/appdata/hydra2:/config
+      - $MOUNT/downloads:/data/downloads
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hydra-remote.entrypoints=https
+      - traefik.http.routers.hydra-remote.rule=Host(`hydra.$DOMAIN`)
+      - traefik.http.routers.hydra-remote.middlewares=chain-oauth
+      - traefik.http.routers.hydra-remote.service=hydra-svc
+      - traefik.http.services.hydra-svc.loadbalancer.server.port=5076
