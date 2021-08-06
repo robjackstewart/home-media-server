@@ -401,3 +401,17 @@ services:
       - traefik.http.routers.hydra-remote.middlewares=chain-oauth
       - traefik.http.routers.hydra-remote.service=hydra-svc
       - traefik.http.services.hydra-svc.loadbalancer.server.port=5076
+  
+  rclone:
+    container_name: rclone
+    image: rclone/rclone
+    command: copy /data personal:/home-media-server
+    environment:
+      - RCLONE_OPENDRIVE_USERNAME=$OPENDRIVE_USERNAME
+      - RCLONE_OPENDRIVE_PASSWORD=$OPENDRIVE_PASSWORD
+      - RCLONE_MAX_DEPTH=4
+      - RCLONE_CONFIG_PERSONAL_TYPE=opendrive
+    volumes:
+      - $MOUNT/appdata/rclone:/config/rclone
+      - $MOUNT/tv:/data/tv
+      - $MOUNT/movies:/data/movies
