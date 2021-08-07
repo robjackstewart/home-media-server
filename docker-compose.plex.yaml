@@ -29,11 +29,11 @@ services:
       - $MOUNT/shared:/shared
     labels:
       - traefik.enable=true
-      - traefik.http.routers.plex-remote.entrypoints=https
-      - traefik.http.routers.plex-remote.rule=Host(`plex.$DOMAIN`)
-      - traefik.http.routers.plex-remote.middlewares=chain-oauth
-      - traefik.http.routers.plex-remote.service=plex-svc
-      - traefik.http.services.plex-svc.loadbalancer.server.port=32400
+      - traefik.http.routers.plex.entrypoints=https
+      - traefik.http.routers.plex.rule=Host(`plex.$DOMAIN`)
+      - traefik.http.routers.plex.middlewares=chain-oauth
+      - traefik.http.routers.plex.service=plex
+      - traefik.http.services.plex.loadbalancer.server.port=32400
 
   tautulli:
     image: linuxserver/tautulli:latest
@@ -43,11 +43,11 @@ services:
         - 8181:8181
     labels:
       - traefik.enable=true
-      - traefik.http.routers.tautulli-remote.entrypoints=https
-      - traefik.http.routers.tautulli-remote.rule=Host(`tautulli.$DOMAIN`)
-      - traefik.http.routers.tautulli-remote.middlewares=chain-oauth
-      - traefik.http.routers.tautulli-remote.service=tautulli-svc
-      - traefik.http.services.tautulli-svc.loadbalancer.server.port=8181
+      - traefik.http.routers.tautulli.entrypoints=https
+      - traefik.http.routers.tautulli.rule=Host(`tautulli.$DOMAIN`)
+      - traefik.http.routers.tautulli.middlewares=chain-oauth
+      - traefik.http.routers.tautulli.service=tautulli
+      - traefik.http.services.tautulli.loadbalancer.server.port=8181
     environment:
         - PUID=$PUID
         - PGID=$PGID
