@@ -20,11 +20,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.jellyfin-remote.entrypoints=https
-      - traefik.http.routers.jellyfin-remote.rule=Host(`jellyfin.$DOMAIN`)
-      - traefik.http.routers.jellyfin-remote.middlewares=chain-oauth
-      - traefik.http.routers.jellyfin-remote.service=jellyfin-svc
-      - traefik.http.services.jellyfin-svc.loadbalancer.server.port=8096
+      - traefik.http.routers.jellyfin.entrypoints=https
+      - traefik.http.routers.jellyfin.rule=Host(`jellyfin.$DOMAIN`)
+      - traefik.http.routers.jellyfin.middlewares=chain-oauth
+      - traefik.http.routers.jellyfin.service=jellyfin
+      - traefik.http.services.jellyfin.loadbalancer.server.port=8096
     devices:
       - /dev/vcsm-cma:/dev/vcsm
       - /dev/vchiq:/dev/vchiq

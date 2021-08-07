@@ -72,10 +72,10 @@ services:
       - traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)
       - traefik.http.routers.http-catchall.middlewares=redirect-to-https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-      - traefik.http.routers.traefik-remote.entrypoints=https
-      - traefik.http.routers.traefik-remote.rule=Host(`traefik.$DOMAIN`)
-      - traefik.http.routers.traefik-remote.service=api@internal
-      - traefik.http.routers.traefik-remote.middlewares=chain-oauth
+      - traefik.http.routers.traefik.entrypoints=https
+      - traefik.http.routers.traefik.rule=Host(`traefik.$DOMAIN`)
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=chain-oauth
   
   cloudflare-ddns:
     image: oznu/cloudflare-ddns:latest
@@ -134,15 +134,15 @@ services:
       - DEFAULT_PROVIDER=google
     labels:
       - traefik.enable=true
-      - traefik.http.routers.oauth-remote.entrypoints=https
-      - traefik.http.routers.oauth-remote.rule=Host(`oauth.$DOMAIN`)
+      - traefik.http.routers.oauth.entrypoints=https
+      - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAIN`)
       - traefik.http.middlewares.middlewares-oauth.forwardAuth.address=http://oauth:4181
       - traefik.http.middlewares.middlewares-oauth.forwardAuth.trustForwardHeader=true
       - traefik.http.middlewares.middlewares-oauth.forwardAuth.authResponseHeaders=X-Forwarded-User
       - traefik.http.middlewares.chain-oauth.chain.middlewares=middlewares-oauth
-      - traefik.http.routers.oauth-remote.middlewares=chain-oauth
-      - traefik.http.routers.oauth-remote.service=oauth-svc
-      - traefik.http.services.oauth-svc.loadbalancer.server.port=4181
+      - traefik.http.routers.oauth.middlewares=chain-oauth
+      - traefik.http.routers.oauth.service=oauth
+      - traefik.http.services.oauth.loadbalancer.server.port=4181
 
   portainer:
     image: portainer/portainer
@@ -155,11 +155,11 @@ services:
     command: -H tcp://socket-proxy:2375
     labels:
       - traefik.enable=true
-      - traefik.http.routers.portainer-remote.entrypoints=https
-      - traefik.http.routers.portainer-remote.rule=Host(`portainer.$DOMAIN`)
-      - traefik.http.routers.portainer-remote.middlewares=chain-oauth
-      - traefik.http.routers.portainer-remote.service=portainer-svc
-      - traefik.http.services.portainer-svc.loadbalancer.server.port=9000
+      - traefik.http.routers.portainer.entrypoints=https
+      - traefik.http.routers.portainer.rule=Host(`portainer.$DOMAIN`)
+      - traefik.http.routers.portainer.middlewares=chain-oauth
+      - traefik.http.routers.portainer.service=portainer
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
     volumes:
       - $MOUNT/appdata/portainer:/data
       - $MOUNT/shared:/shared
@@ -180,11 +180,11 @@ services:
       - net.ipv6.conf.all.disable_ipv6=0
     labels:
       - traefik.enable=true
-      - traefik.http.routers.transmission-remote.entrypoints=https
-      - traefik.http.routers.transmission-remote.rule=Host(`transmission.$DOMAIN`)
-      - traefik.http.routers.transmission-remote.middlewares=chain-oauth
-      - traefik.http.routers.transmission-remote.service=transmission-svc
-      - traefik.http.services.transmission-svc.loadbalancer.server.port=9091
+      - traefik.http.routers.transmission.entrypoints=https
+      - traefik.http.routers.transmission.rule=Host(`transmission.$DOMAIN`)
+      - traefik.http.routers.transmission.middlewares=chain-oauth
+      - traefik.http.routers.transmission.service=transmission
+      - traefik.http.services.transmission.loadbalancer.server.port=9091
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -229,11 +229,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.jackett-remote.entrypoints=https
-      - traefik.http.routers.jackett-remote.rule=Host(`jackett.$DOMAIN`)
-      - traefik.http.routers.jackett-remote.middlewares=chain-oauth
-      - traefik.http.routers.jackett-remote.service=jackett-svc
-      - traefik.http.services.jackett-svc.loadbalancer.server.port=9117
+      - traefik.http.routers.jackett.entrypoints=https
+      - traefik.http.routers.jackett.rule=Host(`jackett.$DOMAIN`)
+      - traefik.http.routers.jackett.middlewares=chain-oauth
+      - traefik.http.routers.jackett.service=jackett
+      - traefik.http.services.jackett.loadbalancer.server.port=9117
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -253,11 +253,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.radarr-remote.entrypoints=https
-      - traefik.http.routers.radarr-remote.rule=Host(`radarr.$DOMAIN`)
-      - traefik.http.routers.radarr-remote.middlewares=chain-oauth
-      - traefik.http.routers.radarr-remote.service=radarr-svc
-      - traefik.http.services.radarr-svc.loadbalancer.server.port=7878
+      - traefik.http.routers.radarr.entrypoints=https
+      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAIN`)
+      - traefik.http.routers.radarr.middlewares=chain-oauth
+      - traefik.http.routers.radarr.service=radarr
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -278,11 +278,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.sonarr-remote.entrypoints=https
-      - traefik.http.routers.sonarr-remote.rule=Host(`sonarr.$DOMAIN`)
-      - traefik.http.routers.sonarr-remote.middlewares=chain-oauth
-      - traefik.http.routers.sonarr-remote.service=sonarr-svc
-      - traefik.http.services.sonarr-svc.loadbalancer.server.port=8989
+      - traefik.http.routers.sonarr.entrypoints=https
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAIN`)
+      - traefik.http.routers.sonarr.middlewares=chain-oauth
+      - traefik.http.routers.sonarr.service=sonarr
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -311,11 +311,11 @@ services:
       - traefik_proxy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.bazarr-remote.entrypoints=https
-      - traefik.http.routers.bazarr-remote.rule=Host(`bazarr.$DOMAIN`)
-      - traefik.http.routers.bazarr-remote.middlewares=chain-oauth
-      - traefik.http.routers.bazarr-remote.service=bazarr-svc
-      - traefik.http.services.bazarr-svc.loadbalancer.server.port=6767
+      - traefik.http.routers.bazarr.entrypoints=https
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.$DOMAIN`)
+      - traefik.http.routers.bazarr.middlewares=chain-oauth
+      - traefik.http.routers.bazarr.service=bazarr
+      - traefik.http.services.bazarr.loadbalancer.server.port=6767
     restart: unless-stopped
 
   heimdall:
@@ -336,11 +336,11 @@ services:
       - TZ=$TZ
     labels:
       - traefik.enable=true
-      - traefik.http.routers.heimdall-remote.entrypoints=https
-      - traefik.http.routers.heimdall-remote.rule=Host(`heimdall.$DOMAIN`)
-      - traefik.http.routers.heimdall-remote.middlewares=chain-oauth
-      - traefik.http.routers.heimdall-remote.service=heimdall-svc
-      - traefik.http.services.heimdall-svc.loadbalancer.server.port=80
+      - traefik.http.routers.heimdall.entrypoints=https
+      - traefik.http.routers.heimdall.rule=Host(`heimdall.$DOMAIN`)
+      - traefik.http.routers.heimdall.middlewares=chain-oauth
+      - traefik.http.routers.heimdall.service=heimdall
+      - traefik.http.services.heimdall.loadbalancer.server.port=80
 
   socket-proxy:
     container_name: socket-proxy
@@ -396,8 +396,8 @@ services:
       TZ: $TZ
     labels:
       - traefik.enable=true
-      - traefik.http.routers.hydra-remote.entrypoints=https
-      - traefik.http.routers.hydra-remote.rule=Host(`hydra.$DOMAIN`)
-      - traefik.http.routers.hydra-remote.middlewares=chain-oauth
-      - traefik.http.routers.hydra-remote.service=hydra-svc
-      - traefik.http.services.hydra-svc.loadbalancer.server.port=5076
+      - traefik.http.routers.hydra.entrypoints=https
+      - traefik.http.routers.hydra.rule=Host(`hydra.$DOMAIN`)
+      - traefik.http.routers.hydra.middlewares=chain-oauth
+      - traefik.http.routers.hydra.service=hydra
+      - traefik.http.services.hydra.loadbalancer.server.port=5076
