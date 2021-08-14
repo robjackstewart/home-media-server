@@ -8,6 +8,7 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - VERSION=docker
     ports:
       - 32400:32400
       - 1900:1900/udp
@@ -23,9 +24,8 @@ services:
       - traefik_proxy
     volumes:
       - $MOUNT/appdata/plex:/config
-      - $MOUNT/appdata/plex/transcode:/transcode
-      - $MOUNT/movies:/libraries/movies
-      - $MOUNT/tv:/libraries/tv
+      - $MOUNT/movies:/movies
+      - $MOUNT/tv:/tv
       - $MOUNT/shared:/shared
     labels:
       - traefik.enable=true
