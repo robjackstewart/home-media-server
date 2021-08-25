@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+  onedrive-backup:
+    image: rclone/rclone
+    container_name: onedrive-backup
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/:/appdata
+    restart: unless-stopped
+
+  googledrive-backup:
+    image: rclone/rclone
+    container_name: googledrive-backup
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/:/appdata
+    restart: unless-stopped
+
+  dropbox-backup:
+    image: rclone/rclone
+    container_name: dropbox-backup
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/:/appdata
+    restart: unless-stopped
