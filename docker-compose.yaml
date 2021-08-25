@@ -145,7 +145,7 @@ services:
       - traefik.http.services.oauth.loadbalancer.server.port=4181
 
   portainer:
-    image: portainer/portainer
+    image: portainer/portainer:latest
     container_name: portainer
     ports:
       - 9000:9000
@@ -293,8 +293,113 @@ services:
       - $MOUNT/tv:/tv
       - $MOUNT/shared:/shared
 
+  readarr:
+    image: linuxserver/readarr:nightly
+    restart: unless-stopped
+    container_name: readarr
+    ports:
+      - 8787:8787
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.readarr.entrypoints=https
+      - traefik.http.routers.readarr.rule=Host(`readarr.$DOMAIN`)
+      - traefik.http.routers.readarr.middlewares=chain-oauth
+      - traefik.http.routers.readarr.service=readarr
+      - traefik.http.services.readarr.loadbalancer.server.port=8787
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/readarr:/config
+      - $MOUNT/books:/books
+
+  lazylibrarian:
+    image: linuxserver/lazylibrarian
+    container_name: lazylibrarian
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+     - 5299:5299
+    volumes:
+      - $MOUNT/appdata/lazylibrarian:/config
+      - $MOUNT/downloads:/data/downloads
+      - $MOUNT/books:/books:rw
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+      DOCKER_MODS: linuxserver/calibre-web:calibre
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lazy-librarian.entrypoints=https
+      - traefik.http.routers.lazy-librarian.rule=Host(`lazy-librarian.$DOMAIN`)
+      - traefik.http.routers.lazy-librarian.middlewares=chain-oauth
+      - traefik.http.routers.lazy-librarian.service=lazy-librarian
+      - traefik.http.services.lazy-librarian.loadbalancer.server.port=5299
+
+  calibre-web:
+    image: linuxserver/calibre-web
+    container_name: calibre-web
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+     - 8083:8083
+    volumes:
+      - $MOUNT/appdata/calibre:/config
+      - $MOUNT/books:/books
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - DOCKER_MODS=linuxserver/calibre-web:calibre
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.calibre-web.entrypoints=https
+      - traefik.http.routers.calibre-web.rule=Host(`calibre-web.$DOMAIN`)
+      - traefik.http.routers.calibre-web.middlewares=chain-oauth
+      - traefik.http.routers.calibre-web.service=calibre-web
+      - traefik.http.services.calibre-web.loadbalancer.server.port=8083
+
+  calibre:
+    image: linuxserver/calibre
+    container_name: calibre
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    # ports:
+    #  - "$CALIBRE_PORT:8080" # Desktop GUI
+    #  - "$CALIBRE_PORT:8081" # Webserver GUI
+    volumes:
+      - $MOUNT/appdata/calibre:/config:rw
+      - $MOUNT/downloads:/data/downloads:rw
+      - $MOUNT/books:/data/media/books:rw
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.calibre.entrypoints=https
+      - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAIN`)
+      - traefik.http.routers.calibre.middlewares=chain-oauth
+      - traefik.http.routers.calibre.service=calibre
+      - traefik.http.services.calibre.loadbalancer.server.port=8080
+
   bazarr:
-    image: ghcr.io/linuxserver/bazarr
+    image: linuxserver/bazarr
     container_name: bazarr
     environment:
       - PUID=$PUID
