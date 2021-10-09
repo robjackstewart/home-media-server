@@ -328,7 +328,7 @@ services:
     ports:
      - 8083:8083
     volumes:
-      - $MOUNT/appdata/calibre:/config
+      - $MOUNT/appdata/calibre-web:/config
       - $MOUNT/books:/books
     environment:
       - PUID=$PUID
