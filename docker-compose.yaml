@@ -148,7 +148,7 @@ services:
     image: portainer/portainer:latest
     container_name: portainer
     ports:
-      - 9000:9000
+      - 9001:9000
     networks:
       - traefik_proxy
       - socket_proxy
