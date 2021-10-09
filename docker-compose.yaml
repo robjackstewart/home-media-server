@@ -334,7 +334,6 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
-      - DOCKER_MODS=linuxserver/calibre-web:calibre
     labels:
       - traefik.enable=true
       - traefik.http.routers.calibre-web.entrypoints=https
