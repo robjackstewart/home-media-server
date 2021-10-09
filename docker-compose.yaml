@@ -317,34 +317,6 @@ services:
       - $MOUNT/appdata/readarr:/config
       - $MOUNT/books:/books
 
-  lazylibrarian:
-    image: linuxserver/lazylibrarian
-    container_name: lazylibrarian
-    restart: unless-stopped
-    networks:
-      - traefik_proxy
-    security_opt:
-      - no-new-privileges:true
-    ports:
-     - 5299:5299
-    volumes:
-      - $MOUNT/appdata/lazylibrarian:/config
-      - $MOUNT/downloads:/data/downloads
-      - $MOUNT/books:/books:rw
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      PUID: $PUID
-      PGID: $PGID
-      TZ: $TZ
-      DOCKER_MODS: linuxserver/calibre-web:calibre
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.lazy-librarian.entrypoints=https
-      - traefik.http.routers.lazy-librarian.rule=Host(`lazy-librarian.$DOMAIN`)
-      - traefik.http.routers.lazy-librarian.middlewares=chain-oauth
-      - traefik.http.routers.lazy-librarian.service=lazy-librarian
-      - traefik.http.services.lazy-librarian.loadbalancer.server.port=5299
-
   calibre-web:
     image: linuxserver/calibre-web
     container_name: calibre-web
@@ -370,33 +342,6 @@ services:
       - traefik.http.routers.calibre-web.middlewares=chain-oauth
       - traefik.http.routers.calibre-web.service=calibre-web
       - traefik.http.services.calibre-web.loadbalancer.server.port=8083
-
-  calibre:
-    image: linuxserver/calibre
-    container_name: calibre
-    restart: unless-stopped
-    networks:
-      - traefik_proxy
-    security_opt:
-      - no-new-privileges:true
-    # ports:
-    #  - "$CALIBRE_PORT:8080" # Desktop GUI
-    #  - "$CALIBRE_PORT:8081" # Webserver GUI
-    volumes:
-      - $MOUNT/appdata/calibre:/config:rw
-      - $MOUNT/downloads:/data/downloads:rw
-      - $MOUNT/books:/data/media/books:rw
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.calibre.entrypoints=https
-      - traefik.http.routers.calibre.rule=Host(`calibre.$DOMAIN`)
-      - traefik.http.routers.calibre.middlewares=chain-oauth
-      - traefik.http.routers.calibre.service=calibre
-      - traefik.http.services.calibre.loadbalancer.server.port=8080
 
   bazarr:
     image: linuxserver/bazarr
