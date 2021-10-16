@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr-deployment
+  labels:
+    app: radarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      containers:
+      - name: radarr
+        image: lscr.io/linuxserver/radarr
+        ports:
+        - containerPort: 7878
+        env:
+        - name: TZ
+          value: Europ/London
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr-service
+spec:
+  selector:
+    app: radarr
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 7878
+    targetPort: 7878

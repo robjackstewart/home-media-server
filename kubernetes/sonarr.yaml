@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr-deployment
+  labels:
+    app: sonarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarr
+  template:
+    metadata:
+      labels:
+        app: sonarr
+    spec:
+      containers:
+      - name: sonarr
+        image: lscr.io/linuxserver/sonarr
+        ports:
+        - containerPort: 8989
+        env:
+        - name: TZ
+          value: Europ/London
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr-service
+spec:
+  selector:
+    app: sonarr
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 8989
+    targetPort: 8989

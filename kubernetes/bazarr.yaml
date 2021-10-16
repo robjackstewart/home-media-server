@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bazarr-deployment
+  labels:
+    app: bazarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bazarr
+  template:
+    metadata:
+      labels:
+        app: bazarr
+    spec:
+      containers:
+      - name: bazarr
+        image: lscr.io/linuxserver/bazarr
+        ports:
+        - containerPort: 6767
+        env:
+        - name: TZ
+          value: Europ/London
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bazarr-service
+spec:
+  selector:
+    app: bazarr
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 6767
+    targetPort: 6767

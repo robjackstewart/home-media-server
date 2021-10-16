@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hydra-deployment
+  labels:
+    app: hydra
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hydra
+  template:
+    metadata:
+      labels:
+        app: hydra
+    spec:
+      containers:
+      - name: hydra
+        image: lscr.io/linuxserver/hydra
+        ports:
+        - containerPort: 5076
+        env:
+        - name: TZ
+          value: Europ/London
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hydra-service
+spec:
+  selector:
+    app: hydra
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 5076
+    targetPort: 5076

@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmission-deployment
+  labels:
+    app: transmission-openvpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transmission-openvpn
+  template:
+    metadata:
+      labels:
+        app: transmission-openvpn
+    spec:
+      containers:
+      - name: transmission-openvpn
+        image: haugene/transmission-openvpn:latest
+        ports:
+        - containerPort: 9091
+        env:
+        - name: TZ
+          value: Europ/London
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-openvpn-service
+spec:
+  selector:
+    app: transmission-openvpn
+  type: LoadBalancer
+  ports:
+  - protocol: TCP
+    port: 9091
+    targetPort: 9091
