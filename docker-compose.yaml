@@ -57,7 +57,7 @@ services:
       - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90
     ports:
       - target: 443
-        published: 443
+        published: 441
         protocol: tcp
         mode: host
     networks:
@@ -440,9 +440,9 @@ services:
       - $MOUNT/appdata/hydra2:/config
       - $MOUNT/downloads:/data/downloads
     environment:
-      PUID: $PUID
-      PGID: $PGID
-      TZ: $TZ
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
     labels:
       - traefik.enable=true
       - traefik.http.routers.hydra.entrypoints=https
