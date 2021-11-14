@@ -450,3 +450,19 @@ services:
       - traefik.http.routers.hydra.middlewares=chain-oauth
       - traefik.http.routers.hydra.service=hydra
       - traefik.http.services.hydra.loadbalancer.server.port=5076
+
+  duplicati:
+      image: linuxserver/duplicati:latest
+      container_name: duplicati
+      restart: unless-stopped
+      networks:
+        - traefik_proxy
+      ports:
+        - 8200:8200
+      environment:
+        - PUID=$PUID
+        - PGID=$PGID
+        - TZ=$TZ
+      volumes:
+        - $MOUNT/appdata/duplicati:/config
+        - $MOUNT/appdata/:/data/appdata
