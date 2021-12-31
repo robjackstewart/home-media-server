@@ -110,7 +110,7 @@ services:
 
   oauth:
     container_name: oauth
-    image: thomseddon/traefik-forward-auth:2.2-arm64
+    image: thomseddon/traefik-forward-auth:latest
     restart: unless-stopped
     networks:
       - traefik_proxy

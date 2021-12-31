@@ -7,6 +7,13 @@ services:
       - PUID=$PUID
       - PGID=$PGID
       - TZ=$TZ
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - capabilities: [gpu]
     volumes:
       - $MOUNT/appdata/jellyfin:/config
       - $MOUNT/tv:/data/tvshows
@@ -25,10 +32,4 @@ services:
       - traefik.http.routers.jellyfin.middlewares=chain-oauth
       - traefik.http.routers.jellyfin.service=jellyfin
       - traefik.http.services.jellyfin.loadbalancer.server.port=8096
-    devices:
-      - /dev/vcsm-cma:/dev/vcsm
-      - /dev/vchiq:/dev/vchiq
-      - /dev/video10:/dev/video10
-      - /dev/video11:/dev/video11
-      - /dev/video12:/dev/video12
     restart: unless-stopped
