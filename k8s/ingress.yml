@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: LoadBalancer
+metadata:
+  name: home-server
+spec:
+  rules:
+  - host: kubernetes.docker.internal
+    http:
+      paths:
+      - path: /radarr
+        pathType: Exact
+        backend:
+          service:
+            name: radarr
+            port:
+              number: 7878
