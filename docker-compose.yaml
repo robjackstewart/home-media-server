@@ -413,7 +413,7 @@ services:
       - CONFIGS=0
       - CONTAINERS=1
       - DISTRIBUTION=0
-      - EXEC=0
+      - EXEC=1
       - IMAGES=1
       - INFO=1
       - NETWORKS=1
