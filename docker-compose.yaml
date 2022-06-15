@@ -317,31 +317,6 @@ services:
       - $MOUNT/appdata/readarr:/config
       - $MOUNT/books:/books
 
-  calibre-web:
-    image: linuxserver/calibre-web
-    container_name: calibre-web
-    restart: unless-stopped
-    networks:
-      - traefik_proxy
-    security_opt:
-      - no-new-privileges:true
-    ports:
-     - 8083:8083
-    volumes:
-      - $MOUNT/appdata/calibre-web:/config
-      - $MOUNT/books:/books
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.calibre-web.entrypoints=https
-      - traefik.http.routers.calibre-web.rule=Host(`calibre-web.$DOMAIN`)
-      - traefik.http.routers.calibre-web.middlewares=chain-oauth
-      - traefik.http.routers.calibre-web.service=calibre-web
-      - traefik.http.services.calibre-web.loadbalancer.server.port=8083
-
   bazarr:
     image: linuxserver/bazarr
     container_name: bazarr
