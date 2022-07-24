@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readarr
+  namespace: home-media-server
+  labels:
+    app: readarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: readarr
+  template:
+    metadata:
+      labels:
+        app: readarr
+    spec:
+      containers:
+      - name: readarr
+        image: linuxserver/readarr:nightly
+        env:
+          - name: TZ
+            value: {{ .Values.TZ }}
+        ports:
+        - containerPort: 8787
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: readarr
+  namespace: home-media-server
+spec:
+  selector:
+    app: readarr
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 8787
+      nodePort: 31590

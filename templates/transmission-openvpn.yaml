@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmission-openvpn
+  namespace: home-media-server
+  labels:
+    app: transmission-openvpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transmission-openvpn
+  template:
+    metadata:
+      labels:
+        app: transmission-openvpn
+    spec:
+      containers:
+      - name: transmission-openvpn
+        image: haugene/transmission-openvpn:latest
+        env:
+          - name: TZ
+            value: {{ .Values.TZ }}
+          - name: OPENVPN_PROVIDER
+            value: {{ .Values.transmission.openvpn.provider }}
+          - name: OPENVPN_CONFIG
+            value: {{ .Values.transmission.openvpn.config }}
+          - name: OPENVPN_USERNAME
+            value: {{ .Values.transmission.openvpn.username }}
+          - name: OPENVPN_PASSWORD
+            value: {{ .Values.transmission.openvpn.password }}
+          - name: TRANSMISSION_WEB_UI
+            value: {{ .Values.transmission.web_ui }}
+          {{ if .Values.transmission.directories.incomplete }}
+          - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+            value: 'true'
+          - name: TRANSMISSION_INCOMPLETE_DIR
+            value: {{ .Values.transmission.directories.incomplete }}
+          {{ end }}
+          {{ if .Values.transmission.directories.watch }}
+          - name: TRANSMISSION_WATCH_DIR_ENABLED
+            value: 'true'
+          - name: TRANSMISSION_WATCH_DIR
+            value: {{ .Values.transmission.directories.watch }}
+          {{ end }}
+          {{ if .Values.transmission.directories.download }}
+          - name: TRANSMISSION_DOWNLOAD_DIR_ENABLED
+            value: 'true'
+          - name: TRANSMISSION_DOWNLOAD_DIR
+            value: {{ .Values.transmission.directories.download }}
+          {{ end }}
+          - name: CREATE_TUN_DEVICE
+            value: 'true'
+        ports:
+        - containerPort: 9091
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-openvpn
+  namespace: home-media-server
+spec:
+  selector:
+    app: transmission-openvpn
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 9091
+      nodePort: 31597

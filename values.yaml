@@ -1,0 +1,12 @@
+TZ: Europe/London
+transmission:
+  openvpn:
+    provider: made-up-provider
+    config: made-up-config
+    username:
+    password:
+  web_ui: flood-for-transmission
+  directories:
+    watch: /downloads/torrents
+    download: /downloads/complete
+    incomplete: /downloads/incomplete

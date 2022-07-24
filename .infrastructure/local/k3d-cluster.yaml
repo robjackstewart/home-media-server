@@ -1,0 +1,24 @@
+apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: home-media-server
+servers: 1
+agents: 1
+image: rancher/k3s:v1.24.3-k3s1
+network: home-media
+ports:
+  - port: 4181:4181
+  - port: 9001:9000
+  - port: 9091:31597
+  - port: 8920:31596
+  - port: 7359:31595
+  - port: 1900:31593
+  - port: 8096:31593
+  - port: 90:31592
+  - port: 6767:31591
+  - port: 8787:31590
+  - port: 9117:31589
+  - port: 7878:31587
+  - port: 8989:31588
+  - port: 5076:5076
+  - port: 8200:8200

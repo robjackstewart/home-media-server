@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyfin
+  namespace: home-media-server
+  labels:
+    app: jellyfin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      containers:
+      - name: jellyfin
+        image: linuxserver/jellyfin:latest
+        env:
+          - name: TZ
+            value: {{ .Values.TZ }}
+        ports:
+        - containerPort: 8096
+          name: http-tcp
+          protocol: TCP
+        - containerPort: 8920
+          name: https-tcp
+          protocol: TCP
+        - containerPort: 1900
+          name: dlna-udp
+          protocol: UDP
+        - containerPort: 7359
+          name: discovery-udp
+          protocol: UDP  
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: jellyfin-udp
+  namespace: home-media-server
+  annotations:
+    metallb.universe.tf/allow-shared-ip: jellyfin
+spec:
+  selector:
+    app: jellyfin
+  type: NodePort
+  ports:
+  - port: 1900
+    targetPort: 1900
+    nodePort: 31594
+    name: dlna-udp
+    protocol: UDP
+  - port: 7359
+    targetPort: 7359
+    nodePort: 31595
+    name: discovery-udp
+    protocol: UDP
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: jellyfin-tcp
+  namespace: home-media-server
+  annotations:
+    metallb.universe.tf/allow-shared-ip: jellyfin
+spec:
+  selector:
+    app: jellyfin
+  type: NodePort
+  ports:
+  - port: 8096
+    targetPort: 8096
+    nodePort: 31593
+    name: http-tcp
+    protocol: TCP
+  - port: 8920
+    targetPort: 8920
+    nodePort: 31596
+    name: https-tcp
