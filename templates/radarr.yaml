@@ -1,3 +1,40 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: radarr-config
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+  - ReadWriteMany
+  storageClassName: local-storage
+  local:
+    path: {{ .Values.radarr.config.dir }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/role
+          operator: In
+          values:
+          - master
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config-pv-claim
+spec:
+  storageClassName: local-storage
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +52,10 @@ spec:
       labels:
         app: radarr
     spec:
+      volumes:
+      - name: radarr-config-storage
+        persistentVolumeClaim:
+          claimName: task-pv-claim
       containers:
       - name: radarr
         image: linuxserver/radarr:latest
@@ -23,6 +64,9 @@ spec:
             value: {{ .Values.TZ }}
         ports:
         - containerPort: 7878
+        volumeMounts: 
+        - mountPath: "/config"
+          name: radarr-config-storage
 
 ---
 

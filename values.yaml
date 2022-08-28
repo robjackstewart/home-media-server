@@ -10,3 +10,6 @@ transmission:
     watch: /downloads/torrents
     download: /downloads/complete
     incomplete: /downloads/incomplete
+radarr:
+  config:
+    dir: /home/robjackstewart/home-media
