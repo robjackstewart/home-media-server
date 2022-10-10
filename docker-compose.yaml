@@ -90,6 +90,9 @@ services:
       - DNS_SERVER=1.1.1.1
       - PUID=$PUID
       - PGID=$PGID
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
 
   cloudflare-companion:
     container_name: cloudflare-companion
