@@ -1,0 +1,10 @@
+Timezone: Europe/London
+PUID: "1000"
+GUID: "1000"
+argoTunnel:
+  name: example-tunnel
+  mappings:
+    - hostname: sonarr-tunnel.robjackstewart.com
+      service: http://sonarr-service:8989
+    - hostname: radarr-tunnel.robjackstewart.com
+      service: http://radarr-service:7878
