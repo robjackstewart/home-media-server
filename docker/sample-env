@@ -1,0 +1,17 @@
+PGID= # the PGID of the user on which the applications should run
+PUID= # the PUID of the user on which the applications should run
+TZ= # the timezone you are in
+MOUNT= # the top directory in which all data should be stored
+DOMAIN= # domain at which your server is accessible
+TRAEFIK_LOG_LEVEL= # the level at which traefik shoukd log (DEBUG, PANIC, FATAL, ERROR, WARN, and INFO)
+CLOUDFLARE_EMAIL= # the email you use to access cloudflare
+CLOUDFLARE_API_TOKEN= # an api token that can access cloudflare
+CLOUDFLARE_ZONE_ID= # the zone id of the domain you want to use
+GOOGLE_CLIENT_ID= # the client id of the oauth application
+GOOGLE_CLIENT_SECRET= # the client secret of the oauth application
+OAUTH_SECRET= # the secret used to sign the cookies, best to use the output of 'openssl rand -hex 16'
+WHITELIST= # comma separate emails to which you wish to allow access
+SOCKET_PROXY_LOG_LEVEL= # the level to which the socker proxy container should log
+OPEN_VPN_PROVIDER= # the provider of your openvpn service
+OPEN_VPN_USERNAME= # the username for your open vpn provider
+OPEN_VPN_PASSWORD= #the password for your open vpn provider (if using mullvad then simply put 'm')

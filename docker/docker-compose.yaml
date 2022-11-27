@@ -1,0 +1,475 @@
+version: "3.8"
+
+networks:
+  traefik_proxy:
+    name: traefik_proxy
+    driver: bridge
+  socket_proxy:
+    name: socket_proxy
+    driver: bridge
+  default:
+    driver: bridge
+
+services:
+
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # api
+      - --api=true
+      - --api.dashboard=true
+
+      # logging
+      - --log=true
+      - --log.level=$TRAEFIK_LOG_LEVEL
+      - --accessLog=true
+      - --accessLog.filePath=/traefik.log
+      - --accessLog.bufferingSize=100
+
+      # docker settings
+      - --providers.docker
+      - --providers.docker.network=traefik_proxy
+      - --providers.docker.endpoint=tcp://socket-proxy:2375
+      - --providers.docker.swarmMode=false
+      - --providers.docker.exposedByDefault=false
+
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=true
+      - --entryPoints.http.address=:80
+      - --entryPoints.https.address=:443
+
+      # Allow cloudflare IP's
+      - --entrypoints.https.forwardedHeaders.trustedIPs=173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22
+      - --entryPoints.traefik.address=:8080
+
+      # DNS setup
+      - --entrypoints.https.http.tls.certresolver=dns-cloudflare
+      - --entrypoints.https.http.tls.domains[0].main=$DOMAIN
+      - --entrypoints.https.http.tls.domains[0].sans=*.$DOMAIN
+
+      # Certificates
+      - --certificatesResolvers.dns-cloudflare.acme.email=$CLOUDFLARE_EMAIL
+      - --certificatesResolvers.dns-cloudflare.acme.storage=/acme.json
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.provider=cloudflare
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.resolvers=1.1.1.1:53,1.0.0.1:53
+      - --certificatesResolvers.dns-cloudflare.acme.dnsChallenge.delayBeforeCheck=90
+    ports:
+      - target: 443
+        published: 441
+        protocol: tcp
+        mode: host
+    networks:
+      - traefik_proxy
+      - socket_proxy
+    environment:
+      - CF_API_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_API_KEY=$CLOUDFLARE_API_TOKEN
+    labels:
+      - traefik.enable=false
+      - traefik.http.routers.http-catchall.entrypoints=http
+      - traefik.http.routers.http-catchall.rule=HostRegexp(`{host:.+}`)
+      - traefik.http.routers.http-catchall.middlewares=redirect-to-https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.routers.traefik.entrypoints=https
+      - traefik.http.routers.traefik.rule=Host(`traefik.$DOMAIN`)
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.middlewares=chain-oauth
+  
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
+    container_name: cloudflare-ddns
+    restart: unless-stopped
+    environment:
+      - API_KEY=$CLOUDFLARE_DDNS_TOKEN
+      - ZONE=$DOMAIN
+      - PROXIED=true
+      - RRTYPE=A
+      - DELETE_ON_STOP=false
+      - DNS_SERVER=1.1.1.1
+      - PUID=$PUID
+      - PGID=$PGID
+
+  cloudflare-companion:
+    container_name: cloudflare-companion
+    image: tiredofit/traefik-cloudflare-companion:latest
+    restart: unless-stopped
+    networks:
+      - socket_proxy
+    environment:
+      - TIMEZONE=$TZ
+      - TRAEFIK_VERSION=2
+      - CF_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_TOKEN=$CLOUDFLARE_API_TOKEN
+      - TARGET_DOMAIN=$DOMAIN
+      - DOMAIN1=$DOMAIN
+      - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID 
+      - DOMAIN1_PROXIED=true
+      - DOCKER_HOST=tcp://socket-proxy:2375
+
+  oauth:
+    container_name: oauth
+    image: thomseddon/traefik-forward-auth:latest
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 4181:4181
+    environment:
+      - PROVIDERS_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+      - PROVIDERS_GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+      - SECRET=$OAUTH_SECRET
+      - COOKIE_DOMAIN=$DOMAIN
+      - INSECURE_COOKIE=false
+      - AUTH_HOST=oauth.$DOMAIN
+      - URL_PATH=/_oauth
+      - WHITELIST=$WHITELIST
+      - LOG_LEVEL=warn
+      - LOG_FORMAT=text
+      - LIFETIME=86400
+      - DEFAULT_ACTION=auth
+      - DEFAULT_PROVIDER=google
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.oauth.entrypoints=https
+      - traefik.http.routers.oauth.rule=Host(`oauth.$DOMAIN`)
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.address=http://oauth:4181
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.trustForwardHeader=true
+      - traefik.http.middlewares.middlewares-oauth.forwardAuth.authResponseHeaders=X-Forwarded-User
+      - traefik.http.middlewares.chain-oauth.chain.middlewares=middlewares-oauth
+      - traefik.http.routers.oauth.middlewares=chain-oauth
+      - traefik.http.routers.oauth.service=oauth
+      - traefik.http.services.oauth.loadbalancer.server.port=4181
+
+  portainer:
+    image: portainer/portainer:latest
+    container_name: portainer
+    ports:
+      - 9001:9000
+    networks:
+      - traefik_proxy
+      - socket_proxy
+    command: -H tcp://socket-proxy:2375
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.portainer.entrypoints=https
+      - traefik.http.routers.portainer.rule=Host(`portainer.$DOMAIN`)
+      - traefik.http.routers.portainer.middlewares=chain-oauth
+      - traefik.http.routers.portainer.service=portainer
+      - traefik.http.services.portainer.loadbalancer.server.port=9000
+    volumes:
+      - $MOUNT/appdata/portainer:/data
+      - $MOUNT/shared:/shared
+    environment:
+      - TZ=$TZ
+    restart: unless-stopped
+
+  transmission:
+    image: haugene/transmission-openvpn:latest
+    container_name: transmission-openvpn
+    ports:
+      - 9091:9091
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - traefik_proxy
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.transmission.entrypoints=https
+      - traefik.http.routers.transmission.rule=Host(`transmission.$DOMAIN`)
+      - traefik.http.routers.transmission.middlewares=chain-oauth
+      - traefik.http.routers.transmission.service=transmission
+      - traefik.http.services.transmission.loadbalancer.server.port=9091
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+      - CREATE_TUN_DEVICE=true
+      - OPENVPN_PROVIDER=$OPEN_VPN_PROVIDER
+      - OPENVPN_CONFIG=gb_all
+      - OPENVPN_USERNAME=$OPEN_VPN_USERNAME
+      - OPENVPN_PASSWORD=$OPEN_VPN_PASSWORD
+      - OPENVPN_OPTS=--inactive 3600 --ping 10 --ping-exit 60
+      - WEBPROXY_ENABLED=false
+      - TRANSMISSION_SCRAPE_PAUSED_TORRENTS_ENABLED=false
+      - TRANSMISSION_WEB_UI=flood-for-transmission
+      - TRANSMISSION_RATIO_LIMIT=0.01
+      - TRANSMISSION_RATIO_LIMIT_ENABLED=true
+      - TRANSMISSION_ALT_SPEED_DOWN=40000
+      - TRANSMISSION_ALT_SPEED_ENABLED=false
+      - TRANSMISSION_ALT_SPEED_UP=250
+      - TRANSMISSION_SPEED_LIMIT_DOWN=80000
+      - TRANSMISSION_SPEED_LIMIT_DOWN_ENABLED=true
+      - TRANSMISSION_SPEED_LIMIT_UP=500
+      - TRANSMISSION_SPEED_LIMIT_UP_ENABLED=true
+      - TRANSMISSION_INCOMPLETE_DIR=/downloads/incomplete
+      - TRANSMISSION_INCOMPLETE_DIR_ENABLED=true
+      - TRANSMISSION_WATCH_DIR=/downloads/torrents
+      - TRANSMISSION_WATCH_DIR_ENABLED=true
+      - TRANSMISSION_DOWNLOAD_DIR=/downloads/complete
+    volumes:
+      - $MOUNT/appdata/transmission:/config
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/shared:/shared
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+
+  jackett:
+    image: linuxserver/jackett:latest
+    restart: unless-stopped
+    container_name: jackett
+    ports:
+      - 9117:9117
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jackett.entrypoints=https
+      - traefik.http.routers.jackett.rule=Host(`jackett.$DOMAIN`)
+      - traefik.http.routers.jackett.middlewares=chain-oauth
+      - traefik.http.routers.jackett.service=jackett
+      - traefik.http.services.jackett.loadbalancer.server.port=9117
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/jackett:/config
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/shared:/shared
+
+  radarr:
+    image: linuxserver/radarr:latest
+    restart: unless-stopped
+    container_name: radarr
+    ports:
+      - 7878:7878
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radarr.entrypoints=https
+      - traefik.http.routers.radarr.rule=Host(`radarr.$DOMAIN`)
+      - traefik.http.routers.radarr.middlewares=chain-oauth
+      - traefik.http.routers.radarr.service=radarr
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/radarr:/config
+      - $MOUNT/movies:/movies
+      - $MOUNT/shared:/shared
+
+  sonarr:
+    image: linuxserver/sonarr:latest
+    restart: unless-stopped
+    container_name: sonarr
+    ports:
+      - 8989:8989
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonarr.entrypoints=https
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.$DOMAIN`)
+      - traefik.http.routers.sonarr.middlewares=chain-oauth
+      - traefik.http.routers.sonarr.service=sonarr
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/sonarr:/config
+      - $MOUNT/tv:/tv
+      - $MOUNT/shared:/shared
+
+  readarr:
+    image: linuxserver/readarr:nightly
+    restart: unless-stopped
+    container_name: readarr
+    ports:
+      - 8787:8787
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.readarr.entrypoints=https
+      - traefik.http.routers.readarr.rule=Host(`readarr.$DOMAIN`)
+      - traefik.http.routers.readarr.middlewares=chain-oauth
+      - traefik.http.routers.readarr.service=readarr
+      - traefik.http.services.readarr.loadbalancer.server.port=8787
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/downloads:/downloads
+      - $MOUNT/appdata/readarr:/config
+      - $MOUNT/books:/books
+
+  calibre-web:
+    image: linuxserver/calibre-web
+    container_name: calibre-web
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+     - 8083:8083
+    volumes:
+      - $MOUNT/appdata/calibre-web:/config
+      - $MOUNT/books:/books
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.calibre-web.entrypoints=https
+      - traefik.http.routers.calibre-web.rule=Host(`calibre-web.$DOMAIN`)
+      - traefik.http.routers.calibre-web.middlewares=chain-oauth
+      - traefik.http.routers.calibre-web.service=calibre-web
+      - traefik.http.services.calibre-web.loadbalancer.server.port=8083
+
+  bazarr:
+    image: linuxserver/bazarr
+    container_name: bazarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    volumes:
+      - $MOUNT/appdata/bazarr:/config
+      - $MOUNT/movies:/movies
+      - $MOUNT/tv:/tv
+      - $MOUNT/shared:/shared
+    ports:
+      - 6767:6767
+    networks:
+      - traefik_proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.bazarr.entrypoints=https
+      - traefik.http.routers.bazarr.rule=Host(`bazarr.$DOMAIN`)
+      - traefik.http.routers.bazarr.middlewares=chain-oauth
+      - traefik.http.routers.bazarr.service=bazarr
+      - traefik.http.services.bazarr.loadbalancer.server.port=6767
+    restart: unless-stopped
+
+  heimdall:
+    container_name: heimdall
+    image: linuxserver/heimdall:latest
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 90:80
+    volumes:
+      - $MOUNT/appdata/heimdall:/config
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.heimdall.entrypoints=https
+      - traefik.http.routers.heimdall.rule=Host(`heimdall.$DOMAIN`)
+      - traefik.http.routers.heimdall.middlewares=chain-oauth
+      - traefik.http.routers.heimdall.service=heimdall
+      - traefik.http.services.heimdall.loadbalancer.server.port=80
+
+  socket-proxy:
+    container_name: socket-proxy
+    image: tecnativa/docker-socket-proxy
+    restart: unless-stopped
+    networks:
+      - socket_proxy
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOG_LEVEL=$SOCKET_PROXY_LOG_LEVEL
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - AUTH=0
+      - SECRETS=0
+      - POST=1
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - CONTAINERS=1
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1
+      - INFO=1
+      - NETWORKS=1
+      - NODES=0
+      - PLUGINS=0
+      - SERVICES=1
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=1
+      - VOLUMES=1
+
+  hydra:
+    image: linuxserver/nzbhydra2:latest
+    container_name: hydra
+    restart: unless-stopped
+    networks:
+      - traefik_proxy
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 5076:5076
+    volumes:
+      - $MOUNT/appdata/hydra2:/config
+      - $MOUNT/downloads:/data/downloads
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hydra.entrypoints=https
+      - traefik.http.routers.hydra.rule=Host(`hydra.$DOMAIN`)
+      - traefik.http.routers.hydra.middlewares=chain-oauth
+      - traefik.http.routers.hydra.service=hydra
+      - traefik.http.services.hydra.loadbalancer.server.port=5076
+
+  duplicati:
+      image: linuxserver/duplicati:latest
+      container_name: duplicati
+      restart: unless-stopped
+      networks:
+        - traefik_proxy
+      ports:
+        - 8200:8200
+      environment:
+        - PUID=$PUID
+        - PGID=$PGID
+        - TZ=$TZ
+      volumes:
+        - $MOUNT/appdata/duplicati:/config
+        - $MOUNT/appdata/:/data/appdata
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.duplicati.entrypoints=https
+        - traefik.http.routers.duplicati.rule=Host(`duplicati.$DOMAIN`)
+        - traefik.http.routers.duplicati.middlewares=chain-oauth
+        - traefik.http.routers.duplicati.service=duplicati
+        - traefik.http.services.duplicati.loadbalancer.server.port=8200
