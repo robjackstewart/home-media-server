@@ -35,7 +35,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/sonarr:3.0.9
+        image: linuxserver/sonarr:{{ .Values.sonarr.version }}
         name: sonarr
         ports:
         - containerPort: 8989

@@ -1,10 +1,20 @@
 Timezone: Europe/London
 PUID: "1000"
 GUID: "1000"
+radarr:
+  version: "4.2.4"
+sonarr:
+  version: "3.0.9"
+jackett:
+  version: "0.20.2397"
+bazarr:
+  version: "latest"
+heimdall:
+  version: "latest"
+duplicati:
+  version: "latest"
+domain: home-media-server.robjackstewart.com
 argoTunnel:
   name: example-tunnel
-  mappings:
-    - hostname: sonarr-tunnel.robjackstewart.com
-      service: http://sonarr-service:8989
-    - hostname: radarr-tunnel.robjackstewart.com
-      service: http://radarr-service:7878
+  credentials:
+    secretName: tunnel-credentials

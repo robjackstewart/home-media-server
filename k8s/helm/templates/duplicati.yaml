@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: duplicati-service
+spec:
+  ports:
+  - port: 8200
+    protocol: TCP
+  selector:
+    app: duplicati
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: duplicati
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: duplicati
+  template:
+    metadata:
+      labels:
+        app: duplicati
+    spec:
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        resources:
+          limits:
+            cpu: '1'
+            memory: 250Mi
+        image: linuxserver/duplicati:{{ .Values.duplicati.version }}
+        name: duplicati
+        ports:
+        - containerPort: 8200
+        # livenessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
