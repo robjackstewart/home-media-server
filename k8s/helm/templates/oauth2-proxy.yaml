@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: oauth2-proxy
+  name: oauth2-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        k8s-app: oauth2-proxy
+    spec:
+      containers:
+      - args:
+        - --provider=oidc
+        - --azure-tenant={{ .Values.oauth.azure.tenant.id }}
+        - --email-domain={{ .Values.domain }}
+        - --http-address=0.0.0.0:4180
+        - --oidc-issuer-url=https://login.microsoftonline.com/{{ .Values.oauth.azure.tenant.id }}/v2.0
+        env:
+        - name: OAUTH2_PROXY_CLIENT_ID
+          value: {{ .Values.oauth.azure.client.id }} # replace with client id
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.oauth.azure.client.secret.key }}
+                name: {{ .Values.oauth.azure.client.secret.name }}
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.oauth.azure.cookie_secret.key }}
+                name: {{ .Values.oauth.azure.cookie_secret.name }}
+        image: quay.io/oauth2-proxy/oauth2-proxy:latest
+        imagePullPolicy: Always
+        name: oauth2-proxy
+        ports:
+        - containerPort: 4180
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: oauth2-proxy
+  name: oauth2-proxy
+spec:
+  ports:
+  - name: http
+    port: 4180
+    protocol: TCP
+    targetPort: 4180
+  selector:
+    k8s-app: oauth2-proxy
