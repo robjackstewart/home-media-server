@@ -23,35 +23,74 @@ spec:
       labels:
         app: radarr
     spec:
+      volumes:
+        - name: radarr-config
+          persistentVolumeClaim:
+            claimName: radarr-config-claim
       containers:
-      - env:
-        - name: TZ
-          value: {{ .Values.Timezone }}
-        - name: PUID
-          value: '1000'
-        - name: PGID
-          value: '1000'
-        resources:
-          limits:
-            cpu: '1'
-            memory: 250Mi
-        image: linuxserver/radarr:{{ .Values.radarr.version }}
-        name: radarr
-        ports:
-        - containerPort: 7878
-        livenessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-          initialDelaySeconds: 30
-          periodSeconds: 10
+        - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: '1000'
+          - name: PGID
+            value: '1000'
+          resources:
+            limits:
+              cpu: '1'
+              memory: 250Mi
+          image: linuxserver/radarr:{{ .Values.radarr.version }}
+          name: radarr
+          ports:
+            - containerPort: 7878
+          volumeMounts:
+            - mountPath: /config
+              name: radarr-config
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: radarr-config
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: radarr-config
+  labels:
+    type: local
+    name: radarr-config
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/home-media-server/radarr/config
+    type: DirectoryOrCreate

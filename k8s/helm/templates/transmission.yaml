@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmissionopenvpn-service
+spec:
+  ports:
+  - port: 9091
+    protocol: TCP
+  selector:
+    app: transmissionopenvpn
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transmissionopenvpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transmissionopenvpn
+  template:
+    metadata:
+      labels:
+        app: transmissionopenvpn
+    spec:
+      volumes:
+        - name: transmissionopenvpn-config
+          persistentVolumeClaim:
+            claimName: transmissionopenvpn-config-claim
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        - name: CREATE_TUN_DEVICE
+          value: 'true'
+        - name: OPENVPN_PROVIDER
+          value: {{ .Values.transmissionopenvpn.openvpn.provider }}
+        - name: OPENVPN_CONFIG
+          value: {{ .Values.transmissionopenvpn.openvpn.config }}
+        - name: OPENVPN_OPTS
+          value: --inactive 3600 --ping 10 --ping-exit 60 --pull-filter ignore ifconfig-ipv6
+        - name: OPENVPN_USERNAME
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.transmissionopenvpn.openvpn.auth.secret.keys.username }}
+                name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
+        - name: OPENVPN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.transmissionopenvpn.openvpn.auth.secret.keys.password }}
+                name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
+        - name: TRANSMISSION_WEB_UI
+          value: {{ .Values.transmissionopenvpn.web_ui }}
+        resources:
+          limits:
+            cpu: '1'
+            memory: 250Mi
+        image: haugene/transmission-openvpn:{{ .Values.transmissionopenvpn.version }}
+        name: transmissionopenvpn
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+        ports:
+          - containerPort: 9091
+        volumeMounts:
+          - mountPath: /config
+            name: transmissionopenvpn-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: transmissionopenvpn-config-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: transmissionopenvpn-config
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: transmissionopenvpn-config
+  labels:
+    type: local
+    name: transmissionopenvpn-config
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/home-media-server/transmissionopenvpn/config
+    type: DirectoryOrCreate

@@ -23,6 +23,10 @@ spec:
       labels:
         app: heimdall
     spec:
+      volumes:
+        - name: heimdall-config
+          persistentVolumeClaim:
+            claimName: heimdall-config-claim
       containers:
       - env:
         - name: TZ
@@ -37,6 +41,9 @@ spec:
             memory: 250Mi
         image: linuxserver/heimdall:{{ .Values.heimdall.version }}
         name: radarr
+        volumeMounts:
+          - mountPath: /config
+            name: heimdall-config
         ports:
         - containerPort: 80
         # livenessProbe:
@@ -55,3 +62,35 @@ spec:
         #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
         #   initialDelaySeconds: 30
         #   periodSeconds: 10
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: heimdall-config-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: heimdall-config
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: heimdall-config
+  labels:
+    type: local
+    name: heimdall-config
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/home-media-server/heimdall/config
+    type: DirectoryOrCreate

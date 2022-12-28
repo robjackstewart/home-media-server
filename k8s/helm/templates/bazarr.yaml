@@ -23,6 +23,10 @@ spec:
       labels:
         app: bazarr
     spec:
+      volumes:
+        - name: bazarr-config
+          persistentVolumeClaim:
+            claimName: bazarr-config-claim
       containers:
       - env:
         - name: TZ
@@ -37,21 +41,40 @@ spec:
             memory: 250Mi
         image: linuxserver/bazarr:{{ .Values.bazarr.version }}
         name: bazarr
+        volumeMounts:
+          - mountPath: /config
+            name: bazarr-config
         ports:
         - containerPort: 6767
-        # livenessProbe:
-        #   exec:
-        #     command:
-        #     - /bin/sh
-        #     - -c
-        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
-        # readinessProbe:
-        #   exec:
-        #     command:
-        #     - /bin/sh
-        #     - -c
-        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bazarr-config-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: bazarr-config
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bazarr-config
+  labels:
+    type: local
+    name: bazarr-config
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/home-media-server/bazarr/config
+    type: DirectoryOrCreate

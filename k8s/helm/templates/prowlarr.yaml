@@ -1,28 +1,32 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: jackett-service
+  name: prowlarr-service
 spec:
   ports:
-  - port: 9117
+  - port: 9696
     protocol: TCP
   selector:
-    app: jackett
+    app: prowlarr
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jackett
+  name: prowlarr
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jackett
+      app: prowlarr
   template:
     metadata:
       labels:
-        app: jackett
+        app: prowlarr
     spec:
+      volumes:
+        - name: prowlarr-config
+          persistentVolumeClaim:
+            claimName: prowlarr-config-claim
       containers:
       - env:
         - name: TZ
@@ -35,10 +39,13 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/jackett:{{ .Values.jackett.version }}
-        name: jackett
+        image: linuxserver/prowlarr:{{ .Values.prowlarr.version }}
+        name: prowlarr
+        volumeMounts:
+          - mountPath: /config
+            name: prowlarr-config
         ports:
-        - containerPort: 9117
+        - containerPort: 9696
         # livenessProbe:
         #   exec:
         #     command:
@@ -55,3 +62,35 @@ spec:
         #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
         #   initialDelaySeconds: 30
         #   periodSeconds: 10
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-config-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      name: prowlarr-config
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-config
+  labels:
+    type: local
+    name: prowlarr-config
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /run/desktop/mnt/host/c/home-media-server/prowlarr/config
+    type: DirectoryOrCreate

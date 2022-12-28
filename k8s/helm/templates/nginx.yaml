@@ -17,21 +17,7 @@ spec:
             name: radarr-service
             port:
               number: 7878
-      - path: /radarr/api
-        pathType: Prefix
-        backend:
-          service:
-            name: radarr-service
-            port:
-              number: 7878
       - path: /sonarr
-        pathType: Prefix
-        backend:
-          service:
-            name: sonarr-service
-            port:
-              number: 8989
-      - path: /sonarr/api
         pathType: Prefix
         backend:
           service:
@@ -45,27 +31,27 @@ spec:
             name: bazarr-service
             port:
               number: 6767
-      - path: /bazarr/api
+      - path: /prowlarr
         pathType: Prefix
         backend:
           service:
-            name: bazarr-service
-            port:
-              number: 6767
-      - path: /jackett
-        pathType: Prefix
-        backend:
-          service:
-            name: jackett-service
+            name: prowlarr-service
             port:
               number: 9117
-      - path: /jackett/api
+      - path: /transmission
         pathType: Prefix
         backend:
           service:
-            name: jackett-service
+            name: transmissionopenvpn-service
             port:
-              number: 9117
+              number: 9091
+      - path: /jellyfin
+        pathType: Prefix
+        backend:
+          service:
+            name: jellyfin-tcp-service
+            port:
+              number: 8096
       - path: /
         pathType: Prefix
         backend:

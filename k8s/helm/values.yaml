@@ -5,14 +5,29 @@ radarr:
   version: "4.2.4"
 sonarr:
   version: "3.0.9"
-jackett:
-  version: "0.20.2397"
+prowlarr:
+  version: nightly
 bazarr:
-  version: "latest"
+  version: latest
 heimdall:
-  version: "latest"
+  version: latest
 duplicati:
-  version: "latest"
+  version: latest
+jellyfin:
+  version: latest
+transmissionopenvpn:
+  version: latest
+  web_ui: flood-for-transmission
+  openvpn:
+    provider: mullvad
+    config: gb_all
+    auth:
+      secret:
+        name: openvpn-credentials
+        keys:
+          username: username
+          password: password
+
 domain: home-media-server.robjackstewart.com
 argoTunnel:
   name: example-tunnel
