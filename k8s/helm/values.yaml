@@ -36,7 +36,7 @@ argoTunnel:
 oauth:
   azure:
     client:
-      id: 6654ea12-ea4f-4942-be14-ddcfe5248f53
+      id: 3e6d9c0c-0e23-4549-b6ae-7c0cb028e83b
       secret:
         name: azure-app-registration
         key: client_secret
