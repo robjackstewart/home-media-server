@@ -8,11 +8,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      k8s-app: oauth2-proxy
+      app: oauth2-proxy
   template:
     metadata:
       labels:
-        k8s-app: oauth2-proxy
+        app: oauth2-proxy
     spec:
       containers:
       - args:
@@ -20,12 +20,21 @@ spec:
         - --azure-tenant={{ .Values.oauth.azure.tenant.id }}
         - --email-domain=*
         - --http-address=0.0.0.0:4180
+        - --set-authorization-header=true
+        - --set-xauthrequest=true
+        - --pass-access-token=true
+        - --pass-authorization-header=true
+        - --pass-user-headers=true
+        - --pass-host-header=true
         - --oidc-issuer-url=https://login.microsoftonline.com/{{ .Values.oauth.azure.tenant.id }}/v2.0
         - --scope=openid
         - --user-id-claim=oid
         - --skip-provider-button=true
         - --pass-access-token=true
         - --cookie-name=robscookie
+        - --standard-logging=true
+        - --auth-logging=true
+        - --request-logging=true
         env:
         - name: OAUTH2_PROXY_CLIENT_ID
           value: {{ .Values.oauth.azure.client.id }} # replace with client id
@@ -40,7 +49,7 @@ spec:
                 key: {{ .Values.oauth.azure.cookie_secret.key }}
                 name: {{ .Values.oauth.azure.cookie_secret.name }}
         image: quay.io/oauth2-proxy/oauth2-proxy:v7.4.0
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: oauth2-proxy
         ports:
         - containerPort: 4180
@@ -66,4 +75,4 @@ spec:
     protocol: TCP
     targetPort: 4180
   selector:
-    k8s-app: oauth2-proxy
+    app: oauth2-proxy

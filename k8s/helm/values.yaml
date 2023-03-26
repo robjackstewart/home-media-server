@@ -34,6 +34,7 @@ argoTunnel:
   credentials:
     secretName: tunnel-credentials
 oauth:
+  domain: auth-home-media-server.robjackstewart.com
   azure:
     client:
       id: 3e6d9c0c-0e23-4549-b6ae-7c0cb028e83b

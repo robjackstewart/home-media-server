@@ -65,4 +65,4 @@ data:
     no-autoupdate: true
     ingress:
     # This rule sends all requests to nginx ingress controller, which proxies them further to correct services
-    - service: http://nginx-ingress-nginx-ingress:80
+    - service: http://{{ .Release.Name }}-ingress-nginx-controller:80
