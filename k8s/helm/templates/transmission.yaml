@@ -1,32 +1,35 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: transmissionopenvpn-service
+  name: transmission-openvpn-service
 spec:
   ports:
   - port: 9091
     protocol: TCP
   selector:
-    app: transmissionopenvpn
+    app: transmission-openvpn
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: transmissionopenvpn
+  name: transmission-openvpn
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: transmissionopenvpn
+      app: transmission-openvpn
   template:
     metadata:
       labels:
-        app: transmissionopenvpn
+        app: transmission-openvpn
     spec:
       volumes:
-        - name: transmissionopenvpn-config
+        - name: media
           persistentVolumeClaim:
-            claimName: transmissionopenvpn-config-claim
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
       dnsConfig:
         nameservers:
           - 1.1.1.1
@@ -58,6 +61,16 @@ spec:
                 name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
         - name: TRANSMISSION_WEB_UI
           value: {{ .Values.transmissionopenvpn.web_ui }}
+        - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+          value: 'true'
+        - name: TRANSMISSION_INCOMPLETE_DIR
+          value: /downloads/incomplete
+        - name: TRANSMISSION_WATCH_DIR_ENABLED
+          value: 'true'
+        - name: TRANSMISSION_WATCH_DIR
+          value: /downloads/torrents
+        - name: TRANSMISSION_DOWNLOAD_DIR
+          value: /downloads/complete
         resources:
           limits:
             cpu: '1'
@@ -71,37 +84,9 @@ spec:
         ports:
           - containerPort: 9091
         volumeMounts:
-          - mountPath: /config
-            name: transmissionopenvpn-config
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: transmissionopenvpn-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: transmissionopenvpn-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: transmissionopenvpn-config
-  labels:
-    type: local
-    name: transmissionopenvpn-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/transmissionopenvpn/config
-    type: DirectoryOrCreate
+          - name: media
+            mountPath: /downloads
+            subPath: downloads
+          - name: config
+            mountPath: /config
+            subPath: transmission-openvpn

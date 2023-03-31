@@ -44,9 +44,12 @@ spec:
         app: jellyfin
     spec:
       volumes:
-        - name: jellyfin-config
+        - name: config
           persistentVolumeClaim:
-            claimName: jellyfin-config-claim
+            claimName: config
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
       dnsPolicy: ClusterFirst
       containers:
       - env:
@@ -61,37 +64,12 @@ spec:
         ports:
           - containerPort: 8096
         volumeMounts:
-          - mountPath: /config
-            name: jellyfin-config
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: jellyfin-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: jellyfin-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: jellyfin-config
-  labels:
-    type: local
-    name: jellyfin-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/jellyfin/config
-    type: DirectoryOrCreate
+          - name: config
+            mountPath: /config
+            subPath: jellyfin
+          - name: media
+            mountPath: /movies
+            subPath: movies
+          - name: media
+            mountPath: /tv
+            subPath: tv

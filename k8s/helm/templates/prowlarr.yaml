@@ -24,9 +24,9 @@ spec:
         app: prowlarr
     spec:
       volumes:
-        - name: prowlarr-config
+        - name: config
           persistentVolumeClaim:
-            claimName: prowlarr-config-claim
+            claimName: config
       containers:
       - env:
         - name: TZ
@@ -42,55 +42,8 @@ spec:
         image: linuxserver/prowlarr:{{ .Values.prowlarr.version }}
         name: prowlarr
         volumeMounts:
-          - mountPath: /config
-            name: prowlarr-config
+          - name: config
+            mountPath: /config
+            subPath: prowlarr
         ports:
         - containerPort: 9696
-        # livenessProbe:
-        #   exec:
-        #     command:
-        #     - /bin/sh
-        #     - -c
-        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
-        # readinessProbe:
-        #   exec:
-        #     command:
-        #     - /bin/sh
-        #     - -c
-        #     - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-        #   initialDelaySeconds: 30
-        #   periodSeconds: 10
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: prowlarr-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: prowlarr-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: prowlarr-config
-  labels:
-    type: local
-    name: prowlarr-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/prowlarr/config
-    type: DirectoryOrCreate

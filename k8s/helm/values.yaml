@@ -27,7 +27,9 @@ transmissionopenvpn:
         keys:
           username: username
           password: password
-
+storage:
+  host:
+    dir: /run/desktop/mnt/host/c/home-media-server
 domain: home-media-server.robjackstewart.com
 argoTunnel:
   name: example-tunnel

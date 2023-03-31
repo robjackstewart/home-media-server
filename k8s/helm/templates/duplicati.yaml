@@ -23,6 +23,10 @@ spec:
       labels:
         app: duplicati
     spec:
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: config
       containers:
       - env:
         - name: TZ
@@ -39,6 +43,12 @@ spec:
         name: duplicati
         ports:
         - containerPort: 8200
+        volumeMounts:
+        - name: config
+          mountPath: /config
+          subPath: duplicati
+        - name: config
+          mountPath: /mount
         # livenessProbe:
         #   exec:
         #     command:

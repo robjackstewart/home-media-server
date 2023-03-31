@@ -24,9 +24,12 @@ spec:
         app: radarr
     spec:
       volumes:
-        - name: radarr-config
+        - name: media
           persistentVolumeClaim:
-            claimName: radarr-config-claim
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
       containers:
         - env:
           - name: TZ
@@ -37,15 +40,23 @@ spec:
             value: '1000'
           resources:
             limits:
-              cpu: '1'
-              memory: 250Mi
+              memory: 1Gi
+            requests:
+              memory: 256Mi
           image: linuxserver/radarr:{{ .Values.radarr.version }}
           name: radarr
           ports:
             - containerPort: 7878
           volumeMounts:
-            - mountPath: /config
-              name: radarr-config
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: media
+              mountPath: /movies
+              subPath: movies
+            - name: config
+              mountPath: /config
+              subPath: radarr
           livenessProbe:
             exec:
               command:
@@ -62,35 +73,3 @@ spec:
               - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
             initialDelaySeconds: 30
             periodSeconds: 10
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: radarr-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: radarr-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: radarr-config
-  labels:
-    type: local
-    name: radarr-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/radarr/config
-    type: DirectoryOrCreate

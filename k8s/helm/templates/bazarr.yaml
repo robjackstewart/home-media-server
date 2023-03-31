@@ -24,9 +24,12 @@ spec:
         app: bazarr
     spec:
       volumes:
-        - name: bazarr-config
+        - name: media
           persistentVolumeClaim:
-            claimName: bazarr-config-claim
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
       containers:
       - env:
         - name: TZ
@@ -42,39 +45,14 @@ spec:
         image: linuxserver/bazarr:{{ .Values.bazarr.version }}
         name: bazarr
         volumeMounts:
-          - mountPath: /config
-            name: bazarr-config
+          - name: config
+            mountPath: /config
+            subPath: bazarr
+          - name: media
+            mountPath: movies
+            subPath: movies
+          - name: media
+            mountPath: tv
+            subPath: tv
         ports:
         - containerPort: 6767
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: bazarr-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: bazarr-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: bazarr-config
-  labels:
-    type: local
-    name: bazarr-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/bazarr/config
-    type: DirectoryOrCreate

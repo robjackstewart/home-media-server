@@ -24,9 +24,12 @@ spec:
         app: sonarr
     spec:
       volumes:
-        - name: sonarr-config
+        - name: media
           persistentVolumeClaim:
-            claimName: sonarr-config-claim
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
       containers:
       - env:
         - name: TZ
@@ -37,15 +40,23 @@ spec:
           value: '1000'
         resources:
           limits:
-            cpu: '1'
-            memory: 250Mi
+            memory: 1Gi
+          requests:
+            memory: 256Mi
         image: linuxserver/sonarr:{{ .Values.sonarr.version }}
         name: sonarr
         ports:
           - containerPort: 8989
         volumeMounts:
-          - mountPath: /config
-            name: sonarr-config
+          - name: media
+            mountPath: /downloads
+            subPath: downloads
+          - name: media
+            mountPath: /tv
+            subPath: tv
+          - name: config
+            mountPath: /config
+            subPath: sonarr
         livenessProbe:
           exec:
             command:
@@ -62,35 +73,3 @@ spec:
             - curl "http://localhost:8989/sonarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
           initialDelaySeconds: 30
           periodSeconds: 10
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: sonarr-config-claim
-spec:
-  storageClassName: standard
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  selector:
-    matchLabels:
-      name: sonarr-config
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: sonarr-config
-  labels:
-    type: local
-    name: sonarr-config
-spec:
-  storageClassName: standard
-  capacity:
-    storage: 1Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: /run/desktop/mnt/host/c/home-media-server/sonarr/config
-    type: DirectoryOrCreate
