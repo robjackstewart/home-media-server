@@ -32,9 +32,9 @@ spec:
         - name: TZ
           value: {{ .Values.Timezone }}
         - name: PUID
-          value: '1000'
+          value: "{{ .Values.PUID }}"
         - name: PGID
-          value: '1000'
+          value: "{{ .Values.PGID }}"
         resources:
           limits:
             cpu: '1'
