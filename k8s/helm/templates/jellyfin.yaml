@@ -50,7 +50,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: media
-      dnsPolicy: ClusterFirst
       containers:
       - env:
         - name: TZ
