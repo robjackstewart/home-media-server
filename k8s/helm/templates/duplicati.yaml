@@ -39,7 +39,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/duplicati:{{ .Values.duplicati.version }}
+        image: linuxserver/duplicati:2.0.6
         name: duplicati
         ports:
         - containerPort: 8200

@@ -39,7 +39,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/heimdall:{{ .Values.heimdall.version }}
+        image: linuxserver/heimdall:2.5.6
         name: radarr
         volumeMounts:
           - name: config

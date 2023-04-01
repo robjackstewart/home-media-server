@@ -1,22 +1,7 @@
 Timezone: Europe/London
 PUID: "1000"
 GUID: "1000"
-radarr:
-  version: "4.2.4"
-sonarr:
-  version: "3.0.9"
-prowlarr:
-  version: nightly
-bazarr:
-  version: "1.2.0"
-heimdall:
-  version: "2.5.6"
-duplicati:
-  version: "2.0.6"
-jellyfin:
-  version: "10.8.9"
 transmissionopenvpn:
-  version: "4.3"
   web_ui: flood-for-transmission
   openvpn:
     provider: mullvad

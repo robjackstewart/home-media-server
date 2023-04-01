@@ -41,7 +41,7 @@ spec:
           resources:
             limits:
               memory: 1Gi
-          image: linuxserver/radarr:{{ .Values.radarr.version }}
+          image: linuxserver/radarr:4.2.4
           name: radarr
           ports:
             - containerPort: 7878

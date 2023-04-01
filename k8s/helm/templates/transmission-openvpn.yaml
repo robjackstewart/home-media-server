@@ -75,7 +75,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: haugene/transmission-openvpn:{{ .Values.transmissionopenvpn.version }}
+        image: haugene/transmission-openvpn:4.3
         name: transmissionopenvpn
         securityContext:
           capabilities:
