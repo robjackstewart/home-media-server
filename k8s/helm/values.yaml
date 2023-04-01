@@ -8,15 +8,15 @@ sonarr:
 prowlarr:
   version: nightly
 bazarr:
-  version: latest
+  version: "1.2.0"
 heimdall:
-  version: latest
+  version: "2.5.6"
 duplicati:
-  version: latest
+  version: "2.0.6"
 jellyfin:
-  version: latest
+  version: "10.8.9"
 transmissionopenvpn:
-  version: latest
+  version: "4.3.0"
   web_ui: flood-for-transmission
   openvpn:
     provider: mullvad
