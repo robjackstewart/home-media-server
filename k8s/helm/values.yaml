@@ -16,7 +16,7 @@ duplicati:
 jellyfin:
   version: "10.8.9"
 transmissionopenvpn:
-  version: "4.3.0"
+  version: "4.3"
   web_ui: flood-for-transmission
   openvpn:
     provider: mullvad
