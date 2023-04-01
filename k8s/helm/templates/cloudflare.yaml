@@ -75,8 +75,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-body-size: 2000m
     nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
     nginx.ingress.kubernetes.io/server-snippet: |
-      client_header_buffer_size 100k;
-      large_client_header_buffers 4 100k;
+      client_header_buffer_size 1000k;
+      large_client_header_buffers 4 1000k;
 spec:
   ingressClassName: nginx
   rules:
@@ -102,8 +102,8 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
     nginx.ingress.kubernetes.io/proxy-body-size: 2000m
     nginx.ingress.kubernetes.io/server-snippet: |
-      client_header_buffer_size 100k;
-      large_client_header_buffers 4 100k;
+      client_header_buffer_size 1000k;
+      large_client_header_buffers 4 1000k;
 spec:
   ingressClassName: nginx
   rules:
@@ -144,7 +144,7 @@ spec:
           service:
             name: prowlarr-service
             port:
-              number: 9117
+              number: 9696
       - path: /transmission
         pathType: Prefix
         backend:
@@ -159,6 +159,13 @@ spec:
             name: jellyfin-tcp-service
             port:
               number: 8096
+      - path: /heimdall
+        pathType: Prefix
+        backend:
+          service:
+            name: heimdall-service
+            port:
+              number: 80
       - path: /
         pathType: Prefix
         backend:
