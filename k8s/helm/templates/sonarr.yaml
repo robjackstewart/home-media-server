@@ -41,8 +41,6 @@ spec:
         resources:
           limits:
             memory: 1Gi
-          requests:
-            memory: 256Mi
         image: linuxserver/sonarr:{{ .Values.sonarr.version }}
         name: sonarr
         ports:

@@ -41,8 +41,6 @@ spec:
           resources:
             limits:
               memory: 1Gi
-            requests:
-              memory: 256Mi
           image: linuxserver/radarr:{{ .Values.radarr.version }}
           name: radarr
           ports:
