@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+spec:
+  selector:
+    matchLabels:
+      app: cloudflared
+  replicas: 1 # You could also consider elastic scaling for this deployment
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+      - name: cloudflared
+        image: cloudflare/cloudflared:2022.3.0
+        args:
+        - tunnel
+        # Points cloudflared to the config file, which configures what
+        # cloudflared will actually do. This file is created by a ConfigMap
+        # below.
+        - --config
+        - /etc/cloudflared/config/config.yaml
+        - run
+        livenessProbe:
+          httpGet:
+            # Cloudflared has a /ready endpoint which returns 200 if and only if
+            # it has an active connection to the edge.
+            path: /ready
+            port: 2000
+          failureThreshold: 1
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cloudflared/config
+          readOnly: true
+        - name: creds
+          mountPath: /etc/cloudflared/creds
+          readOnly: true
+      volumes:
+      - name: creds
+        secret:
+          secretName: {{ .Values.argoTunnel.credentials.secretName }}
+      - name: config
+        configMap:
+          name: cloudflared
+          items:
+          - key: config.yaml
+            path: config.yaml
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared
+data:
+  config.yaml: |
+    # Name of the tunnel you want to run
+    tunnel: {{ .Values.argoTunnel.name }}
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    no-autoupdate: true
+    ingress:
+    # This rule sends all requests to nginx ingress controller, which proxies them further to correct services
+    - service: http://{{ .Release.Name }}-ingress-nginx-controller:80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.domain }}
+    http:
+      paths:
+      - path: /oauth2
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 4180
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloudflare-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: https://$host/oauth2/auth
+    nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start?rd=$escaped_request_uri
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
+    nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.domain }}
+    http:
+      paths:
+      - path: /oauth2
+        pathType: Prefix
+        backend:
+          service:
+            name: oauth2-proxy
+            port:
+              number: 4180
+      - path: /radarr
+        pathType: Prefix
+        backend:
+          service:
+            name: radarr-service
+            port:
+              number: 7878
+      - path: /sonarr
+        pathType: Prefix
+        backend:
+          service:
+            name: sonarr-service
+            port:
+              number: 8989
+      - path: /bazarr
+        pathType: Prefix
+        backend:
+          service:
+            name: bazarr-service
+            port:
+              number: 6767
+      - path: /prowlarr
+        pathType: Prefix
+        backend:
+          service:
+            name: prowlarr-service
+            port:
+              number: 9117
+      - path: /transmission
+        pathType: Prefix
+        backend:
+          service:
+            name: transmissionopenvpn-service
+            port:
+              number: 9091
+      - path: /jellyfin
+        pathType: Prefix
+        backend:
+          service:
+            name: jellyfin-tcp-service
+            port:
+              number: 8096
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: heimdall-service
+            port:
+              number: 80
