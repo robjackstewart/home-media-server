@@ -90,6 +90,9 @@ services:
       - DNS_SERVER=1.1.1.1
       - PUID=$PUID
       - PGID=$PGID
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
 
   cloudflare-companion:
     container_name: cloudflare-companion
@@ -145,7 +148,7 @@ services:
       - traefik.http.services.oauth.loadbalancer.server.port=4181
 
   portainer:
-    image: portainer/portainer:latest
+    image: portainer/portainer-ce:2.13.1
     container_name: portainer
     ports:
       - 9001:9000
@@ -268,6 +271,47 @@ services:
       - $MOUNT/movies:/movies
       - $MOUNT/shared:/shared
 
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    networks:
+      - traefik_proxy
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    volumes:
+      - $MOUNT/appdata/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAIN`)
+      - traefik.http.routers.prowlarr.middlewares=chain-oauth
+      - traefik.http.routers.prowlarr.service=prowlarr
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    networks:
+      - traefik_proxy
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=$TZ
+    ports:
+      - 8191:8191
+    restart: unless-stopped
+
   sonarr:
     image: linuxserver/sonarr:latest
     restart: unless-stopped
@@ -316,31 +360,6 @@ services:
       - $MOUNT/downloads:/downloads
       - $MOUNT/appdata/readarr:/config
       - $MOUNT/books:/books
-
-  calibre-web:
-    image: linuxserver/calibre-web
-    container_name: calibre-web
-    restart: unless-stopped
-    networks:
-      - traefik_proxy
-    security_opt:
-      - no-new-privileges:true
-    ports:
-     - 8083:8083
-    volumes:
-      - $MOUNT/appdata/calibre-web:/config
-      - $MOUNT/books:/books
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.calibre-web.entrypoints=https
-      - traefik.http.routers.calibre-web.rule=Host(`calibre-web.$DOMAIN`)
-      - traefik.http.routers.calibre-web.middlewares=chain-oauth
-      - traefik.http.routers.calibre-web.service=calibre-web
-      - traefik.http.services.calibre-web.loadbalancer.server.port=8083
 
   bazarr:
     image: linuxserver/bazarr
@@ -413,7 +432,7 @@ services:
       - CONFIGS=0
       - CONTAINERS=1
       - DISTRIBUTION=0
-      - EXEC=0
+      - EXEC=1
       - IMAGES=1
       - INFO=1
       - NETWORKS=1
