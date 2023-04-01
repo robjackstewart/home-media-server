@@ -30,7 +30,7 @@ spec:
   type: LoadBalancer
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: jellyfin
 spec:
