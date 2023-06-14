@@ -296,6 +296,47 @@ services:
       - $MOUNT/tv:/tv
       - $MOUNT/shared:/shared
 
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    networks:
+      - traefik_proxy
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    volumes:
+      - $MOUNT/appdata/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAIN`)
+      - traefik.http.routers.prowlarr.middlewares=chain-oauth
+      - traefik.http.routers.prowlarr.service=prowlarr
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    networks:
+      - traefik_proxy
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=$TZ
+    ports:
+      - 8191:8191
+    restart: unless-stopped 
+
   readarr:
     image: linuxserver/readarr:nightly
     restart: unless-stopped
