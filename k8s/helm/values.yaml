@@ -20,15 +20,3 @@ argoTunnel:
   name: example-tunnel
   credentials:
     secretName: tunnel-credentials
-oauth:
-  azure:
-    client:
-      id: 3e6d9c0c-0e23-4549-b6ae-7c0cb028e83b
-      secret:
-        name: azure-app-registration
-        key: client_secret
-    cookie_secret:
-      name: azure-app-registration
-      key: cookie_secret
-    tenant:
-      id: dee8feb5-65e4-4231-be15-ddbd0fb717c2
