@@ -15,7 +15,7 @@ transmissionopenvpn:
 storage:
   host:
     dir: /run/desktop/mnt/host/c/home-media-server
-domain: home-media-server.robjackstewart.com
+domain: terraform-test.robjackstewart.com
 argoTunnel:
   name: example-tunnel
   credentials:

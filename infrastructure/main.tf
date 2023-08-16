@@ -67,6 +67,49 @@ resource "azurerm_key_vault" "keyvault" {
 
 resource "azuread_application" "app_registration" {
   display_name = var.azure_application_registration_name
+  required_resource_access {
+    resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
+
+    resource_access {
+      id    = "64a6cdd6-aab1-4aaf-94b8-3cc8405e90d0" # email
+      type  = "Scope"
+    }
+
+    resource_access {
+      id    = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182" # offline_access
+      type  = "Scope"
+    }
+    
+    resource_access {
+      id    = "37f7f235-527c-4136-accd-4a02d197296e" # openid
+      type  = "Scope"
+    }
+
+    resource_access {
+      id    = "14dad69e-099b-42c9-810b-d002981feec1" # profile
+      type  = "scope"
+    }
+
+    resource_access {
+      id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" # User.Read
+      type = "Role"
+    }
+
+    resource_access {
+      id    = "06da0dbc-49e2-44d2-8312-53f166ab848a" # Directory.Read.All
+      type  = "scope"
+    }
+
+    resource_access {
+      id    = "bc024368-1153-4739-b217-4326f2e966d0" # GroupMember.Read.All
+      type  = "scope"
+    }
+  }
+  web {
+    homepage_url  = ""
+    logout_url    = ""
+    redirect_uris = ["https://${var.cloudflare_team_name}.cloudflareaccess.com/cdn-cgi/access/callback"]
+  }
 }
 
 resource "time_rotating" "app_registration" {
@@ -92,12 +135,28 @@ resource "azurerm_key_vault_secret" "client_secret" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
+resource "cloudflare_record" "application_cname" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.cloudflare_application_name
+  value   = cloudflare_tunnel.example.cname
+  type    = "CNAME"
+  proxied = true
+}
+
+
+resource "azurerm_key_vault_secret" "tunnel_credentials" {
+  name         = "tunnel-credentials"
+  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelSecret"=cloudflare_tunnel.example.tunnel_token, "TunnelID"=cloudflare_tunnel.example.id})
+  key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+
 resource "cloudflare_access_identity_provider" "azure_ad_oauth" {
   account_id = var.cloudflare_account_id
   name       = var.azure_application_registration_name
   type       = "azureAD"
   config {
-    client_id     = azuread_application.app_registration.object_id
+    client_id     = azuread_application.app_registration.application_id
     client_secret = azurerm_key_vault_secret.client_secret.value
     directory_id  = data.azurerm_client_config.current.tenant_id
   }

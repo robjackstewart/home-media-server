@@ -22,6 +22,10 @@ variable "cloudflare_tunnel_name" {
   type = string
 }
 
+variable "cloudflare_team_name" {
+  type = string
+}
+
 variable "unencoded_cloudflare_tunnet_secret" {
   type = string
 }
