@@ -32,4 +32,5 @@ services:
       - traefik.http.routers.jellyfin.middlewares=chain-oauth
       - traefik.http.routers.jellyfin.service=jellyfin
       - traefik.http.services.jellyfin.loadbalancer.server.port=8096
+      - com.centurylinklabs.watchtower.enable=true
     restart: unless-stopped
