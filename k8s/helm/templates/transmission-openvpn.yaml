@@ -60,7 +60,7 @@ spec:
                 key: {{ .Values.transmissionopenvpn.openvpn.auth.secret.keys.password }}
                 name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
         - name: TRANSMISSION_WEB_UI
-          value: {{ .Values.transmissionopenvpn.web_ui }}
+          value: {{ .Values.transmissionopenvpn.webui }}
         - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
           value: 'true'
         - name: TRANSMISSION_INCOMPLETE_DIR

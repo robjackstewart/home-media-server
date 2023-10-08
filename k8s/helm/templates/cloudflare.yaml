@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: cloudflared
-        image: cloudflare/cloudflared:2022.3.0
+        image: cloudflare/cloudflared:2023.8.2
         args:
         - tunnel
         # Points cloudflared to the config file, which configures what
@@ -58,7 +58,7 @@ metadata:
 data:
   config.yaml: |
     # Name of the tunnel you want to run
-    tunnel: {{ .Values.argoTunnel.name }}
+    tunnel: {{ .Values.argoTunnel.id }}
     credentials-file: /etc/cloudflared/creds/credentials.json
     metrics: 0.0.0.0:2000
     no-autoupdate: true

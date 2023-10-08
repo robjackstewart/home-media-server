@@ -11,19 +11,39 @@ provider "azurerm" {
   }
 }
 
-resource "cloudflare_tunnel" "example" {
-  account_id = var.cloudflare_account_id
-  name       = var.cloudflare_tunnel_name
-  secret     = base64encode(var.unencoded_cloudflare_tunnet_secret)
+provider "kubernetes" {
+  config_path    = "~/.kube/config"
+  config_context = var.kubernetes_context
 }
 
-resource "cloudflare_access_application" "staging_app" {
+provider "helm" {
+  kubernetes {
+    config_path = "~/.kube/config"
+  }
+}
+
+resource "cloudflare_access_application" "home_media_server" {
   zone_id                   = var.cloudflare_zone_id
   name                      = var.cloudflare_application_name
   domain                    = var.cloudflare_domain
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = false
+}
+
+resource "random_id" "argo_secret" {
+  byte_length = 35
+}
+
+resource "cloudflare_tunnel" "example" {
+  account_id = var.cloudflare_account_id
+  name       = var.cloudflare_tunnel_name
+  secret     = random_id.argo_secret.b64_std
+  config_src = "local"
+
+  depends_on = [
+    cloudflare_access_application.home_media_server
+  ]
 }
 
 data "azurerm_client_config" "current" {}
@@ -87,7 +107,7 @@ resource "azuread_application" "app_registration" {
 
     resource_access {
       id    = "14dad69e-099b-42c9-810b-d002981feec1" # profile
-      type  = "scope"
+      type  = "Scope"
     }
 
     resource_access {
@@ -97,17 +117,15 @@ resource "azuread_application" "app_registration" {
 
     resource_access {
       id    = "06da0dbc-49e2-44d2-8312-53f166ab848a" # Directory.Read.All
-      type  = "scope"
+      type  = "Scope"
     }
 
     resource_access {
       id    = "bc024368-1153-4739-b217-4326f2e966d0" # GroupMember.Read.All
-      type  = "scope"
+      type  = "Scope"
     }
   }
   web {
-    homepage_url  = ""
-    logout_url    = ""
     redirect_uris = ["https://${var.cloudflare_team_name}.cloudflareaccess.com/cdn-cgi/access/callback"]
   }
 }
@@ -135,7 +153,7 @@ resource "azurerm_key_vault_secret" "client_secret" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "cloudflare_record" "application_cname" {
+resource "cloudflare_record" "tunnel_cname" {
   zone_id = var.cloudflare_zone_id
   name    = var.cloudflare_application_name
   value   = cloudflare_tunnel.example.cname
@@ -146,7 +164,7 @@ resource "cloudflare_record" "application_cname" {
 
 resource "azurerm_key_vault_secret" "tunnel_credentials" {
   name         = "tunnel-credentials"
-  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelSecret"=cloudflare_tunnel.example.tunnel_token, "TunnelID"=cloudflare_tunnel.example.id})
+  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.example.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
@@ -160,4 +178,135 @@ resource "cloudflare_access_identity_provider" "azure_ad_oauth" {
     client_secret = azurerm_key_vault_secret.client_secret.value
     directory_id  = data.azurerm_client_config.current.tenant_id
   }
+}
+
+resource "kubernetes_namespace" "home-media-server" {
+  metadata {
+    name = var.kubernetes_namespace
+  }
+}
+
+resource "kubernetes_secret" "argo_tunnel_credentials" {
+  metadata {
+    name = var.cloudflare_tunnel_credential_secret_name
+    namespace = var.kubernetes_namespace
+  }
+
+  data = {
+    "credentials.json" = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.example.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+  }
+}
+
+resource "kubernetes_secret" "transmission_openvpn_credentials" {
+  metadata {
+    name = var.transmission_vpn_secret_name
+    namespace = var.kubernetes_namespace
+  }
+
+  data = {
+    username = var.transmission_vpn_username
+    password = var.transmission_vpn_password
+  }
+
+  type = "kubernetes.io/basic-auth"
+}
+
+resource "helm_release" "home-media-server" {
+  name  = var.helm_release_name
+  chart = "../k8s/helm"
+  namespace = var.kubernetes_namespace
+  timeout = 10000
+
+  depends_on = [
+    cloudflare_tunnel.example, # wait for tunnel to exist
+    kubernetes_secret.argo_tunnel_credentials,
+    kubernetes_secret.transmission_openvpn_credentials,
+    cloudflare_record.tunnel_cname
+  ]
+
+  set {
+    name  = "timezone"
+    value = var.timezone
+  }
+
+  set {
+    name  = "puid"
+    value = var.puid
+  }
+
+  set {
+    name  = "guid"
+    value = var.guid
+  }
+
+  set {
+    name  = "transmissionopenvpn.webui"
+    value = var.transmission_web_ui
+  }
+
+  set {
+    name  = "transmissionopenvpn.openvpn.provider"
+    value = var.transmission_vpn_provider
+  }
+
+  set {
+    name  = "transmissionopenvpn.openvpn.config"
+    value = var.transmission_vpn_config
+  }
+
+  set {
+    name  = "transmissionopenvpn.openvpn.auth.secret.name"
+    value = var.transmission_vpn_secret_name
+  }
+
+  set {
+    name  = "transmissionopenvpn.openvpn.auth.secret.keys.username"
+    value = "username"
+  }
+
+  set {
+    name  = "transmissionopenvpn.openvpn.auth.secret.keys.password"
+    value = "password"
+  }
+
+  set {
+    name  = "storage.host.config.dir"
+    value = var.host_storage_config_dir
+  }
+
+  set {
+    name  = "storage.host.config.capacity"
+    value = var.host_storage_config_capacity
+  }
+
+  set {
+    name  = "storage.host.media.dir"
+    value = var.host_storage_media_dir
+  }
+
+  set {
+    name  = "storage.host.media.capacity"
+    value = var.host_storage_media_capacity
+  }
+
+  set {
+    name  = "domain"
+    value = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
+  }
+
+  set {
+    name  = "argoTunnel.name"
+    value = var.cloudflare_tunnel_name
+  }
+
+  set {
+    name  = "argoTunnel.id"
+    value = cloudflare_tunnel.example.id
+  }
+
+  set {
+    name  = "argoTunnel.credentials.secretName"
+    value = var.cloudflare_tunnel_credential_secret_name
+  }
+
 }
