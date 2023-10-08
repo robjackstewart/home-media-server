@@ -30,6 +30,10 @@ variable "cloudflare_team_name" {
   type = string
 }
 
+variable "app_registration_client_id" {
+  type = string
+}
+
 variable "azure_security_resource_group_name" {
     type = string
 }
