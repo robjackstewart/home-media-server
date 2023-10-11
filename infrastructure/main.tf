@@ -159,103 +159,37 @@ resource "kubernetes_secret" "transmission_openvpn_credentials" {
   type = "kubernetes.io/basic-auth"
 }
 
-resource "helm_release" "home-media-server" {
-  name  = var.helm_release_name
-  chart = "../k8s/helm"
-  namespace = var.kubernetes_namespace
-  timeout = 10000
-  force_update = true
-
-  depends_on = [
-    cloudflare_tunnel.example, # wait for tunnel to exist
-    kubernetes_secret.argo_tunnel_credentials,
-    kubernetes_secret.transmission_openvpn_credentials,
-    cloudflare_record.tunnel_cname
-  ]
-
-  set {
-    name  = "timezone"
-    value = var.timezone
-  }
-
-  set {
-    name  = "puid"
-    value = var.puid
-  }
-
-  set {
-    name  = "guid"
-    value = var.guid
-  }
-
-  set {
-    name  = "transmissionopenvpn.webui"
-    value = var.transmission_web_ui
-  }
-
-  set {
-    name  = "transmissionopenvpn.openvpn.provider"
-    value = var.transmission_vpn_provider
-  }
-
-  set {
-    name  = "transmissionopenvpn.openvpn.config"
-    value = var.transmission_vpn_config
-  }
-
-  set {
-    name  = "transmissionopenvpn.openvpn.auth.secret.name"
-    value = var.transmission_vpn_secret_name
-  }
-
-  set {
-    name  = "transmissionopenvpn.openvpn.auth.secret.keys.username"
-    value = "username"
-  }
-
-  set {
-    name  = "transmissionopenvpn.openvpn.auth.secret.keys.password"
-    value = "password"
-  }
-
-  set {
-    name  = "storage.host.config.dir"
-    value = var.host_storage_config_dir
-  }
-
-  set {
-    name  = "storage.host.config.capacity"
-    value = var.host_storage_config_capacity
-  }
-
-  set {
-    name  = "storage.host.media.dir"
-    value = var.host_storage_media_dir
-  }
-
-  set {
-    name  = "storage.host.media.capacity"
-    value = var.host_storage_media_capacity
-  }
-
-  set {
-    name  = "domain"
-    value = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
-  }
-
-  set {
-    name  = "argoTunnel.name"
-    value = var.cloudflare_tunnel_name
-  }
-
-  set {
-    name  = "argoTunnel.id"
-    value = cloudflare_tunnel.example.id
-  }
-
-  set {
-    name  = "argoTunnel.credentials.secretName"
-    value = var.cloudflare_tunnel_credential_secret_name
-  }
-
+resource "local_file" "values" {
+  filename = "../k8s/helm/values.yasml"
+  content = <<EOT
+timezone: ${var.timezone}
+PUID: "${var.puid}"
+GUID: "${var.guid}"
+transmissionopenvpn:
+  webui: ${var.transmission_web_ui}
+  openvpn:
+    provider: ${var.transmission_vpn_provider}
+    config: ${var.transmission_vpn_config}
+    auth:
+      secret:
+        name: ${var.transmission_vpn_secret_name}
+        keys:
+          username: username
+          password: password
+storage:
+  host:
+    config:
+      dir: ${var.host_storage_config_dir}
+      capacity: ${var.host_storage_config_capacity}
+    media:
+      dir: ${var.host_storage_media_dir}
+      capacity: ${var.host_storage_media_capacity}
+    
+domain: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
+argoTunnel:
+  name: ${var.cloudflare_tunnel_name}
+  id: ${cloudflare_tunnel.example.id}
+  credentials:
+    secretName: ${var.cloudflare_tunnel_credential_secret_name}
+EOT
 }

@@ -115,7 +115,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: transmissionopenvpn-service
+            name: transmission-openvpn-service
             port:
               number: 9091
       - path: /jellyfin
