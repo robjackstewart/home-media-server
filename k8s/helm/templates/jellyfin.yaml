@@ -12,6 +12,7 @@ spec:
       protocol: TCP
   selector:
     app: jellyfin
+  type: LoadBalancer
 ---
 apiVersion: v1
 kind: Service
