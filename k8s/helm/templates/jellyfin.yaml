@@ -51,6 +51,7 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: media
+      hostNetwork: {{ .Values.jellyfin.exposeOnHostNetwork}}
       containers:
       - env:
         - name: TZ

@@ -117,3 +117,7 @@ variable "puid" {
 variable "guid" {
   type = string
 }
+
+variable "expose_jellyfin_on_host_network" {
+  type = bool
+}
