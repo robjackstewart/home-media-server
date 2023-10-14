@@ -160,7 +160,7 @@ resource "kubernetes_secret" "transmission_openvpn_credentials" {
 }
 
 resource "local_file" "values" {
-  filename = "../k8s/helm/values.yasml"
+  filename = "../k8s/helm/values.yaml"
   content = <<EOT
 timezone: ${var.timezone}
 PUID: "${var.puid}"
