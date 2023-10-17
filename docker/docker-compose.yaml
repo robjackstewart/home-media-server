@@ -230,31 +230,6 @@ services:
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
 
-  jackett:
-    image: linuxserver/jackett:latest
-    restart: unless-stopped
-    container_name: jackett
-    ports:
-      - 9117:9117
-    networks:
-      - traefik_proxy
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.jackett.entrypoints=https
-      - traefik.http.routers.jackett.rule=Host(`jackett.$DOMAIN`)
-      - traefik.http.routers.jackett.middlewares=chain-oauth
-      - traefik.http.routers.jackett.service=jackett
-      - traefik.http.services.jackett.loadbalancer.server.port=9117
-      - com.centurylinklabs.watchtower.enable=true
-    environment:
-      - PUID=$PUID
-      - PGID=$PGID
-      - TZ=$TZ
-    volumes:
-      - $MOUNT/appdata/jackett:/config
-      - $MOUNT/downloads:/downloads
-      - $MOUNT/shared:/shared
-
   radarr:
     image: linuxserver/radarr:latest
     restart: unless-stopped
