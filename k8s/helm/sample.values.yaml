@@ -1,0 +1,30 @@
+timezone: Europe/London
+PUID: "1000"
+GUID: "1000"
+transmissionopenvpn:
+  webui: flood-for-transmission
+  openvpn:
+    provider: mullvad
+    config: gb_all
+    auth:
+      secret:
+        name: open-vpn-credentials
+        keys:
+          username: username
+          password: password
+storage:
+  host:
+    config:
+      dir: /example-config-dir-path
+      capacity: 1Gi
+    media:
+      dir: /example-media-dir-path
+      capacity: 1Gi
+jellyfin:
+  exposeOnHostNetwork: true
+domain: example.domain.com
+argoTunnel:
+  name: example-argo-tunnel
+  id: example-argo-tunnel-id
+  credentials:
+    secretName: argo-tunnel-credentials
