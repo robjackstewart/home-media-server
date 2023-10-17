@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-openvpn-service
+spec:
+  ports:
+  - port: 9091
+    protocol: TCP
+  selector:
+    app: transmission-openvpn
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: transmission-openvpn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transmission-openvpn
+  template:
+    metadata:
+      labels:
+        app: transmission-openvpn
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: "{{ .Values.PUID }}"
+        - name: PGID
+          value: "{{ .Values.PGID }}"
+        - name: CREATE_TUN_DEVICE
+          value: 'true'
+        - name: OPENVPN_PROVIDER
+          value: {{ .Values.transmissionopenvpn.openvpn.provider }}
+        - name: OPENVPN_CONFIG
+          value: {{ .Values.transmissionopenvpn.openvpn.config }}
+        - name: OPENVPN_OPTS
+          value: --inactive 3600 --ping 10 --ping-exit 60 --pull-filter ignore ifconfig-ipv6
+        - name: OPENVPN_USERNAME
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.transmissionopenvpn.openvpn.auth.secret.keys.username }}
+                name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
+        - name: OPENVPN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+                key: {{ .Values.transmissionopenvpn.openvpn.auth.secret.keys.password }}
+                name: {{ .Values.transmissionopenvpn.openvpn.auth.secret.name }} 
+        - name: TRANSMISSION_WEB_UI
+          value: {{ .Values.transmissionopenvpn.webui }}
+        - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+          value: 'true'
+        - name: TRANSMISSION_INCOMPLETE_DIR
+          value: /downloads/incomplete
+        - name: TRANSMISSION_WATCH_DIR_ENABLED
+          value: 'true'
+        - name: TRANSMISSION_WATCH_DIR
+          value: /downloads/torrents
+        - name: TRANSMISSION_DOWNLOAD_DIR
+          value: /downloads/complete
+        resources:
+          limits:
+            cpu: '1'
+            memory: 250Mi
+        image: haugene/transmission-openvpn:4.3
+        name: transmissionopenvpn
+        securityContext:
+          capabilities:
+            add:
+              - NET_ADMIN
+        ports:
+          - containerPort: 9091
+        volumeMounts:
+          - name: media
+            mountPath: /downloads
+            subPath: downloads
+          - name: config
+            mountPath: /config
+            subPath: transmission-openvpn

@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bazarr-service
+spec:
+  ports:
+  - port: 6767
+    protocol: TCP
+  selector:
+    app: bazarr
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bazarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bazarr
+  template:
+    metadata:
+      labels:
+        app: bazarr
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: "{{ .Values.PUID }}"
+        - name: PGID
+          value: "{{ .Values.PGID }}"
+        resources:
+          limits:
+            cpu: '1'
+            memory: 250Mi
+        image: linuxserver/bazarr:1.2.0
+        name: bazarr
+        volumeMounts:
+          - name: config
+            mountPath: /config
+            subPath: bazarr
+          - name: media
+            mountPath: movies
+            subPath: movies
+          - name: media
+            mountPath: tv
+            subPath: tv
+        ports:
+        - containerPort: 6767

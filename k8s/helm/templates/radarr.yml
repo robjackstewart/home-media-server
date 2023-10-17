@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr-service
+spec:
+  ports:
+  - port: 7878
+    protocol: TCP
+  selector:
+    app: radarr
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: radarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: "{{ .Values.PUID }}"
+          - name: PGID
+            value: "{{ .Values.PGID }}"
+          resources:
+            limits:
+              memory: 1Gi
+          image: linuxserver/radarr:4.2.4
+          name: radarr
+          ports:
+            - containerPort: 7878
+          volumeMounts:
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: media
+              mountPath: /movies
+              subPath: movies
+            - name: config
+              mountPath: /config
+              subPath: radarr
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            initialDelaySeconds: 30
+            periodSeconds: 10

@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr-service
+spec:
+  ports:
+  - port: 9696
+    protocol: TCP
+  selector:
+    app: prowlarr
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prowlarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: "{{ .Values.PUID }}"
+        - name: PGID
+          value: "{{ .Values.PGID }}"
+        resources:
+          limits:
+            cpu: '1'
+            memory: 250Mi
+        image: linuxserver/prowlarr:nightly
+        name: prowlarr
+        volumeMounts:
+          - name: config
+            mountPath: /config
+            subPath: prowlarr
+        ports:
+        - containerPort: 9696

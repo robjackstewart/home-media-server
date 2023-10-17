@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-tcp-service
+spec:
+  ports:
+    - name: http
+      port: 8096
+      protocol: TCP
+    - name: https
+      port: 8920
+      protocol: TCP
+  selector:
+    app: jellyfin
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-udp-service
+spec:
+  ports:
+    - name: auto-discovery-1
+      port: 7359
+      protocol: UDP
+    - name: auto-discovery-2
+      port: 1900
+      protocol: UDP
+  selector:
+    app: jellyfin
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jellyfin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jellyfin
+  template:
+    metadata:
+      labels:
+        app: jellyfin
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+      hostNetwork: {{ .Values.jellyfin.exposeOnHostNetwork}}
+      containers:
+      - env:
+        - name: TZ
+          value: {{ .Values.Timezone }}
+        - name: PUID
+          value: "{{ .Values.PUID }}"
+        - name: PGID
+          value: "{{ .Values.PGID }}"
+        image: linuxserver/jellyfin:10.8.9
+        name: jellyfin
+        ports:
+          - containerPort: 8096
+        volumeMounts:
+          - name: config
+            mountPath: /config
+            subPath: jellyfin
+          - name: media
+            mountPath: /movies
+            subPath: movies
+          - name: media
+            mountPath: /tv
+            subPath: tv

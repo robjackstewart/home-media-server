@@ -76,6 +76,7 @@ services:
       - traefik.http.routers.traefik.rule=Host(`traefik.$DOMAIN`)
       - traefik.http.routers.traefik.service=api@internal
       - traefik.http.routers.traefik.middlewares=chain-oauth
+      - com.centurylinklabs.watchtower.enable=true
   
   cloudflare-ddns:
     image: oznu/cloudflare-ddns:latest
@@ -93,6 +94,8 @@ services:
     dns:
       - 127.0.0.1
       - 1.1.1.1
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
 
   cloudflare-companion:
     container_name: cloudflare-companion
@@ -110,6 +113,8 @@ services:
       - DOMAIN1_ZONE_ID=$CLOUDFLARE_ZONE_ID 
       - DOMAIN1_PROXIED=true
       - DOCKER_HOST=tcp://socket-proxy:2375
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
 
   oauth:
     container_name: oauth
@@ -146,6 +151,7 @@ services:
       - traefik.http.routers.oauth.middlewares=chain-oauth
       - traefik.http.routers.oauth.service=oauth
       - traefik.http.services.oauth.loadbalancer.server.port=4181
+      - com.centurylinklabs.watchtower.enable=true
 
   portainer:
     image: portainer/portainer-ce:2.13.1
@@ -163,6 +169,7 @@ services:
       - traefik.http.routers.portainer.middlewares=chain-oauth
       - traefik.http.routers.portainer.service=portainer
       - traefik.http.services.portainer.loadbalancer.server.port=9000
+      - com.centurylinklabs.watchtower.enable=true
     volumes:
       - $MOUNT/appdata/portainer:/data
       - $MOUNT/shared:/shared
@@ -188,6 +195,7 @@ services:
       - traefik.http.routers.transmission.middlewares=chain-oauth
       - traefik.http.routers.transmission.service=transmission
       - traefik.http.services.transmission.loadbalancer.server.port=9091
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -237,6 +245,7 @@ services:
       - traefik.http.routers.jackett.middlewares=chain-oauth
       - traefik.http.routers.jackett.service=jackett
       - traefik.http.services.jackett.loadbalancer.server.port=9117
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -261,6 +270,7 @@ services:
       - traefik.http.routers.radarr.middlewares=chain-oauth
       - traefik.http.routers.radarr.service=radarr
       - traefik.http.services.radarr.loadbalancer.server.port=7878
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -270,6 +280,50 @@ services:
       - $MOUNT/appdata/radarr:/config
       - $MOUNT/movies:/movies
       - $MOUNT/shared:/shared
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    networks:
+      - traefik_proxy
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    volumes:
+      - $MOUNT/appdata/prowlarr:/config
+    ports:
+      - 9696:9696
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.prowlarr.entrypoints=https
+      - traefik.http.routers.prowlarr.rule=Host(`prowlarr.$DOMAIN`)
+      - traefik.http.routers.prowlarr.middlewares=chain-oauth
+      - traefik.http.routers.prowlarr.service=prowlarr
+      - traefik.http.services.prowlarr.loadbalancer.server.port=9696
+      - com.centurylinklabs.watchtower.enable=true
+
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    networks:
+      - traefik_proxy
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=$TZ
+    ports:
+      - 8191:8191
+    restart: unless-stopped
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
 
   sonarr:
     image: linuxserver/sonarr:latest
@@ -286,6 +340,7 @@ services:
       - traefik.http.routers.sonarr.middlewares=chain-oauth
       - traefik.http.routers.sonarr.service=sonarr
       - traefik.http.services.sonarr.loadbalancer.server.port=8989
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -311,6 +366,7 @@ services:
       - traefik.http.routers.readarr.middlewares=chain-oauth
       - traefik.http.routers.readarr.service=readarr
       - traefik.http.services.readarr.loadbalancer.server.port=8787
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - PUID=$PUID
       - PGID=$PGID
@@ -343,6 +399,7 @@ services:
       - traefik.http.routers.bazarr.middlewares=chain-oauth
       - traefik.http.routers.bazarr.service=bazarr
       - traefik.http.services.bazarr.loadbalancer.server.port=6767
+      - com.centurylinklabs.watchtower.enable=true
     restart: unless-stopped
 
   heimdall:
@@ -368,6 +425,7 @@ services:
       - traefik.http.routers.heimdall.middlewares=chain-oauth
       - traefik.http.routers.heimdall.service=heimdall
       - traefik.http.services.heimdall.loadbalancer.server.port=80
+      - com.centurylinklabs.watchtower.enable=true
 
   socket-proxy:
     container_name: socket-proxy
@@ -378,6 +436,8 @@ services:
     privileged: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
     environment:
       - LOG_LEVEL=$SOCKET_PROXY_LOG_LEVEL
       - EVENTS=1
@@ -428,6 +488,7 @@ services:
       - traefik.http.routers.hydra.middlewares=chain-oauth
       - traefik.http.routers.hydra.service=hydra
       - traefik.http.services.hydra.loadbalancer.server.port=5076
+      - com.centurylinklabs.watchtower.enable=true
 
   duplicati:
       image: linuxserver/duplicati:latest
@@ -451,3 +512,4 @@ services:
         - traefik.http.routers.duplicati.middlewares=chain-oauth
         - traefik.http.routers.duplicati.service=duplicati
         - traefik.http.services.duplicati.loadbalancer.server.port=8200
+        - com.centurylinklabs.watchtower.enable=true
