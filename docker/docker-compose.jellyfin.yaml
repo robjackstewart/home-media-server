@@ -9,11 +9,12 @@ services:
       - TZ=$TZ
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
+    runtime: nvidia
     deploy:
       resources:
         reservations:
           devices:
-          - capabilities: [gpu]
+            - capabilities: [gpu]
     volumes:
       - $MOUNT/appdata/jellyfin:/config
       - $MOUNT/tv:/data/tvshows
