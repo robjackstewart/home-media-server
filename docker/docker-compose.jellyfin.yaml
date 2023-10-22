@@ -9,7 +9,6 @@ services:
       - TZ=$TZ
       - NVIDIA_DRIVER_CAPABILITIES=all
       - NVIDIA_VISIBLE_DEVICES=all
-    runtime: nvidia
     deploy:
       resources:
         reservations:
