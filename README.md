@@ -44,3 +44,18 @@ A security focused proxy for the docker socket.
 
 ## Hydra
 Meta search for newznab indexers and torznab trackers.
+
+
+## Kubernetes GPU Support
+1. Sdd the following to your docker desktop config:
+    ```
+    "default-runtime": "nvidia",
+    "runtimes": {
+        "nvidia": {
+        "path": "/usr/bin/nvidia-container-runtime",
+        "runtimeArgs": []
+        }
+    }
+    ```
+1. Reset your cluster
+1. Install `nvidia-container-toolkit` 
