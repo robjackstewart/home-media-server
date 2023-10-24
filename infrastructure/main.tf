@@ -79,19 +79,41 @@ resource "azurerm_key_vault" "keyvault" {
   }
 }
 
-data "azurerm_key_vault" "terraform" {
-  name                = "robstewart-terraform-kv"
-  resource_group_name = "tfstate"
+data "azurerm_key_vault" "common" {
+  name                = var.azure_common_keyvault_name
+  resource_group_name = var.azure_common_keyvault_resource_group
 }
 
-data "azurerm_key_vault_secret" "terraform_state_client_secret" {
-  name         = "home-media-server-client-secret"
-  key_vault_id = data.azurerm_key_vault.terraform.id
+data "azurerm_key_vault_secret" "common_kv_client_secret" {
+  name         = var.azure_common_keyvault_client_secret_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "common_kv_openvpn_username" {
+  name         = var.azure_common_keyvault_client_secret_openvpn_username_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "common_kv_openvpn_password" {
+  name         = var.azure_common_keyvault_client_secret_openvpn_password_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
 }
 
 resource "azurerm_key_vault_secret" "client_secret" {
   name         = "client-secret"
-  value        = data.azurerm_key_vault_secret.terraform_state_client_secret.value
+  value        = data.azurerm_key_vault_secret.common_kv_client_secret.value
+  key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_key_vault_secret" "openvpn_username" {
+  name         = "vpn-username"
+  value        = data.azurerm_key_vault_secret.common_kv_openvpn_username.value
+  key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_key_vault_secret" "openvpn_password" {
+  name         = "vpn-password"
+  value        = data.azurerm_key_vault_secret.common_kv_openvpn_password.value
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
@@ -117,7 +139,7 @@ resource "cloudflare_access_identity_provider" "azure_ad_oauth" {
   type       = "azureAD"
   config {
     client_id     = var.app_registration_client_id
-    client_secret = data.azurerm_key_vault_secret.terraform_state_client_secret.value
+    client_secret = azurerm_key_vault_secret.client_secret.value
     directory_id  = data.azurerm_client_config.current.tenant_id
   }
 }
@@ -146,8 +168,8 @@ resource "kubernetes_secret" "transmission_openvpn_credentials" {
   }
 
   data = {
-    username = var.transmission_vpn_username
-    password = var.transmission_vpn_password
+    username = azurerm_key_vault_secret.openvpn_username.value
+    password = azurerm_key_vault_secret.openvpn_password.value
   }
 
   type = "kubernetes.io/basic-auth"
