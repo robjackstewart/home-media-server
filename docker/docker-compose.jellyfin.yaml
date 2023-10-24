@@ -13,7 +13,7 @@ services:
       resources:
         reservations:
           devices:
-          - capabilities: [gpu]
+            - capabilities: [gpu]
     volumes:
       - $MOUNT/appdata/jellyfin:/config
       - $MOUNT/tv:/data/tvshows

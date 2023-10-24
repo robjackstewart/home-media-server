@@ -52,6 +52,10 @@ spec:
           persistentVolumeClaim:
             claimName: media
       hostNetwork: {{ .Values.jellyfin.exposeOnHostNetwork}}
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
       containers:
       - env:
         - name: TZ
@@ -60,7 +64,16 @@ spec:
           value: "{{ .Values.PUID }}"
         - name: PGID
           value: "{{ .Values.PGID }}"
-        image: linuxserver/jellyfin:10.8.9
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: all
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: all
+        - name: DP_DISABLE_HEALTHCHECKS
+          value: xids
+        image: linuxserver/jellyfin
+        resources:
+          limits:
+            nvidia.com/gpu: 1 # requesting 1 GPU
         name: jellyfin
         ports:
           - containerPort: 8096

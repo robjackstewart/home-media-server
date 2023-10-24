@@ -16,12 +16,6 @@ provider "kubernetes" {
   config_context = var.kubernetes_context
 }
 
-provider "helm" {
-  kubernetes {
-    config_path = "~/.kube/config"
-  }
-}
-
 resource "cloudflare_access_application" "home_media_server" {
   zone_id                   = var.cloudflare_zone_id
   name                      = var.cloudflare_application_name
@@ -192,5 +186,13 @@ argoTunnel:
   id: ${cloudflare_tunnel.example.id}
   credentials:
     secretName: ${var.cloudflare_tunnel_credential_secret_name}
+nvidia-device-plugin:
+
+  image:
+    repository: registry.gitlab.com/nvidia/kubernetes/device-plugin/staging/k8s-device-plugin
+    tag: "8b416016"
+
+  gfd:
+    enabled: true
 EOT
 }
