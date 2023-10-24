@@ -94,14 +94,6 @@ variable "transmission_vpn_secret_name" {
   type = string
 }
 
-variable "transmission_vpn_username" {
-  type = string
-}
-
-variable "transmission_vpn_password" {
-  type = string
-}
-
 variable "host_storage_config_dir" {
   type = string
 }
