@@ -35,23 +35,43 @@ variable "app_registration_client_id" {
 }
 
 variable "azure_security_resource_group_name" {
-    type = string
+  type = string
 }
 
 variable "azure_security_resource_group_location" {
-    type = string
+  type = string
 }
 
 variable "azure_security_key_vault_name" {
-    type = string
+  type = string
 }
 
 variable "azure_application_registration_name" {
-    type = string
+  type = string
 }
 
 variable "azure_application_registration_rotation_day_count" {
     type = number
+}
+
+variable "azure_common_keyvault_name" {
+  type = string
+}
+
+variable "azure_common_keyvault_resource_group" {
+  type = string
+}
+
+variable "azure_common_keyvault_client_secret_secret_name" {
+  type = string
+}
+
+variable "azure_common_keyvault_client_secret_openvpn_username_secret_name" {
+  type = string
+}
+
+variable "azure_common_keyvault_client_secret_openvpn_password_secret_name" {
+  type = string
 }
 
 variable "timezone" {
@@ -71,14 +91,6 @@ variable "transmission_vpn_config" {
 }
 
 variable "transmission_vpn_secret_name" {
-  type = string
-}
-
-variable "transmission_vpn_username" {
-  type = string
-}
-
-variable "transmission_vpn_password" {
   type = string
 }
 
