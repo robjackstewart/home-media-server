@@ -39,7 +39,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/prowlarr:nightly
+        image: {{ include "image" .Values.prowlarr.image }}
         name: prowlarr
         volumeMounts:
           - name: config

@@ -1,0 +1,47 @@
+bazarr:
+  image:
+    repository: linuxserver/bazarr
+    tag: '1.2.0'
+    registry: lscr.io
+
+cloudflared:
+  image:
+    repository: cloudflare/cloudflared
+    tag: '2023.8.2'
+    registry: docker.io
+
+heimdall:
+  image:
+    repository: linuxserver/heimdall
+    tag: '2.5.6'
+    registry: lscr.io
+
+jellyfin:
+  image:
+    repository: linuxserver/jellyfin
+    tag: '10.8.11'
+    registry: lscr.io
+
+prowlarr:
+  image:
+    repository: linuxserver/prowlarr
+    tag: '1.9.4'
+    registry: lscr.io
+
+radarr:
+  image:
+    repository: linuxserver/radarr
+    tag: '5.0.3'
+    registry: lscr.io
+
+sonarr:
+  image:
+    repository: linuxserver/sonarr
+    tag: '3.0.10'
+    registry: lscr.io
+
+transmissionopenvpn:
+  image:
+    repository: haugene/transmission-openvpn
+    tag: '5.2.0'
+    registry: docker.io

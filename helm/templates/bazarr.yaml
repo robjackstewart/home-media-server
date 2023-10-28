@@ -42,7 +42,7 @@ spec:
           limits:
             cpu: '1'
             memory: 250Mi
-        image: linuxserver/bazarr:1.2.0
+        image: {{ include "image" .Values.bazarr.image }}
         name: bazarr
         volumeMounts:
           - name: config
