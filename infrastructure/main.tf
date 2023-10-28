@@ -208,13 +208,5 @@ argoTunnel:
   id: ${cloudflare_tunnel.example.id}
   credentials:
     secretName: ${var.cloudflare_tunnel_credential_secret_name}
-nvidia-device-plugin:
-
-  image:
-    repository: registry.gitlab.com/nvidia/kubernetes/device-plugin/staging/k8s-device-plugin
-    tag: "8b416016"
-
-  gfd:
-    enabled: true
 EOT
 }
