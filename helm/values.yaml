@@ -19,7 +19,7 @@ heimdall:
 jellyfin:
   image:
     repository: linuxserver/jellyfin
-    tag: '10.8.11'
+    tag: '2021.12.16'
     registry: lscr.io
 
 prowlarr:
