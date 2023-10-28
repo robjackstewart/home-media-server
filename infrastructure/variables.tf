@@ -46,14 +46,6 @@ variable "azure_security_key_vault_name" {
   type = string
 }
 
-variable "azure_application_registration_name" {
-  type = string
-}
-
-variable "azure_application_registration_rotation_day_count" {
-    type = number
-}
-
 variable "azure_common_keyvault_name" {
   type = string
 }
