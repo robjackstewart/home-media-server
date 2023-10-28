@@ -41,7 +41,7 @@ spec:
         resources:
           limits:
             memory: 1Gi
-        image: linuxserver/sonarr:3.0.9
+        image: {{ include "image" .Values.sonarr.image }}
         name: sonarr
         ports:
           - containerPort: 8989
