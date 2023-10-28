@@ -1,7 +1,7 @@
 bazarr:
   image:
     repository: linuxserver/bazarr
-    tag: '1.2.0'
+    tag: '1.3.1'
     registry: lscr.io
 
 cloudflared:
