@@ -45,3 +45,10 @@ transmissionopenvpn:
     repository: haugene/transmission-openvpn
     tag: '5.2.0'
     registry: docker.io
+
+nvidia-device-plugin:
+  image:
+    repository: registry.gitlab.com/nvidia/kubernetes/device-plugin/staging/k8s-device-plugin
+    tag: "8b416016"
+  gfd:
+    enabled: true
