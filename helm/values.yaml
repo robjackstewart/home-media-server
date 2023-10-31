@@ -7,7 +7,7 @@ bazarr:
 cloudflared:
   image:
     repository: cloudflare/cloudflared
-    tag: '2023.8.2'
+    tag: '2023.10.0'
     registry: docker.io
 
 heimdall:
