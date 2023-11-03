@@ -89,4 +89,4 @@ spec:
             subPath: downloads
           - name: config
             mountPath: /config
-            subPath: transmission-openvpn
+            subPath: transmission-openvpn-5.2
