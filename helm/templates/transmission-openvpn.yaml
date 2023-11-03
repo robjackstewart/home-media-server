@@ -27,9 +27,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: media
-        - name: config
-          persistentVolumeClaim:
-            claimName: config
       dnsConfig:
         nameservers:
           - 1.1.1.1
@@ -87,6 +84,3 @@ spec:
           - name: media
             mountPath: /downloads
             subPath: downloads
-          - name: config
-            mountPath: /config
-            subPath: transmission-openvpn
