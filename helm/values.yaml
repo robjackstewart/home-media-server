@@ -43,7 +43,7 @@ sonarr:
 transmissionopenvpn:
   image:
     repository: haugene/transmission-openvpn
-    tag: '4.3'
+    tag: '5.2'
     registry: docker.io
 
 nvidia-device-plugin:
