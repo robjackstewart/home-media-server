@@ -42,6 +42,7 @@ spec:
             limits:
               memory: 1Gi
           image: {{ include "image" .Values.radarr.image }}
+          imagePullPolicy: {{ .Values.radarr.image.pullPolicy }}
           name: radarr
           ports:
             - containerPort: 7878

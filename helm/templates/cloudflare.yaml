@@ -15,6 +15,7 @@ spec:
       containers:
       - name: cloudflared
         image: {{ include "image" .Values.cloudflared.image }}
+        imagePullPolicy: {{ .Values.cloudflared.image.pullPolicy }}
         args:
         - tunnel
         # Points cloudflared to the config file, which configures what

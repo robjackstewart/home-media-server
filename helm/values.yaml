@@ -3,48 +3,56 @@ bazarr:
     repository: linuxserver/bazarr
     tag: '1.3.1'
     registry: lscr.io
+    pullPolicy: Always
 
 cloudflared:
   image:
     repository: cloudflare/cloudflared
     tag: '2023.10.0'
     registry: docker.io
+    pullPolicy: Always
 
 heimdall:
   image:
     repository: linuxserver/heimdall
     tag: '2.5.7'
     registry: lscr.io
+    pullPolicy: Always
 
 jellyfin:
   image:
     repository: linuxserver/jellyfin
     tag: '10.8.11'
     registry: lscr.io
+    pullPolicy: Always
 
 prowlarr:
   image:
     repository: linuxserver/prowlarr
     tag: '1.9.4'
     registry: lscr.io
+    pullPolicy: Always
 
 radarr:
   image:
     repository: linuxserver/radarr
     tag: '5.0.3'
     registry: lscr.io
+    pullPolicy: Always
 
 sonarr:
   image:
     repository: linuxserver/sonarr
     tag: '3.0.10'
     registry: lscr.io
+    pullPolicy: Always
 
 transmissionopenvpn:
   image:
     repository: haugene/transmission-openvpn
     tag: '5.2'
     registry: docker.io
+    pullPolicy: Always
 
 nvidia-device-plugin:
   image:
