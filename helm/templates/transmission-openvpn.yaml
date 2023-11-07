@@ -73,6 +73,7 @@ spec:
             cpu: '1'
             memory: 250Mi
         image: {{ include "image" .Values.transmissionopenvpn.image }}
+        imagePullPolicy: {{ .Values.transmissionopenvpn.image.pullPolicy }}
         name: transmissionopenvpn
         securityContext:
           capabilities:

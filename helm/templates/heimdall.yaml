@@ -40,7 +40,8 @@ spec:
             cpu: '1'
             memory: 250Mi
         image: {{ include "image" .Values.heimdall.image }}
-        name: radarr
+        name: heimdall
+        imagePullPolicy: {{ .Values.heimdall.image.pullPolicy }}
         volumeMounts:
           - name: config
             mountPath: /config

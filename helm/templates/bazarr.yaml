@@ -43,6 +43,7 @@ spec:
             cpu: '1'
             memory: 250Mi
         image: {{ include "image" .Values.bazarr.image }}
+        imagePullPolicy: {{ .Values.bazarr.image.pullPolicy }}
         name: bazarr
         volumeMounts:
           - name: config

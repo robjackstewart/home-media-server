@@ -71,6 +71,7 @@ spec:
         # - name: DP_DISABLE_HEALTHCHECKS
         #   value: xids
         image: {{ include "image" .Values.jellyfin.image }}
+        imagePullPolicy: {{ .Values.jellyfin.image.pullPolicy }}
         resources:
           limits:
             nvidia.com/gpu: 1 # requesting 1 GPU

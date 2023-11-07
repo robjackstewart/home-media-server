@@ -42,6 +42,7 @@ spec:
           limits:
             memory: 1Gi
         image: {{ include "image" .Values.sonarr.image }}
+        imagePullPolicy: {{ .Values.sonarr.image.pullPolicy }}
         name: sonarr
         ports:
           - containerPort: 8989
