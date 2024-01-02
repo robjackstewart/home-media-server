@@ -43,7 +43,7 @@ radarr:
 sonarr:
   image:
     repository: linuxserver/sonarr
-    tag: '3.0.10'
+    tag: '4.0.0'
     registry: lscr.io
     pullPolicy: Always
 
