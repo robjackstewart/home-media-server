@@ -1,0 +1,13 @@
+version: '3.9'
+services:
+  github-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TOKEN: ${TOKEN}
+    container_name: home-media-server-github-runner
+    volumes:
+      - ${KUBE_CONFIG_PATH}:/home/githubrunner/.kube/config
+    network_mode: host
+    restart: always
