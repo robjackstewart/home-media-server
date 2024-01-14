@@ -4,10 +4,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        TOKEN: ${TOKEN}
     container_name: home-media-server-github-runner
+    environment:
+      TOKEN: ${TOKEN}
+      REPOSITORY_URL: ${REPOSITORY_URL}
     volumes:
       - ${KUBE_CONFIG_PATH}:/home/githubrunner/.kube/config
+      - /var/run/docker.sock:/var/run/docker.sock
     network_mode: host
     restart: always

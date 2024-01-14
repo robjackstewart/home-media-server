@@ -1,10 +1,6 @@
-FROM ubuntu:noble
+FROM ubuntu:mantic
 
-ARG REPOSITORY_URL="https://github.com/robjackstewart/home-media-server"
 ARG RUNNER_VERSION=2.311.0
-ARG TOKEN=""
-
-RUN if [ -z "$TOKEN" ]; then echo "Error: TOKEN is empty, build failed" && exit 1; fi
 
 # Create a folder
 RUN mkdir actions-runner && cd actions-runner
@@ -25,12 +21,13 @@ WORKDIR /actions-runner-linux-x64-${RUNNER_VERSION}
 
 RUN ./bin/installdependencies.sh
 
+RUN curl -fsSL https://get.docker.com -o ./bin/get-docker.sh && \
+    sh ./bin/get-docker.sh
+
 RUN useradd -rm -d /home/githubrunner -s /bin/bash -g root -G sudo -u 1001 githubrunner
 
 USER githubrunner
 
-# Create the runner and start the configuration experience
-RUN ./config.sh --url "$REPOSITORY_URL" --token $TOKEN
-
 # Last step, run it!
-ENTRYPOINT ./run.sh
+ENTRYPOINT ./config.sh --url "$REPOSITORY_URL" --token "$TOKEN"  --ephemeral && \
+            ./run.sh
