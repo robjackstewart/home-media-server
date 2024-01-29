@@ -22,7 +22,8 @@ resource "cloudflare_access_application" "home_media_server" {
   domain                    = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
   type                      = "self_hosted"
   session_duration          = "24h"
-  auto_redirect_to_identity = false
+  auto_redirect_to_identity = true
+  allowed_idps              = [cloudflare_access_identity_provider.azure_ad_oauth.id]
 }
 
 resource "random_id" "argo_secret" {
