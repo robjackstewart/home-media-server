@@ -1,0 +1,29 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple 
+metadata:
+  name: home-media-server
+image: rancher/k3s:v1.29.1-k3s1
+network: home-media-server
+token: superSecretToken
+volumes:
+  - volume: /mnt/c/home-media-server/config:/home-media-server/config
+    nodeFilters:
+      - server:0
+      - agent:*
+  - volume: /mnt/c/home-media-server/media:/home-media-server/media
+    nodeFilters:
+      - server:0
+      - agent:*
+ports:
+  - port: 8096:8096
+    nodeFilters:
+      - loadbalancer
+  - port: 8920:8920
+    nodeFilters:
+      - loadbalancer
+  - port: 7359:7359
+    nodeFilters:
+      - loadbalancer
+  - port: 1900:1900
+    nodeFilters:
+      - loadbalancer
