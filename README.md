@@ -22,5 +22,5 @@
 1. Reset your cluster
 1. Label your node as follows:
     ``` shell
-    kubectl label node docker-desktop nvidia.com/gpu.present=true
+    kubectl label node <node> nvidia.com/gpu.present=true
     ```
