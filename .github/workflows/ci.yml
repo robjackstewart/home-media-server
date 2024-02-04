@@ -1,7 +1,7 @@
 name: Home Media Server CI
 
 on:
-  - push
+  - pull_request
 
 env:
   tag: ${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}
