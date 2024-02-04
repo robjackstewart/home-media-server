@@ -2,9 +2,8 @@ apiVersion: k3d.io/v1alpha5
 kind: Simple 
 metadata:
   name: home-media-server
-image: rancher/k3s:v1.29.1-k3s1
+image: k3d-cuda:latest
 network: home-media-server
-token: superSecretToken
 volumes:
   - volume: /mnt/c/home-media-server/config:/home-media-server/config
     nodeFilters:
@@ -27,3 +26,13 @@ ports:
   - port: 1900:1900
     nodeFilters:
       - loadbalancer
+options:
+  k3s:
+    nodeLabels:
+      - label: nvidia.com/gpu.present=true
+        nodeFilters:
+          - server:0
+          - agent:*
+  runtime:
+    gpuRequest: all
+    labels: []

@@ -7,9 +7,11 @@ spec:
     - name: http
       port: 8096
       protocol: TCP
+      targetPort: 8096
     - name: https
       port: 8920
       protocol: TCP
+      targetPort: 8920
   selector:
     app: jellyfin
   type: LoadBalancer
@@ -23,12 +25,40 @@ spec:
     - name: auto-discovery-1
       port: 7359
       protocol: UDP
+      targetPort: 7359
     - name: auto-discovery-2
       port: 1900
       protocol: UDP
+      targetPort: 1900
   selector:
     app: jellyfin
   type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-node-port
+spec:
+  selector:
+    app: jellyfin
+  ports:
+    - protocol: TCP
+      name: '8096'
+      port: 8096
+      targetPort: 8096
+    - protocol: TCP
+      name: '8920'
+      port: 8920
+      targetPort: 8920
+    - protocol: UDP
+      name: '1900'
+      port: 1900
+      targetPort: 1900
+    - protocol: UDP
+      name: '7359'
+      port: 7359
+      targetPort: 7359
+  type: NodePort
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -51,7 +81,6 @@ spec:
         - name: media
           persistentVolumeClaim:
             claimName: media
-      hostNetwork: {{ .Values.jellyfin.exposeOnHostNetwork}}
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
