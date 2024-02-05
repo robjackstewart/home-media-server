@@ -201,8 +201,6 @@ storage:
     media:
       dir: ${var.host_storage_media_dir}
       capacity: ${var.host_storage_media_capacity}
-jellyfin:
-  exposeOnHostNetwork: ${var.expose_jellyfin_on_host_network}
 domain: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
 argoTunnel:
   name: ${var.cloudflare_tunnel_name}

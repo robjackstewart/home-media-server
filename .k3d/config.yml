@@ -2,6 +2,8 @@ apiVersion: k3d.io/v1alpha5
 kind: Simple 
 metadata:
   name: home-media-server
+servers: 1
+agents: 0
 image: k3d-cuda:latest
 network: home-media-server
 volumes:
@@ -14,25 +16,31 @@ volumes:
       - server:0
       - agent:*
 ports:
-  - port: 8096:8096
+  - port: 8096:30096
     nodeFilters:
-      - loadbalancer
-  - port: 8920:8920
+      - server:0
+  - port: 8920:30097
     nodeFilters:
-      - loadbalancer
-  - port: 7359:7359
+      - server:0
+  - port: 7359:30098
     nodeFilters:
-      - loadbalancer
-  - port: 1900:1900
+      - server:0
+  - port: 1900:30099
     nodeFilters:
-      - loadbalancer
+      - server:0
 options:
   k3s:
+    extraArgs:
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:0
+          - agent:*
     nodeLabels:
       - label: nvidia.com/gpu.present=true
         nodeFilters:
           - server:0
           - agent:*
+    
   runtime:
     gpuRequest: all
     labels: []
