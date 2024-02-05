@@ -20,8 +20,6 @@ storage:
     media:
       dir: /example-media-dir-path
       capacity: 1Gi
-jellyfin:
-  exposeOnHostNetwork: true
 domain: example.domain.com
 argoTunnel:
   name: example-argo-tunnel
