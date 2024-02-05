@@ -14,7 +14,6 @@ spec:
       targetPort: 8920
   selector:
     app: jellyfin
-  type: LoadBalancer
 ---
 apiVersion: v1
 kind: Service
@@ -32,7 +31,6 @@ spec:
       targetPort: 1900
   selector:
     app: jellyfin
-  type: LoadBalancer
 ---
 apiVersion: v1
 kind: Service
@@ -46,18 +44,22 @@ spec:
       name: '8096'
       port: 8096
       targetPort: 8096
+      nodePort: 30096
     - protocol: TCP
       name: '8920'
       port: 8920
       targetPort: 8920
-    - protocol: UDP
-      name: '1900'
-      port: 1900
-      targetPort: 1900
+      nodePort: 30097
     - protocol: UDP
       name: '7359'
       port: 7359
       targetPort: 7359
+      nodePort: 30098
+    - protocol: UDP
+      name: '1900'
+      port: 1900
+      targetPort: 1900
+      nodePort: 30099
   type: NodePort
 ---
 apiVersion: apps/v1
