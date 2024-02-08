@@ -22,3 +22,11 @@ jobs:
       - name: Build K3d Image
         run: docker build . --tag k3d-cuda:${{ env.tag }}
         working-directory: .k3d
+  dev-container:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build Dev Container
+        run: docker build . --tag dev-container:${{ env.tag }}
+        working-directory: .devcontainer
