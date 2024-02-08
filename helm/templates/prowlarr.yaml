@@ -27,7 +27,20 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+      dnsConfig:
+        nameservers:
+          - 1.1.1.1
       containers:
+      - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: LOG_LEVEL
+            value: debug
+        image: {{ include "image" .Values.flaresolverr.image }}
+        imagePullPolicy: {{ .Values.flaresolverr.image.pullPolicy }}
+        name: transmissionopenvpn
+        ports:
+          - containerPort: 8191
       - env:
         - name: TZ
           value: {{ .Values.Timezone }}
