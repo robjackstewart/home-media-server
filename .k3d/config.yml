@@ -28,6 +28,15 @@ ports:
   - port: 1900:30099
     nodeFilters:
       - server:0
+  - port: 7878:30100
+    nodeFilters:
+      - server:0
+  - port: 8989:30101
+    nodeFilters:
+      - server:0
+  - port: 9091:30102
+    nodeFilters:
+      - server:0
 options:
   k3s:
     extraArgs:
