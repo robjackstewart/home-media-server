@@ -37,6 +37,9 @@ ports:
   - port: 9091:30102
     nodeFilters:
       - server:0
+  - port: 8123:30103
+    nodeFilters:
+      - server:0
 options:
   k3s:
     extraArgs:

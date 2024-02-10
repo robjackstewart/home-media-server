@@ -61,6 +61,12 @@ flaresolverr:
     registry: ghcr.io
     pullPolicy: Always
 
+homeassistant:
+  image:
+    registry: ghcr.io
+    repository: home-assistant/home-assistant
+    tag: '2023.12'
+
 nvidia-device-plugin:
   image:
     repository: registry.gitlab.com/nvidia/kubernetes/device-plugin/staging/k8s-device-plugin
