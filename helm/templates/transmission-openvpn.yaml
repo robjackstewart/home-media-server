@@ -9,6 +9,21 @@ spec:
   selector:
     app: transmission-openvpn
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-openvpn-node-port
+spec:
+  selector:
+    app: transmission-openvpn
+  ports:
+    - protocol: TCP
+      name: http
+      port: 9091
+      targetPort: 9091
+      nodePort: 30102
+  type: NodePort
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
