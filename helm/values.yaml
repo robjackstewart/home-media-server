@@ -15,7 +15,7 @@ cloudflared:
 heimdall:
   image:
     repository: linuxserver/heimdall
-    tag: '2.6.0'
+    tag: '2.6.1'
     registry: lscr.io
     pullPolicy: Always
 
