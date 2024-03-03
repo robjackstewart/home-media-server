@@ -62,8 +62,5 @@ flaresolverr:
     pullPolicy: Always
 
 nvidia-device-plugin:
-  image:
-    repository: registry.gitlab.com/nvidia/kubernetes/device-plugin/staging/k8s-device-plugin
-    tag: "8b416016"
   gfd:
     enabled: true
