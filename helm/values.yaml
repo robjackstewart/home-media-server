@@ -61,6 +61,27 @@ flaresolverr:
     registry: ghcr.io
     pullPolicy: Always
 
+calibre:
+  image:
+    repository: linuxserver/calibre
+    tag: v4
+    registry: lscr.io
+    pullPolicy: Always
+
+calibreweb:
+  image:
+    repository: linuxserver/calibre-web
+    tag: latest
+    registry: lscr.io
+    pullPolicy: Always
+
+readarr:
+  image:
+    repository: linuxserver/readarr
+    tag: nightly
+    registry: lscr.io
+    pullPolicy: Always
+
 nvidia-device-plugin:
   gfd:
     enabled: true

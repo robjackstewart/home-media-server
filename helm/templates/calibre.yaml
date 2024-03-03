@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: calibre-service
+spec:
+  ports:
+  - port: 8083
+    protocol: TCP
+    name: calibre-ui
+  selector:
+    app: calibre
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: calibre
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: calibre
+  template:
+    metadata:
+      labels:
+        app: calibre
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: "{{ .Values.PUID }}"
+          - name: PGID
+            value: "{{ .Values.PGID }}"
+          resources:
+            limits:
+              memory: 1Gi
+          image: {{ include "image" .Values.calibreweb.image }}
+          imagePullPolicy: {{ .Values.calibreweb.image.pullPolicy }}
+          name: calibre-web
+          ports:
+            - containerPort: 8083
+          volumeMounts:
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: media
+              mountPath: /books
+              subPath: books
+            - name: config
+              mountPath: /config
+              subPath: calibre-web
