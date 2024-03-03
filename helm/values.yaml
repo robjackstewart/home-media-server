@@ -82,6 +82,13 @@ readarr:
     registry: lscr.io
     pullPolicy: Always
 
+nginx:
+  image:
+    repository: nginx
+    tag: latest
+    registry: docker.io
+    pullPolicy: Always
+
 nvidia-device-plugin:
   gfd:
     enabled: true

@@ -139,7 +139,7 @@ spec:
           service:
             name: calibre-service
             port:
-              number: 8083
+              number: 80
       - path: /heimdall
         pathType: Prefix
         backend:
