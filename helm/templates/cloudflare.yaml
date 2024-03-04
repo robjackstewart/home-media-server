@@ -126,6 +126,20 @@ spec:
             name: jellyfin-tcp-service
             port:
               number: 8096
+      - path: /readarr
+        pathType: Prefix
+        backend:
+          service:
+            name: readarr-service
+            port:
+              number: 8787
+      - path: /calibre
+        pathType: Prefix
+        backend:
+          service:
+            name: calibre-service
+            port:
+              number: 80
       - path: /heimdall
         pathType: Prefix
         backend:
