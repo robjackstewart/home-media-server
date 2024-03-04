@@ -7,9 +7,6 @@ spec:
   - port: 80
     protocol: TCP
     name: nginx
-  - port: 8083
-    protocol: TCP
-    name: calibre-web-ui
   selector:
     app: calibre
 ---
@@ -18,14 +15,28 @@ kind: ConfigMap
 metadata:
   name: nginx-config
 data:
-  calibre.conf: |
-    server {
-      client_max_body_size 20M;
-      location /calibre {
-          proxy_bind              $server_addr;
+  nginx.conf: |
+    events{
+    }
+    http {
+      server {
+        client_max_body_size 20M;
+        location /calibre {
+          add_header  X-Robots-Tag "noindex, nofollow, nosnippet, noarchive";
           proxy_pass              http://localhost:8083;
-          proxy_set_header        Host            $http_host;
-          proxy_set_header        X-Script-Name   /calibre;
+          proxy_set_header        Host                    $http_host;
+          proxy_set_header        X-Forwarded-For         $proxy_add_x_forwarded_for;
+          proxy_set_header        X-Scheme                https;
+          proxy_busy_buffers_size 1024k;
+          proxy_buffers   				4                       512k;
+          proxy_buffer_size   		1024k;
+          proxy_set_header        X-Script-Name           /calibre; 
+        }
+
+        location = /robots.txt {
+          add_header              Content-Type            text/plain;
+          return 200              "User-agent: *\nDisallow: /\n";
+        }
       }
     }
 ---
@@ -66,8 +77,8 @@ spec:
               value: "{{ .Values.PGID }}"
           volumeMounts:
             - name: nginx-config-volume
-              mountPath: /etc/nginx/conf.d/calibre.conf
-              subPath: calibre.conf
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
           ports:
             - containerPort: 80
         - env:
