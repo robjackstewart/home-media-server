@@ -1,0 +1,52 @@
+version: '3'
+tasks:
+  setup-kube-context:
+    desc: Update the kubectl context to use target an existing k3d cluster if it exists.
+    preconditions:
+      - sh: k3d cluster list home-media-server
+        msg: No matching k3d cluster to target
+    cmds:
+      - |
+        if [ "$REMOTE_CONTAINERS" == "true" ]
+        then
+          CONFIG_FILE=$(k3d kubeconfig write home-media-server --kubeconfig-merge-default) \
+          && yq -ie '.clusters[0].cluster.server |= sub("0.0.0.0", "host.docker.internal")' $CONFIG_FILE
+        else
+          k3d kubeconfig write home-media-server --kubeconfig-merge-default
+        fi
+
+  helm-release:
+    desc: Create a helm release
+    deps:
+      - setup-kube-context
+    preconditions:
+      - test -f infrastructure.values.yaml
+      - test -f values.yaml
+    dir: '{{.TASKFILE_DIR}}/helm'
+    cmds:
+      - helm upgrade --install home-media-server . --namespace home-media-server --values values.yaml --values infrastructure.values.yaml --timeout 3000s
+
+  terraform-apply:
+    desc: Initialise terraform
+    dir: '{{.TASKFILE_DIR}}/infrastructure'
+    preconditions:
+      - sh: k3d cluster list home-media-server
+        msg: The home-media-server K3d cluster does not exist
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+    cmds:
+      - terraform apply -var-file=variables.tfvars
+
+  terraform-init:
+    desc: Initialise terraform
+    dir: '{{.TASKFILE_DIR}}/infrastructure'
+    preconditions:
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+    cmds:
+      - terraform init -upgrade
+
+  build-k3d-image:
+    dir: '{{.TASKFILE_DIR}}/.k3d'
+    cmds:
+      - docker build -t k3d-cuda:latest .
