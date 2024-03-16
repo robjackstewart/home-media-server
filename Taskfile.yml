@@ -1,18 +1,33 @@
 version: '3'
+
+env:
+  HELM_RELEASE_NAME: home-media-server
+  HELM_RELEASE_NAMESPACE: home-media-server
+  K3D_CLUSTER_NAME:
+    sh: yq '.metadata.name' "{{.TASKFILE_DIR}}/.k3d/config.yml"
+  K3D_CLUSTER_IMAGE:
+    sh: yq '.image' "{{.TASKFILE_DIR}}/.k3d/config.yml"
+  HELM_VALUES_FILE:
+    sh: echo "{{.TASKFILE_DIR}}/helm/values.yaml"
+  HELM_INFRASTRUCTURE_VALUES_FILE:
+    sh: echo "{{.TASKFILE_DIR}}/helm/infrastructure.values.yaml"
+  
+
 tasks:
+
   setup-kube-context:
     desc: Update the kubectl context to use target an existing k3d cluster if it exists.
     preconditions:
-      - sh: k3d cluster list home-media-server
+      - sh: k3d cluster list $K3D_CLUSTER_NAME
         msg: No matching k3d cluster to target
     cmds:
       - |
         if [ "$REMOTE_CONTAINERS" == "true" ]
         then
-          CONFIG_FILE=$(k3d kubeconfig write home-media-server --kubeconfig-merge-default) \
+          CONFIG_FILE=$(k3d kubeconfig write $K3D_CLUSTER_NAME --kubeconfig-merge-default) \
           && yq -ie '.clusters[0].cluster.server |= sub("0.0.0.0", "host.docker.internal")' $CONFIG_FILE
         else
-          k3d kubeconfig write home-media-server --kubeconfig-merge-default
+          k3d kubeconfig write $K3D_CLUSTER_NAME--kubeconfig-merge-default
         fi
 
   helm-release:
@@ -20,11 +35,19 @@ tasks:
     deps:
       - setup-kube-context
     preconditions:
-      - test -f infrastructure.values.yaml
-      - test -f values.yaml
+      - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
+      - test -f $HELM_VALUES_FILE
     dir: '{{.TASKFILE_DIR}}/helm'
     cmds:
-      - helm upgrade --install home-media-server . --namespace home-media-server --values values.yaml --values infrastructure.values.yaml --timeout 3000s
+      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s
+
+  helm-uninstall:
+    desc: Create a helm release
+    deps:
+      - setup-kube-context
+    dir: '{{.TASKFILE_DIR}}/helm'
+    cmds:
+      - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait
 
   terraform-apply:
     desc: Initialise terraform
@@ -34,6 +57,7 @@ tasks:
         msg: The home-media-server K3d cluster does not exist
       - sh: az account show
         msg: You must be logged in with the Azure CLI
+      - test -f variables.tfvars
     cmds:
       - terraform apply -var-file=variables.tfvars
 
@@ -49,4 +73,4 @@ tasks:
   build-k3d-image:
     dir: '{{.TASKFILE_DIR}}/.k3d'
     cmds:
-      - docker build -t k3d-cuda:latest .
+      - docker build -t $K3D_CLUSTER_IMAGE .
