@@ -11,6 +11,8 @@ env:
     sh: echo "{{.TASKFILE_DIR}}/helm/values.yaml"
   HELM_INFRASTRUCTURE_VALUES_FILE:
     sh: echo "{{.TASKFILE_DIR}}/helm/infrastructure.values.yaml"
+  DEV_CONTAINER_DOCKER_NETWORK:
+    SH: yq '.services.workspace.extra_hosts[] | select(contains("host-gateway")) | sub(":host-gateway", "")' {{.TASKFILE_DIR}}/.devcontainer/docker-compose.yml
   
 
 tasks:
@@ -25,7 +27,7 @@ tasks:
         if [ "$REMOTE_CONTAINERS" == "true" ]
         then
           CONFIG_FILE=$(k3d kubeconfig write $K3D_CLUSTER_NAME --kubeconfig-merge-default) \
-          && yq -ie '.clusters[0].cluster.server |= sub("0.0.0.0", "host.docker.internal")' $CONFIG_FILE
+          && yq -ie '.clusters[0].cluster.server |= sub("0.0.0.0", "$DEV_CONTAINER_DOCKER_NETWORK")' $CONFIG_FILE
         else
           k3d kubeconfig write $K3D_CLUSTER_NAME--kubeconfig-merge-default
         fi
