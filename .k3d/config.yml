@@ -44,6 +44,9 @@ options:
         nodeFilters:
           - server:0
           - agent:*
+      - arg: --tls-san=host.docker.internal # to allow the dev container to communicate with the cluster
+        nodeFilters:
+          - server:*
     nodeLabels:
       - label: nvidia.com/gpu.present=true
         nodeFilters:

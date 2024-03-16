@@ -1,0 +1,10 @@
+version: '3.9'
+
+services:
+  workspace:
+    image: mcr.microsoft.com/vscode/devcontainers/typescript-node:16
+    entrypoint: sleep infinity
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../:/workspace
