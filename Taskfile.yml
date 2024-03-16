@@ -26,7 +26,7 @@ tasks:
         if [ "$REMOTE_CONTAINERS" == "true" ]
         then
           CONFIG_FILE=$(k3d kubeconfig write $K3D_CLUSTER_NAME --kubeconfig-merge-default) \
-          && yq -ie ".clusters[0].cluster.server |= sub(\"0.0.0.0\",env(DEV_CONTAINER_DOCKER_NETWORK))" $CONFIG_FILE
+          && yq -ie '.clusters[0].cluster.server |= sub("0.0.0.0",env(DEV_CONTAINER_DOCKER_NETWORK))' $CONFIG_FILE
         else
           k3d kubeconfig write $K3D_CLUSTER_NAME--kubeconfig-merge-default
         fi
