@@ -27,6 +27,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+      - name: Install dev continer CLI
+        run: npm install --global @devcontainers/cli
       - name: Build Dev Container
-        run: docker build . --tag dev-container:${{ env.tag }}
-        working-directory: .devcontainer
+        run: devcontainer build --workspace-folder .
