@@ -27,6 +27,5 @@
                 "task.vscode-task"
             ]
         }
-    },
-    "privileged": true
+    }
 }
