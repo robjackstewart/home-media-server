@@ -1,0 +1,91 @@
+version: '3'
+
+env:
+  HELM_RELEASE_NAME: home-media-server
+  HELM_RELEASE_NAMESPACE: home-media-server
+  K3D_CLUSTER_CONFIG:
+    sh: echo "{{.TASKFILE_DIR}}/.k3d/config.yml"
+  K3D_CLUSTER_NAME:
+    sh: yq '.metadata.name' "{{.TASKFILE_DIR}}/.k3d/config.yml"
+  K3D_CLUSTER_IMAGE:
+    sh: yq '.image' "{{.TASKFILE_DIR}}/.k3d/config.yml"
+  HELM_VALUES_FILE:
+    sh: echo "{{.TASKFILE_DIR}}/helm/values.yaml"
+  HELM_INFRASTRUCTURE_VALUES_FILE:
+    sh: echo "{{.TASKFILE_DIR}}/helm/infrastructure.values.yaml"
+  
+
+tasks:
+  setup-kube-context:
+    desc: Update the kubectl context to use target an existing k3d cluster if it exists.
+    preconditions:
+      - sh: k3d cluster list $K3D_CLUSTER_NAME
+        msg: No matching k3d cluster to target
+    cmds:
+      - k3d kubeconfig write $K3D_CLUSTER_NAME --kubeconfig-merge-default
+
+  helm-release:
+    desc: Create a helm release
+    deps:
+      - setup-kube-context
+    preconditions:
+      - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
+      - test -f $HELM_VALUES_FILE
+    dir: '{{.TASKFILE_DIR}}/helm'
+    cmds:
+      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s
+
+  helm-uninstall:
+    desc: Create a helm release
+    deps:
+      - setup-kube-context
+    dir: '{{.TASKFILE_DIR}}/helm'
+    cmds:
+      - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait
+
+  terraform-apply:
+    desc: Initialise terraform
+    dir: '{{.TASKFILE_DIR}}/infrastructure'
+    preconditions:
+      - sh: k3d cluster list home-media-server
+        msg: The home-media-server K3d cluster does not exist
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+      - test -f variables.tfvars
+    cmds:
+      - terraform apply -var-file=variables.tfvars
+
+  terraform-init:
+    desc: Initialise terraform
+    dir: '{{.TASKFILE_DIR}}/infrastructure'
+    preconditions:
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+    cmds:
+      - terraform init -upgrade
+
+  build-k3d-image:
+    desc: Build the K3d image which includes NVIDIA CUDA
+    dir: '{{.TASKFILE_DIR}}/.k3d'
+    cmds:
+      - docker build -t $K3D_CLUSTER_IMAGE .
+
+  create-k3d-cluster:
+    preconditions:
+      - test -f {{.TASKFILE_DIR}}/.k3d/config.yml
+    cmds:
+      - k3d cluster create --config "$K3D_CLUSTER_CONFIG"
+
+  delete-k3d-cluster:
+    cmds:
+      - k3d cluster delete "$K3D_CLUSTER_NAME"
+
+  full-run:
+    cmds:
+      - task: terraform-init
+      - task: build-k3d-image
+      - task: create-k3d-cluster
+      - task: terraform-apply
+      - task: helm-release
+
+
