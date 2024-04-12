@@ -80,7 +80,10 @@ tasks:
     cmds:
       - k3d cluster delete "$K3D_CLUSTER_NAME"
 
-  full-run:
+  full-recreate:
+    deps:
+      - task: delete-k3d-cluster
+        silent: true
     cmds:
       - task: terraform-init
       - task: build-k3d-image
