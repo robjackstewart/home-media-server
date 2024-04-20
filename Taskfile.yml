@@ -44,7 +44,7 @@ tasks:
       - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait
 
   terraform-apply:
-    desc: Initialise terraform
+    desc: Apply infrastructure
     dir: '{{.TASKFILE_DIR}}/infrastructure'
     preconditions:
       - sh: k3d cluster list home-media-server
@@ -81,6 +81,7 @@ tasks:
       - k3d cluster delete "$K3D_CLUSTER_NAME"
 
   full-recreate:
+    desc: Recreate server
     deps:
       - task: delete-k3d-cluster
         silent: true
