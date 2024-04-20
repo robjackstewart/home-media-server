@@ -3,11 +3,15 @@ kind: Service
 metadata:
   name: readarr-service
 spec:
+  clusterIP: 10.43.253.24
   ports:
-  - port: 8787
+  - name: http
+    port: 8787
+    targetPort: 8787
     protocol: TCP
   selector:
     app: readarr
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

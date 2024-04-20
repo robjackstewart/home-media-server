@@ -3,12 +3,14 @@ kind: Service
 metadata:
   name: calibre-service
 spec:
+  clusterIP: 10.43.35.158
   ports:
   - port: 80
     protocol: TCP
     name: nginx
   selector:
     app: calibre
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: ConfigMap
