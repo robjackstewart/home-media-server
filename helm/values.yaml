@@ -75,6 +75,13 @@ calibreweb:
     registry: lscr.io
     pullPolicy: Always
 
+homeassistant:
+  image:
+    repository: home-assistant/home-assistant
+    tag: '2023.12'
+    registry: ghcr.io
+    pullPolicy: Always
+
 readarr:
   image:
     repository: linuxserver/readarr

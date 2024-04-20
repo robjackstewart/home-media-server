@@ -121,3 +121,7 @@ variable "puid" {
 variable "guid" {
   type = string
 }
+
+variable "home_assistant_subdomain" {
+  type = string
+}

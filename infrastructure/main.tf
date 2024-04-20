@@ -30,7 +30,7 @@ resource "random_id" "argo_secret" {
   byte_length = 35
 }
 
-resource "cloudflare_tunnel" "example" {
+resource "cloudflare_tunnel" "tunnel" {
   account_id = var.cloudflare_account_id
   name       = var.cloudflare_tunnel_name
   secret     = random_id.argo_secret.b64_std
@@ -118,10 +118,18 @@ resource "azurerm_key_vault_secret" "openvpn_password" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "cloudflare_record" "tunnel_cname" {
+resource "cloudflare_record" "home_media_server_cname" {
   zone_id = var.cloudflare_zone_id
   name    = var.cloudflare_application_name
-  value   = cloudflare_tunnel.example.cname
+  value   = cloudflare_tunnel.tunnel.cname
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "home_assistant_cname" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.home_assistant_subdomain
+  value   = cloudflare_tunnel.tunnel.cname
   type    = "CNAME"
   proxied = true
 }
@@ -129,7 +137,7 @@ resource "cloudflare_record" "tunnel_cname" {
 
 resource "azurerm_key_vault_secret" "tunnel_credentials" {
   name         = "tunnel-credentials"
-  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.example.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
@@ -158,7 +166,7 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 
   data = {
-    "credentials.json" = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.example.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+    "credentials.json" = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   }
 }
 
@@ -193,6 +201,8 @@ transmissionopenvpn:
         keys:
           username: username
           password: password
+homeassistant:
+  domain: ${format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)}
 storage:
   host:
     config:
@@ -204,7 +214,7 @@ storage:
 domain: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
 argoTunnel:
   name: ${var.cloudflare_tunnel_name}
-  id: ${cloudflare_tunnel.example.id}
+  id: ${cloudflare_tunnel.tunnel.id}
   credentials:
     secretName: ${var.cloudflare_tunnel_credential_secret_name}
 EOT
