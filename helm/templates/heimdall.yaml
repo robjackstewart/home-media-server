@@ -50,3 +50,19 @@ spec:
             subPath: heimdall
         ports:
         - containerPort: {{ .Values.heimdall.ports.http }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.heimdall.ports.http }}"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.heimdall.ports.http }}"
+          initialDelaySeconds: 30
+          periodSeconds: 10

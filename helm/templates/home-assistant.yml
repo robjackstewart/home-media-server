@@ -54,3 +54,19 @@ spec:
             - name: config
               mountPath: /config
               subPath: homeassistant
+          livenessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.homeassistant.ports.http }}"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.homeassistant.ports.http }}"
+            initialDelaySeconds: 30
+            periodSeconds: 10

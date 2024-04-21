@@ -106,3 +106,19 @@ spec:
           - name: media
             mountPath: /tv
             subPath: tv
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.jellyfin.ports.http.cluster }}/jellyfin/health"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - curl --silent --output /dev/null --show-error --fail "http://localhost:{{ .Values.jellyfin.ports.http.cluster }}/jellyfin/health"
+          initialDelaySeconds: 30
+          periodSeconds: 10
