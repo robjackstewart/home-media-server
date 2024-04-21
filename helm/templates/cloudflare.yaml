@@ -123,7 +123,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: jellyfin-tcp-service
+            name: jellyfin-service
             port:
               number: {{ .Values.jellyfin.ports.http.cluster }}
       - path: /readarr
