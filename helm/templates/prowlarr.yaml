@@ -3,11 +3,15 @@ kind: Service
 metadata:
   name: prowlarr-service
 spec:
+  clusterIP: {{ .Values.prowlarr.clusterIP }}
   ports:
-  - port: 9696
+  - name: http
+    port: 9696
+    targetPort: 9696
     protocol: TCP
   selector:
     app: prowlarr
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

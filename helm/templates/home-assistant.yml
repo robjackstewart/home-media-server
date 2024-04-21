@@ -1,31 +1,31 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: readarr-service
+  name: homeassistant-service
 spec:
-  clusterIP: {{ .Values.readarr.clusterIP }}
+  clusterIP: {{ .Values.homeassistant.clusterIP }}
   ports:
   - name: http
-    port: 8787
-    targetPort: 8787
+    port: 8123
+    targetPort: 8123
     protocol: TCP
   selector:
-    app: readarr
+    app: homeassistant
   type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: readarr
+  name: homeassistant
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: readarr
+      app: homeassistant
   template:
     metadata:
       labels:
-        app: readarr
+        app: homeassistant
     spec:
       volumes:
         - name: media
@@ -45,18 +45,12 @@ spec:
           resources:
             limits:
               memory: 1Gi
-          image: {{ include "image" .Values.readarr.image }}
-          imagePullPolicy: {{ .Values.readarr.image.pullPolicy }}
-          name: readarr
+          image: {{ include "image" .Values.homeassistant.image }}
+          imagePullPolicy: {{ .Values.homeassistant.image.pullPolicy }}
+          name: homeassistant
           ports:
-            - containerPort: 8787
+            - containerPort: 8123
           volumeMounts:
-            - name: media
-              mountPath: /downloads
-              subPath: downloads
-            - name: media
-              mountPath: /books
-              subPath: books
             - name: config
               mountPath: /config
-              subPath: readarr
+              subPath: homeassistant

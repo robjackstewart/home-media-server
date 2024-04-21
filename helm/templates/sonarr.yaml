@@ -3,26 +3,15 @@ kind: Service
 metadata:
   name: sonarr-service
 spec:
+  clusterIP: {{ .Values.sonarr.clusterIP }}
   ports:
-  - port: 8989
+  - name: http
+    port: 8989
+    targetPort: 8989
     protocol: TCP
   selector:
     app: sonarr
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: sonarr-node-port
-spec:
-  selector:
-    app: sonarr
-  ports:
-    - protocol: TCP
-      name: http
-      port: 8989
-      targetPort: 8989
-      nodePort: 30101
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

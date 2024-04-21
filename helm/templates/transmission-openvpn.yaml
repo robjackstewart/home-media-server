@@ -3,26 +3,15 @@ kind: Service
 metadata:
   name: transmission-openvpn-service
 spec:
+  clusterIP: {{ .Values.transmissionopenvpn.clusterIP }}
   ports:
-  - port: 9091
+  - name: http
+    port: 9091
+    targetPort: 9091
     protocol: TCP
   selector:
     app: transmission-openvpn
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: transmission-openvpn-node-port
-spec:
-  selector:
-    app: transmission-openvpn
-  ports:
-    - protocol: TCP
-      name: http
-      port: 9091
-      targetPort: 9091
-      nodePort: 30102
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

@@ -3,26 +3,15 @@ kind: Service
 metadata:
   name: radarr-service
 spec:
+  clusterIP: {{ .Values.radarr.clusterIP }}
   ports:
-  - port: 7878
+  - name: http
+    port: 7878
+    targetPort: 7878
     protocol: TCP
   selector:
     app: radarr
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: radarr-node-port
-spec:
-  selector:
-    app: radarr
-  ports:
-    - protocol: TCP
-      name: http
-      port: 7878
-      targetPort: 7878
-      nodePort: 30100
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

@@ -70,7 +70,7 @@ data:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: cloudflare-ingress
+  name: media-server-cloudflare-ingress
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
@@ -81,7 +81,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: {{ .Values.domain }}
+  - host: {{ .Values.domain.main }}
     http:
       paths:
       - path: /radarr
@@ -154,3 +154,28 @@ spec:
             name: heimdall-service
             port:
               number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homeassistant-cloudflare-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 32k
+    nginx.ingress.kubernetes.io/proxy-body-size: 2000m
+    nginx.ingress.kubernetes.io/server-snippet: |
+      client_header_buffer_size 1000k;
+      large_client_header_buffers 4 1000k;
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ .Values.domain.homeassistant }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: homeassistant-service
+            port:
+              number: 8123

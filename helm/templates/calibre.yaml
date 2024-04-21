@@ -3,17 +3,19 @@ kind: Service
 metadata:
   name: calibre-service
 spec:
+  clusterIP: {{ .Values.calibre.clusterIP }}
   ports:
   - port: 80
     protocol: TCP
     name: nginx
   selector:
     app: calibre
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nginx-config
+  name: calibre-nginx-config
 data:
   nginx.conf: |
     events{
@@ -63,7 +65,7 @@ spec:
             claimName: config
         - name: nginx-config-volume
           configMap:
-            name: nginx-config
+            name: calibre-nginx-config
       containers:
         - name: nginx
           image: {{ include "image" .Values.nginx.image }}

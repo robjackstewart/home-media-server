@@ -3,11 +3,13 @@ kind: Service
 metadata:
   name: heimdall-service
 spec:
+  clusterIP: {{ .Values.heimdall.clusterIP }}
   ports:
   - port: 80
     protocol: TCP
   selector:
     app: heimdall
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: StatefulSet

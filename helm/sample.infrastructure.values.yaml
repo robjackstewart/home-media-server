@@ -12,6 +12,9 @@ transmissionopenvpn:
         keys:
           username: username
           password: password
+domain:
+  main: example.domain.com
+  homeassistant: homeassistant.example.domain.com
 storage:
   host:
     config:
@@ -20,7 +23,6 @@ storage:
     media:
       dir: /example-media-dir-path
       capacity: 1Gi
-domain: example.domain.com
 argoTunnel:
   name: example-argo-tunnel
   id: example-argo-tunnel-id
