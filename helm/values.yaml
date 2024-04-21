@@ -31,6 +31,12 @@ jellyfin:
 
 prowlarr:
   clusterIP: 10.43.22.107
+  flaresolverr:
+    image:
+      repository: flaresolverr/flaresolverr
+      tag: latest
+      registry: ghcr.io
+      pullPolicy: Always
   image:
     repository: linuxserver/prowlarr
     tag: '1.9.4'
@@ -61,27 +67,20 @@ transmissionopenvpn:
     registry: docker.io
     pullPolicy: Always
 
-flaresolverr:
-  image:
-    repository: flaresolverr/flaresolverr
-    tag: latest
-    registry: ghcr.io
-    pullPolicy: Always
-
 calibre:
   clusterIP: 10.43.35.158
-  image:
-    repository: linuxserver/calibre
-    tag: v4
-    registry: lscr.io
-    pullPolicy: Always
-
-calibreweb:
-  image:
-    repository: linuxserver/calibre-web
-    tag: latest
-    registry: lscr.io
-    pullPolicy: Always
+  nginx:
+    image:
+      repository: nginx
+      tag: latest
+      registry: docker.io
+      pullPolicy: Always
+  web:
+    image:
+      repository: linuxserver/calibre-web
+      tag: latest
+      registry: lscr.io
+      pullPolicy: Always
 
 homeassistant:
   clusterIP: 10.43.178.128
@@ -97,13 +96,6 @@ readarr:
     repository: linuxserver/readarr
     tag: nightly
     registry: lscr.io
-    pullPolicy: Always
-
-nginx:
-  image:
-    repository: nginx
-    tag: latest
-    registry: docker.io
     pullPolicy: Always
 
 nvidia-device-plugin:

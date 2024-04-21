@@ -68,8 +68,8 @@ spec:
             name: calibre-nginx-config
       containers:
         - name: nginx
-          image: {{ include "image" .Values.nginx.image }}
-          imagePullPolicy: {{ .Values.nginx.image.pullPolicy }}
+          image: {{ include "image" .Values.calibre.nginx.image }}
+          imagePullPolicy: {{ .Values.calibre.nginx.image.pullPolicy }}
           env:
             - name: TZ
               value: {{ .Values.Timezone }}
@@ -93,8 +93,8 @@ spec:
           resources:
             limits:
               memory: 1Gi
-          image: {{ include "image" .Values.calibreweb.image }}
-          imagePullPolicy: {{ .Values.calibreweb.image.pullPolicy }}
+          image: {{ include "image" .Values.calibre.web.image }}
+          imagePullPolicy: {{ .Values.calibre.web.image.pullPolicy }}
           name: calibre-web
           ports:
             - containerPort: 8083

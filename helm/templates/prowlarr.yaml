@@ -40,8 +40,8 @@ spec:
             value: {{ .Values.Timezone }}
           - name: LOG_LEVEL
             value: debug
-        image: {{ include "image" .Values.flaresolverr.image }}
-        imagePullPolicy: {{ .Values.flaresolverr.image.pullPolicy }}
+        image: {{ include "image" .Values.prowlarr.flaresolverr.image }}
+        imagePullPolicy: {{ .Values.prowlarr.flaresolverr.image.pullPolicy }}
         name: transmissionopenvpn
         ports:
           - containerPort: 8191
