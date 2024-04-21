@@ -178,4 +178,4 @@ spec:
           service:
             name: homeassistant-service
             port:
-              number: 80
+              number: 8123
