@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.bazarr.clusterIP }}
   ports:
   - name: http
-    port: 6767
-    targetPort: 6767
+    port: {{ .Values.bazarr.ports.http }}
+    targetPort: {{ .Values.bazarr.ports.http }}
     protocol: TCP
   selector:
     app: bazarr
@@ -60,4 +60,4 @@ spec:
             mountPath: tv
             subPath: tv
         ports:
-        - containerPort: 6767
+        - containerPort: {{ .Values.bazarr.ports.http }}

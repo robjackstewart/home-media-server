@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.readarr.clusterIP }}
   ports:
   - name: http
-    port: 8787
-    targetPort: 8787
+    port: {{ .Values.readarr.ports.http }}
+    targetPort: {{ .Values.readarr.ports.http }}
     protocol: TCP
   selector:
     app: readarr
@@ -49,7 +49,7 @@ spec:
           imagePullPolicy: {{ .Values.readarr.image.pullPolicy }}
           name: readarr
           ports:
-            - containerPort: 8787
+            - containerPort: {{ .Values.readarr.ports.http }}
           volumeMounts:
             - name: media
               mountPath: /downloads

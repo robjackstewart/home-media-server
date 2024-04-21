@@ -6,21 +6,21 @@ spec:
   clusterIP: {{ .Values.jellyfin.clusterIP }}
   ports:
     - name: http
-      port: 8096
+      port: {{ .Values.jellyfin.ports.http.cluster }}
       protocol: TCP
-      targetPort: 8096
+      targetPort: {{ .Values.jellyfin.ports.http.cluster }}
     - name: https
-      port: 8920
+      port: {{ .Values.jellyfin.ports.https.cluster }}
       protocol: TCP
-      targetPort: 8920
-    - name: auto-discovery-1
-      port: 7359
+      targetPort: {{ .Values.jellyfin.ports.https.cluster }}
+    - name: standard-auto-discovery
+      port: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
       protocol: UDP
-      targetPort: 7359
-    - name: auto-discovery-2
-      port: 1900
+      targetPort: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
+    - name: service-auto-discovery
+      port: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
       protocol: UDP
-      targetPort: 1900
+      targetPort: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
   selector:
     app: jellyfin
   type: ClusterIP
@@ -34,25 +34,25 @@ spec:
     app: jellyfin
   ports:
     - protocol: TCP
-      name: '8096'
-      port: 8096
-      targetPort: 8096
-      nodePort: 30096
+      name: http
+      port: {{ .Values.jellyfin.ports.http.cluster }}
+      targetPort: {{ .Values.jellyfin.ports.http.cluster }}
+      nodePort: {{ .Values.jellyfin.ports.http.node }}
     - protocol: TCP
-      name: '8920'
-      port: 8920
-      targetPort: 8920
-      nodePort: 30097
+      name: https
+      port: {{ .Values.jellyfin.ports.https.cluster }}
+      targetPort: {{ .Values.jellyfin.ports.https.cluster }}
+      nodePort: {{ .Values.jellyfin.ports.https.node }}
     - protocol: UDP
-      name: '7359'
-      port: 7359
-      targetPort: 7359
-      nodePort: 30098
-    - protocol: UDP
-      name: '1900'
-      port: 1900
-      targetPort: 1900
-      nodePort: 30099
+      name: standard-auto-discovery
+      port: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
+      targetPort: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
+      nodePort: {{ .Values.jellyfin.ports.autoDiscovery.standard.node }}
+    - name: service-auto-discovery
+      protocol: UDP
+      port: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
+      targetPort: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
+      nodePort: {{ .Values.jellyfin.ports.autoDiscovery.service.node }}
   type: NodePort
 ---
 apiVersion: apps/v1
@@ -95,7 +95,7 @@ spec:
             nvidia.com/gpu: 1
         name: jellyfin
         ports:
-          - containerPort: 8096
+          - containerPort: {{ .Values.jellyfin.ports.http.cluster }}
         volumeMounts:
           - name: config
             mountPath: /config

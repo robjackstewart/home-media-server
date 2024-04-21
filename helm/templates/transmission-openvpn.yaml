@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.transmissionopenvpn.clusterIP }}
   ports:
   - name: http
-    port: 9091
-    targetPort: 9091
+    port: {{ .Values.transmissionopenvpn.ports.http }}
+    targetPort: {{ .Values.transmissionopenvpn.ports.http }}
     protocol: TCP
   selector:
     app: transmission-openvpn
@@ -87,7 +87,7 @@ spec:
             add:
               - NET_ADMIN
         ports:
-          - containerPort: 9091
+          - containerPort: {{ .Values.transmissionopenvpn.ports.http }}
         volumeMounts:
           - name: media
             mountPath: /downloads

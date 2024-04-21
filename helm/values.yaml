@@ -5,6 +5,8 @@ bazarr:
     tag: '1.4.2'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http: 6767
 
 cloudflared:
   image:
@@ -20,6 +22,8 @@ heimdall:
     tag: '2.6.1'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http: 80
 
 jellyfin:
   clusterIP: 10.43.18.241
@@ -28,14 +32,38 @@ jellyfin:
     tag: '10.8.11'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http:
+      cluster: 8096
+      node: 30096
+    https:
+      cluster: 8920
+      node: 30097
+    autoDiscovery:
+      standard:
+        cluster: 7359
+        node: 30098
+      service:
+        cluster: 1900
+        node: 30099
 
 prowlarr:
   clusterIP: 10.43.22.107
+  flaresolverr:
+    image:
+      repository: flaresolverr/flaresolverr
+      tag: latest
+      registry: ghcr.io
+      pullPolicy: Always
+    ports:
+      http: 8191
   image:
     repository: linuxserver/prowlarr
     tag: '1.9.4'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http: 9696
 
 radarr:
   clusterIP: 10.43.231.196
@@ -44,6 +72,8 @@ radarr:
     tag: '5.0.3'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http: 7878
 
 sonarr:
   clusterIP: 10.43.26.211
@@ -52,6 +82,8 @@ sonarr:
     tag: '4.0.4'
     registry: lscr.io
     pullPolicy: Always
+  ports:
+    http: 8989
 
 transmissionopenvpn:
   clusterIP: 10.43.26.112
@@ -60,28 +92,27 @@ transmissionopenvpn:
     tag: '5.3'
     registry: docker.io
     pullPolicy: Always
-
-flaresolverr:
-  image:
-    repository: flaresolverr/flaresolverr
-    tag: latest
-    registry: ghcr.io
-    pullPolicy: Always
+  ports:
+    http: 9091
 
 calibre:
   clusterIP: 10.43.35.158
-  image:
-    repository: linuxserver/calibre
-    tag: v4
-    registry: lscr.io
-    pullPolicy: Always
-
-calibreweb:
-  image:
-    repository: linuxserver/calibre-web
-    tag: latest
-    registry: lscr.io
-    pullPolicy: Always
+  nginx:
+    image:
+      repository: nginx
+      tag: latest
+      registry: docker.io
+      pullPolicy: Always
+    ports:
+      http: 80
+  web:
+    image:
+      repository: linuxserver/calibre-web
+      tag: latest
+      registry: lscr.io
+      pullPolicy: Always
+    ports:
+      http: 8083
 
 homeassistant:
   clusterIP: 10.43.178.128
@@ -90,6 +121,8 @@ homeassistant:
     tag: '2023.12'
     registry: ghcr.io
     pullPolicy: Always
+  ports:
+    http: 8123
 
 readarr:
   clusterIP: 10.43.253.24
@@ -98,13 +131,8 @@ readarr:
     tag: nightly
     registry: lscr.io
     pullPolicy: Always
-
-nginx:
-  image:
-    repository: nginx
-    tag: latest
-    registry: docker.io
-    pullPolicy: Always
+  ports:
+    http: 8787
 
 nvidia-device-plugin:
   gfd:

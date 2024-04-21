@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.prowlarr.clusterIP }}
   ports:
   - name: http
-    port: 9696
-    targetPort: 9696
+    port: {{ .Values.prowlarr.ports.http }}
+    targetPort: {{ .Values.prowlarr.ports.http }}
     protocol: TCP
   selector:
     app: prowlarr
@@ -40,11 +40,11 @@ spec:
             value: {{ .Values.Timezone }}
           - name: LOG_LEVEL
             value: debug
-        image: {{ include "image" .Values.flaresolverr.image }}
-        imagePullPolicy: {{ .Values.flaresolverr.image.pullPolicy }}
+        image: {{ include "image" .Values.prowlarr.flaresolverr.image }}
+        imagePullPolicy: {{ .Values.prowlarr.flaresolverr.image.pullPolicy }}
         name: transmissionopenvpn
         ports:
-          - containerPort: 8191
+          - containerPort: {{ .Values.prowlarr.flaresolverr.ports.http }}
       - env:
         - name: TZ
           value: {{ .Values.Timezone }}
@@ -64,4 +64,4 @@ spec:
             mountPath: /config
             subPath: prowlarr
         ports:
-        - containerPort: 9696
+        - containerPort: {{ .Values.prowlarr.ports.http }}

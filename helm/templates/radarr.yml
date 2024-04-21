@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.radarr.clusterIP }}
   ports:
   - name: http
-    port: 7878
-    targetPort: 7878
+    port: {{ .Values.radarr.ports.http }}
+    targetPort: {{ .Values.radarr.ports.http }}
     protocol: TCP
   selector:
     app: radarr
@@ -49,7 +49,7 @@ spec:
           imagePullPolicy: {{ .Values.radarr.image.pullPolicy }}
           name: radarr
           ports:
-            - containerPort: 7878
+            - containerPort: {{ .Values.radarr.ports.http }}
           volumeMounts:
             - name: media
               mountPath: /downloads
@@ -65,7 +65,7 @@ spec:
               command:
               - /bin/sh
               - -c
-              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+              - curl "http://localhost:{{ .Values.radarr.ports.http }}/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
@@ -73,6 +73,6 @@ spec:
               command:
               - /bin/sh
               - -c
-              - curl "http://localhost:7878/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+              - curl "http://localhost:{{ .Values.radarr.ports.http }}/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
             initialDelaySeconds: 30
             periodSeconds: 10

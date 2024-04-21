@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.homeassistant.clusterIP }}
   ports:
   - name: http
-    port: 8123
-    targetPort: 8123
+    port: {{ .Values.homeassistant.ports.http }}
+    targetPort: {{ .Values.homeassistant.ports.http }}
     protocol: TCP
   selector:
     app: homeassistant
@@ -49,7 +49,7 @@ spec:
           imagePullPolicy: {{ .Values.homeassistant.image.pullPolicy }}
           name: homeassistant
           ports:
-            - containerPort: 8123
+            - containerPort: {{ .Values.homeassistant.ports.http }}
           volumeMounts:
             - name: config
               mountPath: /config
