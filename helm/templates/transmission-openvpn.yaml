@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: transmission-openvpn-service
 spec:
-  clusterIP: 10.43.26.112
+  clusterIP: {{ .Values.transmissionopenvpn.clusterIP }}
   ports:
   - name: http
     port: 9091

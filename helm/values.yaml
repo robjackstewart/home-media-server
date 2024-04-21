@@ -1,4 +1,5 @@
 bazarr:
+  clusterIP: 10.43.163.13
   image:
     repository: linuxserver/bazarr
     tag: '1.4.2'
@@ -13,6 +14,7 @@ cloudflared:
     pullPolicy: Always
 
 heimdall:
+  clusterIP: 10.43.181.121
   image:
     repository: linuxserver/heimdall
     tag: '2.6.1'
@@ -20,6 +22,7 @@ heimdall:
     pullPolicy: Always
 
 jellyfin:
+  clusterIP: 10.43.18.241
   image:
     repository: linuxserver/jellyfin
     tag: '10.8.11'
@@ -27,6 +30,7 @@ jellyfin:
     pullPolicy: Always
 
 prowlarr:
+  clusterIP: 10.43.22.107
   image:
     repository: linuxserver/prowlarr
     tag: '1.9.4'
@@ -34,6 +38,7 @@ prowlarr:
     pullPolicy: Always
 
 radarr:
+  clusterIP: 10.43.231.196
   image:
     repository: linuxserver/radarr
     tag: '5.0.3'
@@ -41,6 +46,7 @@ radarr:
     pullPolicy: Always
 
 sonarr:
+  clusterIP: 10.43.26.211
   image:
     repository: linuxserver/sonarr
     tag: '4.0.4'
@@ -48,6 +54,7 @@ sonarr:
     pullPolicy: Always
 
 transmissionopenvpn:
+  clusterIP: 10.43.26.112
   image:
     repository: haugene/transmission-openvpn
     tag: '5.3'
@@ -62,6 +69,7 @@ flaresolverr:
     pullPolicy: Always
 
 calibre:
+  clusterIP: 10.43.35.158
   image:
     repository: linuxserver/calibre
     tag: v4
@@ -76,6 +84,7 @@ calibreweb:
     pullPolicy: Always
 
 homeassistant:
+  clusterIP: 10.43.178.128
   image:
     repository: home-assistant/home-assistant
     tag: '2023.12'
@@ -83,6 +92,7 @@ homeassistant:
     pullPolicy: Always
 
 readarr:
+  clusterIP: 10.43.253.24
   image:
     repository: linuxserver/readarr
     tag: nightly

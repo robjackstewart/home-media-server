@@ -81,7 +81,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: {{ .Values.domain }}
+  - host: {{ .Values.domain.main }}
     http:
       paths:
       - path: /radarr
@@ -169,7 +169,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: {{ .Values.homeassistant.domain }}
+  - host: {{ .Values.domain.homeassistant }}
     http:
       paths:
       - path: /

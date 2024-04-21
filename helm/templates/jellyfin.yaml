@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: jellyfin-tcp-service
+  name: jellyfin-service
 spec:
-  clusterIP: 10.43.18.241
+  clusterIP: {{ .Values.jellyfin.clusterIP }}
   ports:
     - name: http
       port: 8096
@@ -13,17 +13,6 @@ spec:
       port: 8920
       protocol: TCP
       targetPort: 8920
-  selector:
-    app: jellyfin
-  type: ClusterIP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: jellyfin-udp-service
-spec:
-  clusterIP: 10.43.98.59
-  ports:
     - name: auto-discovery-1
       port: 7359
       protocol: UDP

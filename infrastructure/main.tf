@@ -201,8 +201,9 @@ transmissionopenvpn:
         keys:
           username: username
           password: password
-homeassistant:
-  domain: ${format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)}
+domain:
+  main: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
+  homeassistant: ${format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)} 
 storage:
   host:
     config:
@@ -211,7 +212,6 @@ storage:
     media:
       dir: ${var.host_storage_media_dir}
       capacity: ${var.host_storage_media_capacity}
-domain: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
 argoTunnel:
   name: ${var.cloudflare_tunnel_name}
   id: ${cloudflare_tunnel.tunnel.id}

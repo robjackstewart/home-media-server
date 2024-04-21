@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: radarr-service
 spec:
-  clusterIP: 10.43.231.196
+  clusterIP: {{ .Values.radarr.clusterIP }}
   ports:
   - name: http
     port: 7878

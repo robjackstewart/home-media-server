@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: readarr-service
 spec:
-  clusterIP: 10.43.253.24
+  clusterIP: {{ .Values.readarr.clusterIP }}
   ports:
   - name: http
     port: 8787

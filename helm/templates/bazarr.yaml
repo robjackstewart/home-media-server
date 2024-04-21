@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: bazarr-service
 spec:
-  clusterIP: 10.43.163.13
+  clusterIP: {{ .Values.bazarr.clusterIP }}
   ports:
   - name: http
     port: 6767

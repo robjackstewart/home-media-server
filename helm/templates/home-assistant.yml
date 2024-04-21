@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: homeassistant-service
 spec:
-  clusterIP: 10.43.178.128
+  clusterIP: {{ .Values.homeassistant.clusterIP }}
   ports:
   - name: http
     port: 8123

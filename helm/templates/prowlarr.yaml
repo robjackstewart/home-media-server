@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: prowlarr-service
 spec:
-  clusterIP: 10.43.22.107
+  clusterIP: {{ .Values.prowlarr.clusterIP }}
   ports:
   - name: http
     port: 9696

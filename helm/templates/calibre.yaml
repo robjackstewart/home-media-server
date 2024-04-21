@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: calibre-service
 spec:
-  clusterIP: 10.43.35.158
+  clusterIP: {{ .Values.calibre.clusterIP }}
   ports:
   - port: 80
     protocol: TCP

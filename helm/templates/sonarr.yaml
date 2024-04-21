@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: sonarr-service
 spec:
-  clusterIP: 10.43.26.211
+  clusterIP: {{ .Values.sonarr.clusterIP }}
   ports:
   - name: http
     port: 8989
