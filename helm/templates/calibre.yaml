@@ -5,7 +5,7 @@ metadata:
 spec:
   clusterIP: {{ .Values.calibre.clusterIP }}
   ports:
-  - port: 80
+  - port: {{ .Values.calibre.nginx.ports.http }}
     protocol: TCP
     name: nginx
   selector:
@@ -25,7 +25,7 @@ data:
         client_max_body_size 20M;
         location /calibre {
           add_header  X-Robots-Tag "noindex, nofollow, nosnippet, noarchive";
-          proxy_pass              http://localhost:8083;
+          proxy_pass              http://localhost:{{ .Values.calibre.web.ports.http }};
           proxy_set_header        Host                    $http_host;
           proxy_set_header        X-Forwarded-For         $proxy_add_x_forwarded_for;
           proxy_set_header        X-Scheme                https;
@@ -82,7 +82,7 @@ spec:
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
           ports:
-            - containerPort: 80
+            - containerPort: {{ .Values.calibre.nginx.ports.http }}
         - env:
           - name: TZ
             value: {{ .Values.Timezone }}
@@ -97,7 +97,7 @@ spec:
           imagePullPolicy: {{ .Values.calibre.web.image.pullPolicy }}
           name: calibre-web
           ports:
-            - containerPort: 8083
+            - containerPort: {{ .Values.calibre.web.ports.http }}
           volumeMounts:
             - name: media
               mountPath: /downloads

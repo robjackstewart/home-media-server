@@ -5,7 +5,7 @@ metadata:
 spec:
   clusterIP: {{ .Values.heimdall.clusterIP }}
   ports:
-  - port: 80
+  - port: {{ .Values.heimdall.ports.http }}
     protocol: TCP
   selector:
     app: heimdall
@@ -49,4 +49,4 @@ spec:
             mountPath: /config
             subPath: heimdall
         ports:
-        - containerPort: 80
+        - containerPort: {{ .Values.heimdall.ports.http }}

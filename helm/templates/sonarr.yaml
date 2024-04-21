@@ -6,8 +6,8 @@ spec:
   clusterIP: {{ .Values.sonarr.clusterIP }}
   ports:
   - name: http
-    port: 8989
-    targetPort: 8989
+    port: {{ .Values.sonarr.ports.http }}
+    targetPort: {{ .Values.sonarr.ports.http }}
     protocol: TCP
   selector:
     app: sonarr
@@ -49,7 +49,7 @@ spec:
         imagePullPolicy: {{ .Values.sonarr.image.pullPolicy }}
         name: sonarr
         ports:
-          - containerPort: 8989
+          - containerPort: {{ .Values.sonarr.ports.http }}
         volumeMounts:
           - name: media
             mountPath: /downloads
@@ -65,7 +65,7 @@ spec:
             command:
             - /bin/sh
             - -c
-            - curl "http://localhost:8989/sonarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            - curl "http://localhost:{{ .Values.sonarr.ports.http }}/sonarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
@@ -73,6 +73,6 @@ spec:
             command:
             - /bin/sh
             - -c
-            - curl "http://localhost:8989/sonarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            - curl "http://localhost:{{ .Values.sonarr.ports.http }}/sonarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
           initialDelaySeconds: 30
           periodSeconds: 10
