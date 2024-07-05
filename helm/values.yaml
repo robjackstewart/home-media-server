@@ -79,7 +79,7 @@ sonarr:
   clusterIP: 10.43.26.211
   image:
     repository: linuxserver/sonarr
-    tag: '4.0.5'
+    tag: '4.0.6'
     registry: lscr.io
     pullPolicy: Always
   ports:
