@@ -1,0 +1,48 @@
+version: '3'
+
+env:
+  K3D_CLUSTER_CONFIG:
+    sh: echo config.yml
+  K3D_CLUSTER_NAME:
+    sh: yq '.metadata.name' config.yml
+  K3D_CLUSTER_IMAGE:
+    sh: yq '.image' config.yml
+
+tasks:
+  check-dependencies:
+    preconditions:
+      - sh: k3d version
+        msg: K3d must be installed
+      - sh: docker version
+        msg: Docker must be installed
+
+  build-image:
+    desc: Build the K3d image which includes NVIDIA CUDA
+    preconditions:
+      - sh: docker version
+        msg: You must have docker installed
+    cmds:
+      - docker build -t $K3D_CLUSTER_IMAGE .
+
+  create-cluster:
+    preconditions:
+      - test -f {{.TASKFILE_DIR}}/config.yml
+      - sh: k3d version
+        msg: You must have k3d installed
+    cmds:
+      - k3d cluster create --config "$K3D_CLUSTER_CONFIG"
+
+  delete-cluster:
+    preconditions:
+      - sh: k3d version
+        msg: You must have k3d installed
+    cmds:
+      - k3d cluster delete "$K3D_CLUSTER_NAME"
+
+  use-kube-context:
+    desc: Update the kubectl context to use target an existing k3d cluster if it exists.
+    preconditions:
+      - sh: k3d cluster list $K3D_CLUSTER_NAME
+        msg: No matching k3d cluster to target
+    cmds:
+      - k3d kubeconfig write $K3D_CLUSTER_NAME --kubeconfig-merge-default
