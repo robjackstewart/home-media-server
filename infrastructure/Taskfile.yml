@@ -1,6 +1,13 @@
 version: '3'
 
 tasks:
+  check-dependencies:
+    preconditions:
+      - sh: terraform version
+        msg: Terraform must be installed
+      - sh: az version
+        msg: Azure CLI must be installed
+
   init:
     desc: Initialise terraform
     preconditions:

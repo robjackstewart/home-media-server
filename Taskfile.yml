@@ -12,6 +12,12 @@ includes:
     dir: .k3d
 
 tasks:
+  check-dependencies:
+    deps:
+      - task: infrastructure:check-dependencies
+      - task: helm:check-dependencies
+      - task: k3d:check-dependencies
+
   full-recreate:
     desc: |
       Teardown an existing cluster if exists

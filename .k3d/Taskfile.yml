@@ -9,6 +9,13 @@ env:
     sh: yq '.image' config.yml
 
 tasks:
+  check-dependencies:
+    preconditions:
+      - sh: k3d version
+        msg: K3d must be installed
+      - sh: docker version
+        msg: Docker must be installed
+
   build-image:
     desc: Build the K3d image which includes NVIDIA CUDA
     preconditions:
