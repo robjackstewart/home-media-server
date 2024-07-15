@@ -1,40 +1,47 @@
 # Home Media Server
 
 ## Requirements
-1. Azure CLI
-1. Terraform
-1. Helm
-1. WSL2
-1. K3d
+1. A cloudflare account and domain
+1. An azure account and subscription
 
 ## Getting Started
-1. Build the cluster image
+1. Install the [Task CLI](https://taskfile.dev/installation/)
+1. Check that you have the necessary dependencies. This will error if you ar emissing any required tooling.
+    
+    ``` shell
+    task check-dependencies
     ```
-    cd .k3d
-    docker build --tag k3d-cuda:latest
+
+1. Create `helm/variables.tfvars` and populate it with appropriate values. Here is an example of its contents:
+
     ```
-1. Create the cluster
+    cloudflare_api_token="<your-cloudflare-api-token>"
+    cloudflare_zone_id="<your-cloudflare-domain-zone-id>"
+    cloudflare_account_id="<your-cloudflare-domain-account-id>"
+    cloudflare_domain="mydomain.com"
+    app_registration_client_id="<your-app-registration-client-id>"
+    azure_security_resource_group_name="home-media-server-rg"
+    azure_security_resource_group_location="uksouth"
+    azure_security_key_vault_name="home-media-server-kv"
+    azure_common_keyvault_name="terraform-kv"
+    azure_common_keyvault_resource_group="tfstate"
+    azure_common_keyvault_client_secret_secret_name="home-media-server-client-secret"
+    azure_common_keyvault_client_secret_openvpn_username_secret_name="home-media-server-vpn-username"
+    azure_common_keyvault_client_secret_openvpn_password_secret_name="home-media-server-vpn-password"
+    timezone="Europe/London"
+    transmission_vpn_provider="mullvad"
+    transmission_vpn_config="gb_all"
+    host_storage_config_dir="/home-media-server/config"
+    host_storage_config_capacity="5Gi"
+    host_storage_media_dir="/home-media-server/media"
+    host_storage_media_capacity="500Gi"
     ```
-    k3d cluster create --config .k3d/config.yml
-    ```
-1. Populate the `infrastructure/variables.tfvars` with the variables for terraform 
-1. Login with the Azure CLI
-    ```
-    az login
-    ```
-1. Set the Azure subscription into which you wish your infratsructure to be created
-    ```
-    az account set --subscription <subscription-id>
-    ```
-1. Deploy the infrastructure
-    ```
-    cd infrastructure
-    terraform apply -var-file=variables.tfvars
-    ```
-1. Create a helm release
-    ```
-    cd helm
-    helm upgrade --install home-media-server . --namespace home-media-server --values values.yaml --values infrastructure.values.yaml
+
+    See `infrastructure/variables.tf` for all variables and descriptions.
+1. Now run a full deployment
+
+    ``` shell
+    task recreate
     ```
 
 ## WSL2
