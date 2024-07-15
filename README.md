@@ -3,10 +3,12 @@
 ## Requirements
 1. A cloudflare account and domain
 1. An azure account and subscription
+1. A host with an NVIDIA GPU
 
 ## Getting Started
 1. Install the [Task CLI](https://taskfile.dev/installation/)
-1. Check that you have the necessary dependencies. This will error if you ar emissing any required tooling.
+1. Install the [NVIDIA Container Runtime](https://developer.nvidia.com/container-runtime) in the environment in which you will run the K3d cluster containers.
+1. Check that you have the necessary dependencies. This will error if you are missing any required tooling.
     
     ``` shell
     task check-dependencies
@@ -43,6 +45,7 @@
     ``` shell
     task recreate
     ```
+1. Configure the individual apps via their UI.
 
 ## WSL2
 If you are running the K3d cluster and docker in WSL2, then you will need to forward the ports on your windows host into the WSL2 ports.
