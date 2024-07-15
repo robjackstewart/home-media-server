@@ -1,0 +1,21 @@
+version: '3'
+
+env:
+  HELM_RELEASE_NAME: home-media-server
+  HELM_RELEASE_NAMESPACE: home-media-server
+  HELM_VALUES_FILE: values.yaml
+  HELM_INFRASTRUCTURE_VALUES_FILE: infrastructure.values.yaml
+
+tasks:
+  release:
+    desc: Create a helm release
+    preconditions:
+      - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
+      - test -f $HELM_VALUES_FILE
+    cmds:
+      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s {{.CLI_ARGS}}
+
+  uninstall:
+    desc: Create a helm release
+    cmds:
+      - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait {{.CLI_ARGS}}

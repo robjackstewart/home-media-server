@@ -1,0 +1,24 @@
+version: '3'
+
+tasks:
+  init:
+    desc: Initialise terraform
+    preconditions:
+      - sh: az version
+        msg: You must have the Azure CLI installed
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+    cmds:
+      - terraform init {{.CLI_ARGS}}
+
+  apply:
+    desc: Initialise terraform
+    preconditions:
+      - sh: k3d cluster list home-media-server
+        msg: The home-media-server K3d cluster does not exist
+      - sh: az account show
+        msg: You must be logged in with the Azure CLI
+      - test -f variables.tfvars
+      
+    cmds:
+      - terraform apply -var-file=variables.tfvars {{.CLI_ARGS}}
