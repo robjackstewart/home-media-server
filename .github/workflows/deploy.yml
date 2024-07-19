@@ -1,0 +1,17 @@
+name: Home Media Server Deployment
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: main-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Recreate cluster
+        run: task recreate
