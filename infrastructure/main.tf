@@ -1,5 +1,5 @@
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
 }
 
 provider "azurerm" {
@@ -17,7 +17,7 @@ provider "kubernetes" {
 }
 
 resource "cloudflare_access_application" "home_media_server" {
-  zone_id                   = var.cloudflare_zone_id
+  zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name                      = var.cloudflare_application_name
   domain                    = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
   type                      = "self_hosted"
@@ -31,7 +31,7 @@ resource "random_id" "argo_secret" {
 }
 
 resource "cloudflare_tunnel" "tunnel" {
-  account_id = var.cloudflare_account_id
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
   name       = var.cloudflare_tunnel_name
   secret     = random_id.argo_secret.b64_std
   config_src = "local"
@@ -44,12 +44,12 @@ resource "cloudflare_tunnel" "tunnel" {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_resource_group" "security" {
-  name     = var.azure_security_resource_group_name
-  location = var.azure_security_resource_group_location
+  name     = var.azure_resource_group_name
+  location = var.azure_resource_group_location
 }
 
 resource "azurerm_key_vault" "keyvault" {
-  name                        = var.azure_security_key_vault_name
+  name                        = var.azure_key_vault_name
   location                    = azurerm_resource_group.security.location
   resource_group_name         = azurerm_resource_group.security.name
   enabled_for_disk_encryption = true
@@ -91,12 +91,27 @@ data "azurerm_key_vault_secret" "common_kv_client_secret" {
 }
 
 data "azurerm_key_vault_secret" "common_kv_openvpn_username" {
-  name         = var.azure_common_keyvault_client_secret_openvpn_username_secret_name
+  name         = var.azure_common_keyvault_openvpn_username_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
 data "azurerm_key_vault_secret" "common_kv_openvpn_password" {
-  name         = var.azure_common_keyvault_client_secret_openvpn_password_secret_name
+  name         = var.azure_common_keyvault_openvpn_password_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "cloudflare_api_token" {
+  name         = var.azure_common_keyvault_cloudflare_api_token_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "cloudflare_zone_id" {
+  name         = var.azure_common_keyvault_cloudflare_zone_id_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "cloudflare_account_id" {
+  name         = var.azure_common_keyvault_cloudflare_account_id_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
@@ -119,7 +134,7 @@ resource "azurerm_key_vault_secret" "openvpn_password" {
 }
 
 resource "cloudflare_record" "home_media_server_cname" {
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name    = var.cloudflare_application_name
   value   = cloudflare_tunnel.tunnel.cname
   type    = "CNAME"
@@ -127,7 +142,7 @@ resource "cloudflare_record" "home_media_server_cname" {
 }
 
 resource "cloudflare_record" "home_assistant_cname" {
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name    = var.home_assistant_subdomain
   value   = cloudflare_tunnel.tunnel.cname
   type    = "CNAME"
@@ -137,13 +152,13 @@ resource "cloudflare_record" "home_assistant_cname" {
 
 resource "azurerm_key_vault_secret" "tunnel_credentials" {
   name         = "tunnel-credentials"
-  value        = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+  value        = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
 
 resource "cloudflare_access_identity_provider" "azure_ad_oauth" {
-  account_id = var.cloudflare_account_id
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
   name       = "Azure Active Directory via Home Media Server App Registration"
   type       = "azureAD"
   config {
@@ -166,7 +181,7 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 
   data = {
-    "credentials.json" = jsonencode({"AccountTag"=var.cloudflare_account_id, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+    "credentials.json" = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   }
 }
 

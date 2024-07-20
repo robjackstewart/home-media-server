@@ -14,22 +14,19 @@
     task check-dependencies
     ```
 
-1. Create `helm/variables.tfvars` and populate it with appropriate values. Here is an example of its contents:
+1. Create [`config/variables.tfvars`](config/variables.tfvars) and populate it with appropriate values. Here is an example of its contents:
 
     ```
-    cloudflare_api_token="<your-cloudflare-api-token>"
-    cloudflare_zone_id="<your-cloudflare-domain-zone-id>"
-    cloudflare_account_id="<your-cloudflare-domain-account-id>"
     cloudflare_domain="mydomain.com"
     app_registration_client_id="<your-app-registration-client-id>"
-    azure_security_resource_group_name="home-media-server-rg"
-    azure_security_resource_group_location="uksouth"
-    azure_security_key_vault_name="home-media-server-kv"
     azure_common_keyvault_name="terraform-kv"
     azure_common_keyvault_resource_group="tfstate"
     azure_common_keyvault_client_secret_secret_name="home-media-server-client-secret"
-    azure_common_keyvault_client_secret_openvpn_username_secret_name="home-media-server-vpn-username"
-    azure_common_keyvault_client_secret_openvpn_password_secret_name="home-media-server-vpn-password"
+    azure_common_keyvault_openvpn_username_secret_name="home-media-server-vpn-username"
+    azure_common_keyvault_openvpn_password_secret_name="home-media-server-vpn-password"
+    azure_common_keyvault_cloudflare_api_token_secret_name="home-media-server-cloudflare-api-token"
+    azure_common_keyvault_cloudflare_zone_id_secret_name="home-media-server-cloudflare-zone-id"
+    azure_common_keyvault_cloudflare_account_id_secret_name="home-media-server-cloudflare-account-id"
     timezone="Europe/London"
     transmission_vpn_provider="mullvad"
     transmission_vpn_config="gb_all"
