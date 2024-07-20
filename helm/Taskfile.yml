@@ -12,6 +12,11 @@ tasks:
       - sh: helm version
         msg: Helm must be installed
 
+  build-dependencies:
+    desc: build helm dependencies
+    cmds:
+      - helm dependency build
+
   release:
     desc: Create a helm release
     preconditions:
