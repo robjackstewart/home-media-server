@@ -1,5 +1,8 @@
 version: '3'
 
+env:
+  VARIABLES_TFVARS_PATH: ../config/variables.tfvars
+
 tasks:
   check-dependencies:
     preconditions:
@@ -19,13 +22,14 @@ tasks:
       - terraform init {{.CLI_ARGS}}
 
   apply:
-    desc: Initialise terraform
+    desc: Apply infrastructure
     preconditions:
       - sh: k3d cluster list home-media-server
         msg: The home-media-server K3d cluster does not exist
       - sh: az account show
         msg: You must be logged in with the Azure CLI
-      - test -f variables.tfvars
+      - sh: test -f $VARIABLES_TFVARS_PATH
+        msg: "File must exist: $VARIABLES_TFVARS_PATH"
       
     cmds:
-      - terraform apply -var-file=variables.tfvars {{.CLI_ARGS}}
+      - terraform apply -var-file=$VARIABLES_TFVARS_PATH {{.CLI_ARGS}}

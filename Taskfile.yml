@@ -20,12 +20,12 @@ tasks:
 
   recreate:
     desc: |
-      Teardown an existing cluster if exists
-      Rebuild cluster image
-      Initialise Terraform
-      Create a new cluster
-      Apply the infrastructure state
-      Create a helm release
+      Teardown an existing cluster if exists.
+      Rebuild cluster image.
+      Initialise Terraform.
+      Create a new cluster.
+      Apply the infrastructure state.
+      Create a helm release.
     deps:
       - task: k3d:delete-cluster
         silent: true
@@ -34,6 +34,8 @@ tasks:
       - task: k3d:build-image
       - task: k3d:create-cluster
       - task: infrastructure:apply
+        vars:
+          CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
       - task: helm:release
 
 

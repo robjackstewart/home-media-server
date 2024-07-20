@@ -1,18 +1,3 @@
-variable "cloudflare_api_token" {
-  type = string
-  description = "The API token for your Cloudflare account. Needs to have the following account level grants: Cloudflare Tunnel:Edit, Access: Organizations, Identity Providers, and Groups:Edit, Access: Apps and Policies:Edit, and DNS:Edit for the domain on which your media server will be accessed."
-}
-
-variable "cloudflare_zone_id" {
-  type = string
-  description = "The zone ID for the domain through which you will access your home media server"
-}
-
-variable "cloudflare_account_id" {
-  type = string
-  description = "The account ID for the domain through which you will access your home media server"
-}
-
 variable "cloudflare_application_name" {
   type = string
   description = "The name of the cloudflare zero trust access application."
@@ -41,19 +26,22 @@ variable "app_registration_client_id" {
   description = "The client ID of the app registration which will be used for authentication by the cloudflare application."
 }
 
-variable "azure_security_resource_group_name" {
+variable "azure_resource_group_name" {
   type = string
   description = "The name of the Azure resource group in which security resources will be created."
+  default = "home-media-server-rg"
 }
 
-variable "azure_security_resource_group_location" {
+variable "azure_resource_group_location" {
   type = string
   description = "The location of the Azure resource group in which security resources will be created."
+  default = "uksouth"
 }
 
-variable "azure_security_key_vault_name" {
+variable "azure_key_vault_name" {
   type = string
   description = "The name of the key vault in which secrets will be stored."
+  default = "home-media-server-kv"
 }
 
 variable "azure_common_keyvault_name" {
@@ -71,19 +59,35 @@ variable "azure_common_keyvault_client_secret_secret_name" {
   description = "The name of the secret in the common keyvault in which the app registration client secret is stored."
 }
 
-variable "azure_common_keyvault_client_secret_openvpn_username_secret_name" {
+variable "azure_common_keyvault_openvpn_username_secret_name" {
   type = string
   description = "The name of the secret in the common keyvault in which the open vpn username is stored."
 }
 
-variable "azure_common_keyvault_client_secret_openvpn_password_secret_name" {
+variable "azure_common_keyvault_openvpn_password_secret_name" {
   type = string
   description = "The name of the secret in the common keyvault in which the open vpn password is stored."
+}
+
+variable "azure_common_keyvault_cloudflare_api_token_secret_name" {
+  type = string
+  description = "The name of the secret in the common keyvaukt the value of which is the API token for your Cloudflare account. Needs to have the following account level grants: Cloudflare Tunnel:Edit, Access: Organizations, Identity Providers, and Groups:Edit, Access: Apps and Policies:Edit, and DNS:Edit for the domain on which your media server will be accessed."
+}
+
+variable "azure_common_keyvault_cloudflare_zone_id_secret_name" {
+  type = string
+  description = "he name of the secret in the common keyvaukt the value of which is the zone ID for the domain through which you will access your home media server"
+}
+
+variable "azure_common_keyvault_cloudflare_account_id_secret_name" {
+  type = string
+  description = "he name of the secret in the common keyvaukt the value of which is the account ID for the domain through which you will access your home media server"
 }
 
 variable "timezone" {
   type = string
   description = "Your linux timezone value."
+  default = "Europe/London"
 }
 
 variable "transmission_web_ui" {
