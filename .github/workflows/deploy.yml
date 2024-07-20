@@ -14,4 +14,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Recreate cluster
-        run: task recreate
+        run: INFRASTRUCTURE_APPLY_ARGS="-auto-approve" task recreate
