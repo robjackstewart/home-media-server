@@ -26,6 +26,11 @@ variable "app_registration_client_id" {
   description = "The client ID of the app registration which will be used for authentication by the cloudflare application."
 }
 
+variable "azure_subscription_id" {
+  type = string
+  description = "The ID of the subscription in which all azure resources exist."
+}
+
 variable "azure_resource_group_name" {
   type = string
   description = "The name of the Azure resource group in which security resources will be created."

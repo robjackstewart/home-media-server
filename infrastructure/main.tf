@@ -9,6 +9,7 @@ provider "azurerm" {
       recover_soft_deleted_key_vaults = true
     }
   }
+  subscription_id = var.azure_subscription_id
 }
 
 provider "kubernetes" {
