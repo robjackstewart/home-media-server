@@ -118,7 +118,7 @@ homeassistant:
   clusterIP: 10.43.178.128
   image:
     repository: home-assistant/home-assistant
-    tag: '2024.8'
+    tag: '2024.9'
     registry: ghcr.io
     pullPolicy: Always
   ports:
