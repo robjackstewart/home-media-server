@@ -134,6 +134,6 @@ readarr:
   ports:
     http: 8787
 
-nvidia-device-plugin:
-  gfd:
-    enabled: true
+# nvidia-device-plugin:
+#   gfd:
+#     enabled: false
