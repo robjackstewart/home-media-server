@@ -52,7 +52,7 @@ spec:
         - name: OPENVPN_CONFIG
           value: {{ .Values.transmissionopenvpn.openvpn.config }}
         - name: OPENVPN_OPTS
-          value: --inactive 3600 --ping 10 --ping-exit 60 --pull-filter ignore ifconfig-ipv6
+          value: --inactive 3600 --ping 10 --ping-exit 60 --pull-filter ignore "route-ipv6" --pull-filter ignore "ifconfig-ipv6"
         - name: OPENVPN_USERNAME
           valueFrom:
             secretKeyRef:
