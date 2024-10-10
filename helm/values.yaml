@@ -11,7 +11,7 @@ bazarr:
 cloudflared:
   image:
     repository: cloudflare/cloudflared
-    tag: '2024.9.1'
+    tag: '2024.10.0'
     registry: docker.io
     pullPolicy: Always
 
