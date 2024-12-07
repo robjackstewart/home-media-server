@@ -17,28 +17,28 @@ provider "kubernetes" {
   config_context = var.kubernetes_context
 }
 
-resource "cloudflare_access_application" "home_media_server" {
+resource "cloudflare_zero_trust_access_application" "home_media_server" {
   zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name                      = var.cloudflare_application_name
   domain                    = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = true
-  allowed_idps              = [cloudflare_access_identity_provider.azure_ad_oauth.id]
+  allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
 }
 
 resource "random_id" "argo_secret" {
   byte_length = 35
 }
 
-resource "cloudflare_tunnel" "tunnel" {
+resource "cloudflare_zero_trust_tunnel_cloudflared" "tunnel" {
   account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
   name       = var.cloudflare_tunnel_name
   secret     = random_id.argo_secret.b64_std
   config_src = "local"
 
   depends_on = [
-    cloudflare_access_application.home_media_server
+    cloudflare_zero_trust_access_application.home_media_server
   ]
 }
 
@@ -138,7 +138,7 @@ resource "azurerm_key_vault_secret" "vpn_password" {
 resource "cloudflare_record" "home_media_server_cname" {
   zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name    = var.cloudflare_application_name
-  value   = cloudflare_tunnel.tunnel.cname
+  content = cloudflare_zero_trust_tunnel_cloudflared.tunnel.cname
   type    = "CNAME"
   proxied = true
 }
@@ -146,7 +146,7 @@ resource "cloudflare_record" "home_media_server_cname" {
 resource "cloudflare_record" "home_assistant_cname" {
   zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name    = var.home_assistant_subdomain
-  value   = cloudflare_tunnel.tunnel.cname
+  content = cloudflare_zero_trust_tunnel_cloudflared.tunnel.cname
   type    = "CNAME"
   proxied = true
 }
@@ -154,12 +154,12 @@ resource "cloudflare_record" "home_assistant_cname" {
 
 resource "azurerm_key_vault_secret" "tunnel_credentials" {
   name         = "tunnel-credentials"
-  value        = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+  value        = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_zero_trust_tunnel_cloudflared.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
 
-resource "cloudflare_access_identity_provider" "azure_ad_oauth" {
+resource "cloudflare_zero_trust_access_identity_provider" "azure_ad_oauth" {
   account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
   name       = "Azure Active Directory via Home Media Server App Registration"
   type       = "azureAD"
@@ -183,7 +183,7 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 
   data = {
-    "credentials.json" = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_tunnel.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+    "credentials.json" = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_zero_trust_tunnel_cloudflared.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   }
 }
 
@@ -244,7 +244,7 @@ resource "local_file" "values" {
     }
     argoTunnel = {
       name         = var.cloudflare_tunnel_name
-      id           = cloudflare_tunnel.tunnel.id
+      id           = cloudflare_zero_trust_tunnel_cloudflared.tunnel.id
       credentials = {
         secretName = var.cloudflare_tunnel_credential_secret_name
       }
