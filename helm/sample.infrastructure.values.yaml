@@ -3,15 +3,20 @@ PUID: "1000"
 GUID: "1000"
 transmissionopenvpn:
   webui: flood-for-transmission
-  openvpn:
-    provider: mullvad
-    config: gb_all
-    auth:
-      secret:
-        name: open-vpn-credentials
-        keys:
-          username: username
-          password: password
+vpn:
+  provider:
+    name: mullvad
+    env:
+      - name: SERVER_COUNTRIES
+        value: UK
+      - name: OWNED_ONLY
+        value: 'yes'
+  auth:
+    secret:
+      name: vpn-credentials
+      keys:
+        username: username
+        password: password
 domain:
   main: example.domain.com
   homeassistant: homeassistant.example.domain.com

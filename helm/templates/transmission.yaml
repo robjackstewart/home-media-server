@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-service
+spec:
+  clusterIP: {{ .Values.transmission.clusterIP }}
+  ports:
+  - name: transmission
+    port: {{ .Values.transmission.ports.http }}
+    targetPort: {{ .Values.transmission.ports.http }}
+    protocol: TCP
+  selector:
+    app: transmission
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: transmission
+spec:
+  selector:
+    matchLabels:
+      app: transmission
+  template:
+    metadata:
+      labels:
+        app: transmission
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - name: gluetun
+          image: {{ include "image" .Values.gluetun.image }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: {{ .Values.vpn.provider.name }}
+            - name: VPN_TYPE
+              value: {{ .Values.vpn.type }}
+            - name: OPENVPN_USER
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.vpn.auth.secret.keys.username }}
+                  name: {{ .Values.vpn.auth.secret.name }}
+            - name: OPENVPN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.vpn.auth.secret.keys.password }}
+                  name: {{ .Values.vpn.auth.secret.name }}
+            {{- range .Values.vpn.provider.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.gluetun.ports.http }}
+          volumeMounts:
+            - name: config
+              mountPath: /gluetun
+              subPath: gluetun
+        - name: transmission
+          image: {{ include "image" .Values.transmission.image }}
+          env:
+            - name: TZ
+              value: {{ .Values.Timezone }}
+            - name: PUID
+              value: "{{ .Values.PUID }}"
+            - name: PGID
+              value: "{{ .Values.PGID }}"
+            - name: TRANSMISSION_WEB_UI
+              value: {{ .Values.transmission.webui }}
+            - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_INCOMPLETE_DIR
+              value: /downloads/incomplete
+            - name: TRANSMISSION_WATCH_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_WATCH_DIR
+              value: /downloads/torrents
+            - name: TRANSMISSION_DOWNLOAD_DIR
+              value: /downloads/complete
+          ports:
+            - containerPort: {{ .Values.transmission.ports.http }}
+          volumeMounts:
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: config
+              mountPath: /config
+              subPath: transmission

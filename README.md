@@ -9,7 +9,7 @@
 1. Install the [Task CLI](https://taskfile.dev/installation/)
 1. Install the [NVIDIA Container Runtime](https://developer.nvidia.com/container-runtime) in the environment in which you will run the K3d cluster containers.
 1. Check that you have the necessary dependencies. This will error if you are missing any required tooling.
-    
+
     ``` shell
     task check-dependencies
     ```
@@ -22,14 +22,15 @@
     azure_common_keyvault_name="terraform-kv"
     azure_common_keyvault_resource_group="tfstate"
     azure_common_keyvault_client_secret_secret_name="home-media-server-client-secret"
-    azure_common_keyvault_openvpn_username_secret_name="home-media-server-vpn-username"
-    azure_common_keyvault_openvpn_password_secret_name="home-media-server-vpn-password"
+    azure_common_keyvault_vpn_username_secret_name="home-media-server-vpn-username"
+    azure_common_keyvault_vpn_password_secret_name="home-media-server-vpn-password"
     azure_common_keyvault_cloudflare_api_token_secret_name="home-media-server-cloudflare-api-token"
     azure_common_keyvault_cloudflare_zone_id_secret_name="home-media-server-cloudflare-zone-id"
     azure_common_keyvault_cloudflare_account_id_secret_name="home-media-server-cloudflare-account-id"
     timezone="Europe/London"
-    transmission_vpn_provider="mullvad"
-    transmission_vpn_config="gb_all"
+    transmission_vpn_type="openvpn"
+    transmission_vpn_provider_name="mullvad"
+    transmission_vpn_provider_environment_variables=[]
     host_storage_config_dir="/home-media-server/config"
     host_storage_config_capacity="5Gi"
     host_storage_media_dir="/home-media-server/media"
@@ -65,9 +66,9 @@ If you are running the K3d cluster and docker in WSL2, then you will need to for
 
     $wslIP=$(wsl hostname -I).Split(' ')[0]
 
-    netsh interface portproxy delete v4tov4 listenport=8096 
-    netsh interface portproxy delete v4tov4 listenport=8920 
-    netsh interface portproxy delete v4tov4 listenport=7359 
+    netsh interface portproxy delete v4tov4 listenport=8096
+    netsh interface portproxy delete v4tov4 listenport=8920
+    netsh interface portproxy delete v4tov4 listenport=7359
     netsh interface portproxy delete v4tov4 listenport=1900
 
     Remove-NetFirewallRule -DisplayName "Open Jellyfin Port *"

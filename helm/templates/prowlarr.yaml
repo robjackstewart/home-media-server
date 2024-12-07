@@ -35,33 +35,34 @@ spec:
         nameservers:
           - 1.1.1.1
       containers:
-      - env:
+      - name: flaresolverr
+        env:
           - name: TZ
             value: {{ .Values.Timezone }}
           - name: LOG_LEVEL
             value: debug
         image: {{ include "image" .Values.prowlarr.flaresolverr.image }}
         imagePullPolicy: {{ .Values.prowlarr.flaresolverr.image.pullPolicy }}
-        name: transmissionopenvpn
         ports:
           - containerPort: {{ .Values.prowlarr.flaresolverr.ports.http }}
-      - env:
-        - name: TZ
-          value: {{ .Values.Timezone }}
-        - name: PUID
-          value: "{{ .Values.PUID }}"
-        - name: PGID
-          value: "{{ .Values.PGID }}"
+      - name: prowlarr
+        env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: "{{ .Values.PUID }}"
+          - name: PGID
+            value: "{{ .Values.PGID }}"
         resources:
           limits:
             cpu: '1'
             memory: 250Mi
         image: {{ include "image" .Values.prowlarr.image }}
         imagePullPolicy: {{ .Values.prowlarr.image.pullPolicy }}
-        name: prowlarr
+
         volumeMounts:
           - name: config
             mountPath: /config
             subPath: prowlarr
         ports:
-        - containerPort: {{ .Values.prowlarr.ports.http }}
+          - containerPort: {{ .Values.prowlarr.ports.http }}
