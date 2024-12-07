@@ -9,10 +9,6 @@ spec:
     port: {{ .Values.transmission.ports.http }}
     targetPort: {{ .Values.transmission.ports.http }}
     protocol: TCP
-  - name: gluetun
-    port: {{ .Values.gluetun.ports.http }}
-    targetPort: {{ .Values.gluetun.ports.http }}
-    protocol: TCP
   selector:
     app: transmission
   type: ClusterIP
