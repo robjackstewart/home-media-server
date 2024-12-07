@@ -3,7 +3,7 @@ PUID: "1000"
 GUID: "1000"
 transmissionopenvpn:
   webui: flood-for-transmission
-nvpn:
+vpn:
   provider:
     name: mullvad
     env:
