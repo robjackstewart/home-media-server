@@ -13,7 +13,7 @@ nvpn:
         value: 'yes'
   auth:
     secret:
-      name: open-vpn-credentials
+      name: vpn-credentials
       keys:
         username: username
         password: password
