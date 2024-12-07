@@ -116,9 +116,9 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: transmission-openvpn-service
+            name: transmission-service
             port:
-              number: {{ .Values.transmissionopenvpn.ports.http }}
+              number: {{ .Values.transmission.ports.http }}
       - path: /jellyfin
         pathType: Prefix
         backend:

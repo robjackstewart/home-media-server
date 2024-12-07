@@ -1,7 +1,7 @@
 timezone: Europe/London
 PUID: "1000"
 GUID: "1000"
-transmissionopenvpn:
+transmission:
   webui: flood-for-transmission
   openvpn:
     provider: mullvad

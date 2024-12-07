@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: transmission-service
+spec:
+  clusterIP: {{ .Values.transmission.clusterIP }}
+  ports:
+  - name: transmission
+    port: {{ .Values.transmission.ports.http }}
+    targetPort: {{ .Values.transmission.ports.http }}
+    protocol: TCP
+  - name: gluetun
+    port: {{ .Values.gluetun.ports.http }}
+    targetPort: {{ .Values.gluetun.ports.http }}
+    protocol: TCP
+  selector:
+    app: gluetun-transmission
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gluetun-transmission
+spec:
+  selector:
+    matchLabels:
+      app: gluetun-transmission
+  template:
+    metadata:
+      labels:
+        app: gluetun-transmission
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - name: gluetun
+          image: {{ include "image" .Values.gluetun.image }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: {{ .Values.transmission.openvpn.provider }}
+            - name: VPN_TYPE
+              value: "openvpn"
+            - name: OPENVPN_USER
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.transmission.openvpn.auth.secret.keys.username }}
+                  name: {{ .Values.transmission.openvpn.auth.secret.name }}
+            - name: OPENVPN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.transmission.openvpn.auth.secret.keys.password }}
+                  name: {{ .Values.transmission.openvpn.auth.secret.name }}
+            - name: TZ
+              value: {{ .Values.Timezone }}
+            - name: TRANSMISSION_WEB_UI
+              value: {{ .Values.transmission.webui }}
+            - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_INCOMPLETE_DIR
+              value: /downloads/incomplete
+            - name: TRANSMISSION_WATCH_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_WATCH_DIR
+              value: /downloads/torrents
+            - name: TRANSMISSION_DOWNLOAD_DIR
+              value: /downloads/complete
+          ports:
+            - containerPort: {{ .Values.gluetun.ports.http }} # Gluetun web UI
+          volumeMounts:
+            - name: config
+              mountPath: /gluetun
+              subPath: gluetun
+        - name: transmission
+          image: {{ include "image" .Values.transmission.image }}
+          env:
+            - name: TZ
+              value: {{ .Values.Timezone }}
+            - name: PUID
+              value: "{{ .Values.PUID }}"
+            - name: PGID
+              value: "{{ .Values.PGID }}"
+          ports:
+            - containerPort: {{ .Values.transmission.ports.http }} # Transmission RPC
+          volumeMounts:
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: config
+              mountPath: /config
+              subPath: transmission

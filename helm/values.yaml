@@ -85,16 +85,6 @@ sonarr:
   ports:
     http: 8989
 
-transmissionopenvpn:
-  clusterIP: 10.43.26.112
-  image:
-    repository: haugene/transmission-openvpn
-    tag: '5.3'
-    registry: docker.io
-    pullPolicy: Always
-  ports:
-    http: 9091
-
 calibre:
   clusterIP: 10.43.35.158
   nginx:
@@ -134,6 +124,22 @@ readarr:
   ports:
     http: 8787
 
-# nvidia-device-plugin:
-#   gfd:
-#     enabled: false
+gluetun:
+  clusterIP: 10.43.178.129
+  image:
+    repository: qdm12/gluetun
+    tag: latest
+    registry: ghcr.io
+    pullPolicy: Always
+  ports:
+    http: 8888
+
+transmission:
+  clusterIP: 10.43.26.112
+  image:
+    repository: linuxserver/transmission
+    tag: latest
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 9091

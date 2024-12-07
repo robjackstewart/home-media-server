@@ -206,7 +206,7 @@ resource "local_file" "values" {
 timezone: ${var.timezone}
 PUID: "${var.puid}"
 GUID: "${var.guid}"
-transmissionopenvpn:
+transmission:
   webui: ${var.transmission_web_ui}
   openvpn:
     provider: ${var.transmission_vpn_provider}
