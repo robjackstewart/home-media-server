@@ -1,0 +1,35 @@
+timezone: Europe/London
+PUID: "1000"
+GUID: "1000"
+transmissionopenvpn:
+  webui: flood-for-transmission
+nvpn:
+  provider:
+    name: mullvad
+    env:
+      - name: SERVER_COUNTRIES
+        value: UK
+      - name: OWNED_ONLY
+        value: 'yes'
+  auth:
+    secret:
+      name: open-vpn-credentials
+      keys:
+        username: username
+        password: password
+domain:
+  main: example.domain.com
+  homeassistant: homeassistant.example.domain.com
+storage:
+  host:
+    config:
+      dir: /example-config-dir-path
+      capacity: 1Gi
+    media:
+      dir: /example-media-dir-path
+      capacity: 1Gi
+argoTunnel:
+  name: example-argo-tunnel
+  id: example-argo-tunnel-id
+  credentials:
+    secretName: argo-tunnel-credentials
