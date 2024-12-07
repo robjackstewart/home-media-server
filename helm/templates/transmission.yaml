@@ -42,7 +42,7 @@ spec:
                 - NET_ADMIN
           env:
             - name: VPN_SERVICE_PROVIDER
-              value: {{ .Values.vpn.provider }}
+              value: {{ .Values.vpn.provider.name }}
             - name: VPN_TYPE
               value: {{ .Values.vpn.type }}
             - name: OPENVPN_USER
@@ -55,6 +55,10 @@ spec:
                 secretKeyRef:
                   key: {{ .Values.vpn.auth.secret.keys.password }}
                   name: {{ .Values.vpn.auth.secret.name }}
+            {{- range .Values.vpn.provider.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.gluetun.ports.http }}
           volumeMounts:

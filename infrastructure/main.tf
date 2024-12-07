@@ -72,7 +72,8 @@ resource "azurerm_key_vault" "keyvault" {
       "Get",
       "Set",
       "List",
-      "Recover"
+      "Recover",
+      "Delete"
     ]
 
     storage_permissions = [
@@ -91,13 +92,13 @@ data "azurerm_key_vault_secret" "common_kv_client_secret" {
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "common_kv_openvpn_username" {
-  name         = var.azure_common_keyvault_openvpn_username_secret_name
+data "azurerm_key_vault_secret" "common_kv_vpn_username" {
+  name         = var.azure_common_keyvault_vpn_username_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "common_kv_openvpn_password" {
-  name         = var.azure_common_keyvault_openvpn_password_secret_name
+data "azurerm_key_vault_secret" "common_kv_vpn_password" {
+  name         = var.azure_common_keyvault_vpn_password_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
@@ -122,15 +123,15 @@ resource "azurerm_key_vault_secret" "client_secret" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "azurerm_key_vault_secret" "openvpn_username" {
+resource "azurerm_key_vault_secret" "vpn_username" {
   name         = "vpn-username"
-  value        = data.azurerm_key_vault_secret.common_kv_openvpn_username.value
+  value        = data.azurerm_key_vault_secret.common_kv_vpn_username.value
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "azurerm_key_vault_secret" "openvpn_password" {
+resource "azurerm_key_vault_secret" "vpn_password" {
   name         = "vpn-password"
-  value        = data.azurerm_key_vault_secret.common_kv_openvpn_password.value
+  value        = data.azurerm_key_vault_secret.common_kv_vpn_password.value
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
@@ -186,15 +187,15 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 }
 
-resource "kubernetes_secret" "transmission_openvpn_credentials" {
+resource "kubernetes_secret" "vpn_credentials" {
   metadata {
     name = var.transmission_vpn_secret_name
     namespace = var.kubernetes_namespace
   }
 
   data = {
-    username = azurerm_key_vault_secret.openvpn_username.value
-    password = azurerm_key_vault_secret.openvpn_password.value
+    username = azurerm_key_vault_secret.vpn_username.value
+    password = azurerm_key_vault_secret.vpn_password.value
   }
 
   type = "kubernetes.io/basic-auth"
@@ -202,36 +203,51 @@ resource "kubernetes_secret" "transmission_openvpn_credentials" {
 
 resource "local_file" "values" {
   filename = "../helm/infrastructure.values.yaml"
-  content = <<EOT
-timezone: ${var.timezone}
-PUID: "${var.puid}"
-GUID: "${var.guid}"
-transmission:
-  webui: ${var.transmission_web_ui}
-vpn:
-  provider: ${var.transmission_vpn_provider}
-  config: ${var.transmission_vpn_config}
-  auth:
-    secret:
-      name: ${var.transmission_vpn_secret_name}
-      keys:
-        username: username
-        password: password
-domain:
-  main: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
-  homeassistant: ${format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)} 
-storage:
-  host:
-    config:
-      dir: ${var.host_storage_config_dir}
-      capacity: ${var.host_storage_config_capacity}
-    media:
-      dir: ${var.host_storage_media_dir}
-      capacity: ${var.host_storage_media_capacity}
-argoTunnel:
-  name: ${var.cloudflare_tunnel_name}
-  id: ${cloudflare_tunnel.tunnel.id}
-  credentials:
-    secretName: ${var.cloudflare_tunnel_credential_secret_name}
-EOT
+  content = yamlencode({
+    timezone    = var.timezone
+    PUID        = var.puid
+    GUID        = var.guid
+    transmission = {
+      webui = var.transmission_web_ui
+    }
+    vpn = {
+      type = var.transmission_vpn_type
+      provider = {
+        name = var.transmission_vpn_provider_name
+        env  = var.transmission_vpn_provider_environment_variables
+      }
+      auth = {
+        secret = {
+          name = var.transmission_vpn_secret_name
+          keys = {
+            username = "username"
+            password = "password"
+          }
+        }
+      }
+    }
+    domain = {
+      main          = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
+      homeassistant = format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)
+    }
+    storage = {
+      host = {
+        config = {
+          dir      = var.host_storage_config_dir
+          capacity = var.host_storage_config_capacity
+        }
+        media = {
+          dir      = var.host_storage_media_dir
+          capacity = var.host_storage_media_capacity
+        }
+      }
+    }
+    argoTunnel = {
+      name         = var.cloudflare_tunnel_name
+      id           = cloudflare_tunnel.tunnel.id
+      credentials = {
+        secretName = var.cloudflare_tunnel_credential_secret_name
+      }
+    }
+  })
 }

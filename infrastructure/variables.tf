@@ -64,14 +64,14 @@ variable "azure_common_keyvault_client_secret_secret_name" {
   description = "The name of the secret in the common keyvault in which the app registration client secret is stored."
 }
 
-variable "azure_common_keyvault_openvpn_username_secret_name" {
+variable "azure_common_keyvault_vpn_username_secret_name" {
   type = string
-  description = "The name of the secret in the common keyvault in which the open vpn username is stored."
+  description = "The name of the secret in the common keyvault in which the vpn username is stored."
 }
 
-variable "azure_common_keyvault_openvpn_password_secret_name" {
+variable "azure_common_keyvault_vpn_password_secret_name" {
   type = string
-  description = "The name of the secret in the common keyvault in which the open vpn password is stored."
+  description = "The name of the secret in the common keyvault in which the vpn password is stored."
 }
 
 variable "azure_common_keyvault_cloudflare_api_token_secret_name" {
@@ -101,19 +101,31 @@ variable "transmission_web_ui" {
   default = "flood-for-transmission"
 }
 
-variable "transmission_vpn_provider" {
+variable "transmission_vpn_type" {
   type = string
-  description = "The transmission open VPN provider."
+  description = "The type of VPN e.g. openvpn or wireguard"
+  validation {
+    condition     = var.transmission_vpn_type == "openvpn" || var.transmission_vpn_type == "wireguard"
+    error_message = "transmission_vpn_type must be 'openvpn' or 'wireguard'"
+  }
 }
 
-variable "transmission_vpn_config" {
+variable "transmission_vpn_provider_name" {
   type = string
-  description = "The transmission open VPN config."
+  description = "The transmission VPN provider."
+}
+
+variable "transmission_vpn_provider_environment_variables" {
+  type = list(object({
+    name    = string
+    value   = string
+  }))
+  description = "Transmission VPN provicer specific environment variables for Gluetun."
 }
 
 variable "transmission_vpn_secret_name" {
   type = string
-  description = "The name of the kubernetes secret in which the transmissiong open VPN credentials will be stored"
+  description = "The name of the kubernetes secret in which the transmissiong VPN credentials will be stored"
   default = "vpn-credentials"
 }
 
@@ -125,7 +137,7 @@ variable "host_storage_config_dir" {
 variable "host_storage_config_capacity" {
   type = string
   description = "The capacity of the directory in which all per-app configuration will be saved."
-  
+
 }
 
 variable "host_storage_media_dir" {
