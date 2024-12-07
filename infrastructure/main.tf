@@ -208,15 +208,15 @@ PUID: "${var.puid}"
 GUID: "${var.guid}"
 transmission:
   webui: ${var.transmission_web_ui}
-  openvpn:
-    provider: ${var.transmission_vpn_provider}
-    config: ${var.transmission_vpn_config}
-    auth:
-      secret:
-        name: ${var.transmission_vpn_secret_name}
-        keys:
-          username: username
-          password: password
+vpn:
+  provider: ${var.transmission_vpn_provider}
+  config: ${var.transmission_vpn_config}
+  auth:
+    secret:
+      name: ${var.transmission_vpn_secret_name}
+      keys:
+        username: username
+        password: password
 domain:
   main: ${format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)}
   homeassistant: ${format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)} 

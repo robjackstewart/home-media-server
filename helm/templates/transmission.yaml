@@ -14,21 +14,21 @@ spec:
     targetPort: {{ .Values.gluetun.ports.http }}
     protocol: TCP
   selector:
-    app: gluetun-transmission
+    app: transmission
   type: ClusterIP
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: gluetun-transmission
+  name: transmission
 spec:
   selector:
     matchLabels:
-      app: gluetun-transmission
+      app: transmission
   template:
     metadata:
       labels:
-        app: gluetun-transmission
+        app: transmission
     spec:
       volumes:
         - name: media
@@ -46,35 +46,21 @@ spec:
                 - NET_ADMIN
           env:
             - name: VPN_SERVICE_PROVIDER
-              value: {{ .Values.transmission.openvpn.provider }}
+              value: {{ .Values.vpn.provider }}
             - name: VPN_TYPE
-              value: "openvpn"
+              value: {{ .Values.vpn.type }}
             - name: OPENVPN_USER
               valueFrom:
                 secretKeyRef:
-                  key: {{ .Values.transmission.openvpn.auth.secret.keys.username }}
-                  name: {{ .Values.transmission.openvpn.auth.secret.name }}
+                  key: {{ .Values.vpn.auth.secret.keys.username }}
+                  name: {{ .Values.vpn.auth.secret.name }}
             - name: OPENVPN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  key: {{ .Values.transmission.openvpn.auth.secret.keys.password }}
-                  name: {{ .Values.transmission.openvpn.auth.secret.name }}
-            - name: TZ
-              value: {{ .Values.Timezone }}
-            - name: TRANSMISSION_WEB_UI
-              value: {{ .Values.transmission.webui }}
-            - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
-              value: 'true'
-            - name: TRANSMISSION_INCOMPLETE_DIR
-              value: /downloads/incomplete
-            - name: TRANSMISSION_WATCH_DIR_ENABLED
-              value: 'true'
-            - name: TRANSMISSION_WATCH_DIR
-              value: /downloads/torrents
-            - name: TRANSMISSION_DOWNLOAD_DIR
-              value: /downloads/complete
+                  key: {{ .Values.vpn.auth.secret.keys.password }}
+                  name: {{ .Values.vpn.auth.secret.name }}
           ports:
-            - containerPort: {{ .Values.gluetun.ports.http }} # Gluetun web UI
+            - containerPort: {{ .Values.gluetun.ports.http }}
           volumeMounts:
             - name: config
               mountPath: /gluetun
@@ -88,8 +74,20 @@ spec:
               value: "{{ .Values.PUID }}"
             - name: PGID
               value: "{{ .Values.PGID }}"
+            - name: TRANSMISSION_WEB_UI
+              value: {{ .Values.transmission.webui }}
+            - name: TRANSMISSION_INCOMPLETE_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_INCOMPLETE_DIR
+              value: /downloads/incomplete
+            - name: TRANSMISSION_WATCH_DIR_ENABLED
+              value: 'true'
+            - name: TRANSMISSION_WATCH_DIR
+              value: /downloads/torrents
+            - name: TRANSMISSION_DOWNLOAD_DIR
+              value: /downloads/complete
           ports:
-            - containerPort: {{ .Values.transmission.ports.http }} # Transmission RPC
+            - containerPort: {{ .Values.transmission.ports.http }}
           volumeMounts:
             - name: media
               mountPath: /downloads

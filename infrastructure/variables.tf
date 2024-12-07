@@ -114,7 +114,7 @@ variable "transmission_vpn_config" {
 variable "transmission_vpn_secret_name" {
   type = string
   description = "The name of the kubernetes secret in which the transmissiong open VPN credentials will be stored"
-  default = "transmission-openvpn-credentials"
+  default = "vpn-credentials"
 }
 
 variable "host_storage_config_dir" {
