@@ -61,25 +61,4 @@ If you are running the K3d cluster and docker in WSL2, then you will need to for
         ```
     1. On your windows host, run `wsl --shutdown`.
     1. Open a new WSL2 tab to restart WSL.
-1. Forward ports on your windows host to your WSL2 instance but opening powershell on your windows host and running the following:
-    ``` powershell
-
-    $wslIP=$(wsl hostname -I).Split(' ')[0]
-
-    netsh interface portproxy delete v4tov4 listenport=8096
-    netsh interface portproxy delete v4tov4 listenport=8920
-    netsh interface portproxy delete v4tov4 listenport=7359
-    netsh interface portproxy delete v4tov4 listenport=1900
-
-    Remove-NetFirewallRule -DisplayName "Open Jellyfin Port *"
-
-    netsh interface portproxy add v4tov4 listenport=8096 connectport=8096 connectaddress=$wslIP
-    netsh interface portproxy add v4tov4 listenport=8920 connectport=8920 connectaddress=$wslIP
-    netsh interface portproxy add v4tov4 listenport=7359 connectport=7359 connectaddress=$wslIP
-    netsh interface portproxy add v4tov4 listenport=1900 connectport=1900 connectaddress=$wslIP
-
-    netsh advfirewall firewall add rule name="Open Jellyfin Port 8096" dir=in action=allow protocol=TCP localport=8096
-    netsh advfirewall firewall add rule name="Open Jellyfin Port 8920" dir=in action=allow protocol=TCP localport=8920
-    netsh advfirewall firewall add rule name="Open Jellyfin Port 7359" dir=in action=allow protocol=UDP localport=7359
-    netsh advfirewall firewall add rule name="Open Jellyfin Port 1900" dir=in action=allow protocol=UDP localport=1900
-    ```
+1. Forward ports on your windows host to your WSL2 instance but opening powershell on your windows host and running [this script](./scripts/expose-jellyfin-on-wsl2.ps1) in powershell as Administrator.
