@@ -13,6 +13,26 @@ spec:
     app: transmission
   type: ClusterIP
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: transmission-scripts
+data:
+  stop-torrents-when-gluetun-unhealthy.sh: |
+    #!/bin/sh
+    while true; do
+      if nc -z -v -w5 localhost {{ .Values.gluetun.ports.healthcheck }}; then
+        # Gluetun is healthy, ensure Transmission is enabled
+        echo "Gluetun is healthy, starting all torrents"
+        transmission-remote --torrent all --start
+      else
+        # Gluetun is unhealthy, disable Transmission
+        echo "Gluetun is unhealthy, stopping all torrents"
+        transmission-remote --torrent all --stop
+      fi
+      sleep 10
+    done
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -33,6 +53,10 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+        - name: scripts
+          configMap:
+            name: transmission-scripts
+            defaultMode: 0777
       containers:
         - name: gluetun
           image: {{ include "image" .Values.gluetun.image }}
@@ -95,3 +119,11 @@ spec:
             - name: config
               mountPath: /config
               subPath: transmission
+        - name: transmission-monitor
+          image: {{ include "image" .Values.transmission.image }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - /scripts/stop-torrents-when-gluetun-unhealthy.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts

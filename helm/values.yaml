@@ -133,6 +133,7 @@ gluetun:
     pullPolicy: Always
   ports:
     http: 8888
+    healthcheck: 9999
 
 transmission:
   clusterIP: 10.43.26.112
