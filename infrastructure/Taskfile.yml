@@ -4,7 +4,7 @@ env:
   VARIABLES_TFVARS_PATH: ../config/variables.tfvars
 
 tasks:
-  check-dependencies:
+  dependencies:check:
     preconditions:
       - sh: terraform version
         msg: Terraform must be installed

@@ -12,11 +12,11 @@ includes:
     dir: .k3d
 
 tasks:
-  check-dependencies:
+  dependencies:check:
     deps:
-      - task: infrastructure:check-dependencies
-      - task: helm:check-dependencies
-      - task: k3d:check-dependencies
+      - task: infrastructure:dependencies:check
+      - task: helm:dependencies:check
+      - task: k3d:dependencies:check
 
   recreate:
     desc: |
@@ -27,16 +27,16 @@ tasks:
       Apply the infrastructure state.
       Create a helm release.
     deps:
-      - task: k3d:delete-cluster
+      - task: k3d:cluster:delete
         silent: true
     cmds:
       - task: infrastructure:init
-      - task: k3d:build-image
-      - task: k3d:create-cluster
+      - task: k3d:image:build
+      - task: k3d:cluster:create
       - task: infrastructure:apply
         vars:
           CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
-      - task: helm:build-dependencies
+      - task: helm:dependencies:build
       - task: helm:release
 
 
