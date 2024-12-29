@@ -7,12 +7,12 @@ env:
   HELM_INFRASTRUCTURE_VALUES_FILE: infrastructure.values.yaml
 
 tasks:
-  check-dependencies:
+  dependencies:check:
     preconditions:
       - sh: helm version
         msg: Helm must be installed
 
-  build-dependencies:
+  dependencies:build:
     desc: build helm dependencies
     cmds:
       - helm dependency build
@@ -25,7 +25,7 @@ tasks:
     cmds:
       - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s {{.CLI_ARGS}}
 
-  uninstall:
+  release:uninstall:
     desc: Create a helm release
     cmds:
       - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait {{.CLI_ARGS}}

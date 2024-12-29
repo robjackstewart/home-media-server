@@ -9,14 +9,14 @@ env:
     sh: yq '.image' config.yml
 
 tasks:
-  check-dependencies:
+  dependencies:check:
     preconditions:
       - sh: k3d version
         msg: K3d must be installed
       - sh: docker version
         msg: Docker must be installed
 
-  build-image:
+  image:build:
     desc: Build the K3d image which includes NVIDIA CUDA
     preconditions:
       - sh: docker version
@@ -24,7 +24,7 @@ tasks:
     cmds:
       - docker build -t $K3D_CLUSTER_IMAGE .
 
-  create-cluster:
+  cluster:create:
     preconditions:
       - test -f {{.TASKFILE_DIR}}/config.yml
       - sh: k3d version
@@ -32,7 +32,7 @@ tasks:
     cmds:
       - k3d cluster create --config "$K3D_CLUSTER_CONFIG"
 
-  delete-cluster:
+  cluster:delete:
     preconditions:
       - sh: k3d version
         msg: You must have k3d installed
