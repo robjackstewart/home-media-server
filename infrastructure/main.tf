@@ -146,6 +146,14 @@ resource "cloudflare_record" "home_media_server_cname" {
   proxied = true
 }
 
+resource "cloudflare_record" "home_media_server_local_a" {
+  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  name    = format("local.%s", var.cloudflare_application_name)
+  content = var.local_network_ip_address
+  type    = "A"
+  proxied = false
+}
+
 resource "cloudflare_record" "home_assistant_cname" {
   zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name    = var.home_assistant_subdomain

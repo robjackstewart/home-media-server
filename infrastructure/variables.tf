@@ -178,3 +178,7 @@ variable "home_assistant_subdomain" {
 variable "entra_id_access_group_object_id" {
   type = string
 }
+
+variable "local_network_ip_address" {
+  type = string
+}
