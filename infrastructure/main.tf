@@ -25,6 +25,9 @@ resource "cloudflare_zero_trust_access_application" "home_media_server" {
   session_duration          = "24h"
   auto_redirect_to_identity = true
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
+  policies                  = [
+    cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
+  ]
 }
 
 resource "random_id" "argo_secret" {
@@ -164,9 +167,32 @@ resource "cloudflare_zero_trust_access_identity_provider" "azure_ad_oauth" {
   name       = "Azure Active Directory via Home Media Server App Registration"
   type       = "azureAD"
   config {
-    client_id     = var.app_registration_client_id
-    client_secret = azurerm_key_vault_secret.client_secret.value
-    directory_id  = data.azurerm_client_config.current.tenant_id
+    client_id       = var.app_registration_client_id
+    client_secret   = azurerm_key_vault_secret.client_secret.value
+    directory_id    = data.azurerm_client_config.current.tenant_id
+    support_groups  = true
+  }
+}
+
+resource "cloudflare_zero_trust_access_group" "home_media_server_users" {
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  name       = "Home media server users"
+
+  include {
+    azure {
+      identity_provider_id = cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id
+      id                   = [var.entra_id_access_group_object_id]
+    }
+  }
+}
+
+resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_based_on_entra_id_group" {
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  name       = "Allow home media server users"
+  decision   = "allow"
+
+  include {
+    group = [cloudflare_zero_trust_access_group.home_media_server_users.id]
   }
 }
 

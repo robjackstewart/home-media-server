@@ -174,3 +174,7 @@ variable "home_assistant_subdomain" {
   type = string
   default = "home-assistant"
 }
+
+variable "entra_id_access_group_object_id" {
+  type = string
+}
