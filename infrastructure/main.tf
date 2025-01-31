@@ -25,9 +25,11 @@ resource "cloudflare_zero_trust_access_application" "home_media_server" {
   session_duration          = "24h"
   auto_redirect_to_identity = true
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
-  policies                  = [
-    cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
-  ]
+  policies                  = [{
+    id                      = cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
+    precedence              = 0
+    decision                = "allow"
+  }]
 }
 
 resource "random_id" "argo_secret" {
@@ -202,7 +204,9 @@ resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_ba
   decision   = "allow"
 
   include = [{
-    group = cloudflare_zero_trust_access_group.home_media_server_users.id
+    group = {
+      id = cloudflare_zero_trust_access_group.home_media_server_users.id
+    }
   }]
 }
 
