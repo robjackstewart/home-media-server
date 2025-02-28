@@ -62,7 +62,6 @@ spec:
             capabilities:
               add:
                 - NET_ADMIN
-            privileged: true
           env:
             - name: VPN_SERVICE_PROVIDER
               value: {{ .Values.vpn.provider.name }}
