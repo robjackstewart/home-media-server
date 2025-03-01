@@ -4,13 +4,11 @@ app_registration_client_id="9c0c16ff-1062-4450-9a81-e34b0188d13d"
 azure_common_keyvault_name="robstewart-terraform-kv"
 azure_common_keyvault_resource_group="tfstate"
 azure_common_keyvault_client_secret_secret_name="home-media-server-client-secret"
-azure_common_keyvault_vpn_username_secret_name="home-media-server-vpn-username"
-azure_common_keyvault_vpn_password_secret_name="home-media-server-vpn-password"
+azure_common_keyvault_vpn_wireguard_private_key_secret_name="vpn-wireguard-private-key"
 azure_common_keyvault_cloudflare_api_token_secret_name="home-media-server-cloudflare-api-token"
 azure_common_keyvault_cloudflare_zone_id_secret_name="home-media-server-cloudflare-zone-id"
 azure_common_keyvault_cloudflare_account_id_secret_name="home-media-server-cloudflare-account-id"
 transmission_vpn_provider_name="mullvad"
-transmission_vpn_type="openvpn"
 transmission_vpn_provider_environment_variables=[
     {
         name = "SERVER_COUNTRIES"
@@ -19,6 +17,18 @@ transmission_vpn_provider_environment_variables=[
     {
         name = "OWNED_ONLY"
         value = "yes"
+    },
+    {
+        name = "WIREGUARD_ADDRESSES"
+        value = "10.73.48.99/32"
+    },
+    {
+        name = "WIREGUARD_ENDPOINT_IP"
+        value = "10.64.0.1"
+    },
+    {
+        name = "WIREGUARD_ENDPOINT_PORT"
+        value = "51820"
     }
 ]
 host_storage_config_dir="/home-media-server/config"

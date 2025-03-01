@@ -64,14 +64,9 @@ variable "azure_common_keyvault_client_secret_secret_name" {
   description = "The name of the secret in the common keyvault in which the app registration client secret is stored."
 }
 
-variable "azure_common_keyvault_vpn_username_secret_name" {
+variable "azure_common_keyvault_vpn_wireguard_private_key_secret_name" {
   type = string
-  description = "The name of the secret in the common keyvault in which the vpn username is stored."
-}
-
-variable "azure_common_keyvault_vpn_password_secret_name" {
-  type = string
-  description = "The name of the secret in the common keyvault in which the vpn password is stored."
+  description = "The name of the secret in the common keyvault in which the vpn wireguard private key is stored."
 }
 
 variable "azure_common_keyvault_cloudflare_api_token_secret_name" {
@@ -99,15 +94,6 @@ variable "transmission_web_ui" {
   type = string
   description = "The web UI theme you want for transmission."
   default = "flood-for-transmission"
-}
-
-variable "transmission_vpn_type" {
-  type = string
-  description = "The type of VPN e.g. openvpn or wireguard"
-  validation {
-    condition     = var.transmission_vpn_type == "openvpn" || var.transmission_vpn_type == "wireguard"
-    error_message = "transmission_vpn_type must be 'openvpn' or 'wireguard'"
-  }
 }
 
 variable "transmission_vpn_provider_name" {
