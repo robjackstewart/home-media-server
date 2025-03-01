@@ -1,9 +1,9 @@
 dependencies:
 - name: ingress-nginx
   repository: https://kubernetes.github.io/ingress-nginx
-  version: 4.11.3
+  version: 4.12.0
 - name: nvidia-device-plugin
   repository: https://nvidia.github.io/k8s-device-plugin
   version: 0.17.0
-digest: sha256:16a1da28d6500668494a7903060e0a1708bfd35cfccb71e3c23f1ef2ebf95ae4
-generated: "2024-10-31T18:19:36.881285376Z"
+digest: sha256:54fa9ce296029e6a6b90172895276aedb6d7315420847b68957e5c7032d9d1c8
+generated: "2025-01-08T20:13:42.154964986Z"
