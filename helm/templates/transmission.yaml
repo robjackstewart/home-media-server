@@ -66,16 +66,11 @@ spec:
             - name: VPN_SERVICE_PROVIDER
               value: {{ .Values.vpn.provider.name }}
             - name: VPN_TYPE
-              value: {{ .Values.vpn.type }}
-            - name: OPENVPN_USER
+              value: wireguard
+            - name: WIREGUARD_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  key: {{ .Values.vpn.auth.secret.keys.username }}
-                  name: {{ .Values.vpn.auth.secret.name }}
-            - name: OPENVPN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  key: {{ .Values.vpn.auth.secret.keys.password }}
+                  key: {{ .Values.vpn.auth.secret.keys.wireguard_private_key }}
                   name: {{ .Values.vpn.auth.secret.name }}
             {{- range .Values.vpn.provider.env }}
             - name: {{ .name }}

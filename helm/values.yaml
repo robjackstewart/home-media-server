@@ -144,7 +144,3 @@ transmission:
     pullPolicy: Always
   ports:
     http: 9091
-
-ingress-nginx:
-  controller:
-    enableAnnotationValidations: false

@@ -97,13 +97,8 @@ data "azurerm_key_vault_secret" "common_kv_client_secret" {
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "common_kv_vpn_username" {
-  name         = var.azure_common_keyvault_vpn_username_secret_name
-  key_vault_id = data.azurerm_key_vault.common.id
-}
-
-data "azurerm_key_vault_secret" "common_kv_vpn_password" {
-  name         = var.azure_common_keyvault_vpn_password_secret_name
+data "azurerm_key_vault_secret" "common_kv_vpn_wireguard_private_key" {
+  name         = var.azure_common_keyvault_vpn_wireguard_private_key_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
@@ -128,15 +123,9 @@ resource "azurerm_key_vault_secret" "client_secret" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "azurerm_key_vault_secret" "vpn_username" {
-  name         = "vpn-username"
-  value        = data.azurerm_key_vault_secret.common_kv_vpn_username.value
-  key_vault_id = azurerm_key_vault.keyvault.id
-}
-
-resource "azurerm_key_vault_secret" "vpn_password" {
-  name         = "vpn-password"
-  value        = data.azurerm_key_vault_secret.common_kv_vpn_password.value
+resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
+  name         = "vpn-wireguard-private-key"
+  value        = data.azurerm_key_vault_secret.common_kv_vpn_wireguard_private_key.value
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
@@ -234,11 +223,10 @@ resource "kubernetes_secret" "vpn_credentials" {
   }
 
   data = {
-    username = azurerm_key_vault_secret.vpn_username.value
-    password = azurerm_key_vault_secret.vpn_password.value
+    wireguard_private_key = azurerm_key_vault_secret.vpn_wireguard_private_key.value
   }
 
-  type = "kubernetes.io/basic-auth"
+  type = "Opaque"
 }
 
 resource "local_file" "values" {
@@ -251,17 +239,15 @@ resource "local_file" "values" {
       webui = var.transmission_web_ui
     }
     vpn = {
-      type = var.transmission_vpn_type
       provider = {
         name = var.transmission_vpn_provider_name
-        env  = var.transmission_vpn_provider_environment_variables
+        env = var.transmission_vpn_provider_environment_variables
       }
       auth = {
         secret = {
           name = var.transmission_vpn_secret_name
           keys = {
-            username = "username"
-            password = "password"
+            wireguard_private_key = "wireguard_private_key"
           }
         }
       }
