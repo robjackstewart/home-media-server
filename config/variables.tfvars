@@ -21,14 +21,6 @@ transmission_vpn_provider_environment_variables=[
     {
         name = "WIREGUARD_ADDRESSES"
         value = "10.73.48.99/32"
-    },
-    {
-        name = "WIREGUARD_ENDPOINT_IP"
-        value = "10.64.0.1"
-    },
-    {
-        name = "WIREGUARD_ENDPOINT_PORT"
-        value = "51820"
     }
 ]
 host_storage_config_dir="/home-media-server/config"

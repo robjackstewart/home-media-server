@@ -124,7 +124,7 @@ resource "azurerm_key_vault_secret" "client_secret" {
 }
 
 resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
-  name         = "vpn-username"
+  name         = "vpn-wireguard-private-key"
   value        = data.azurerm_key_vault_secret.common_kv_vpn_wireguard_private_key.value
   key_vault_id = azurerm_key_vault.keyvault.id
 }
