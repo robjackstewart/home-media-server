@@ -59,7 +59,7 @@ prowlarr:
       http: 8191
   image:
     repository: linuxserver/prowlarr
-    tag: '1.31.2'
+    tag: '1.32.2'
     registry: lscr.io
     pullPolicy: Always
   ports:
