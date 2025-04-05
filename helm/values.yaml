@@ -29,7 +29,7 @@ jellyfin:
   clusterIP: 10.43.18.241
   image:
     repository: linuxserver/jellyfin
-    tag: '10.10.6'
+    tag: '10.10.7'
     registry: lscr.io
     pullPolicy: Always
   ports:
