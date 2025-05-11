@@ -2,7 +2,7 @@ bazarr:
   clusterIP: 10.43.163.13
   image:
     repository: linuxserver/bazarr
-    tag: '1.5.1'
+    tag: '1.5.2'
     registry: lscr.io
     pullPolicy: Always
   ports:
