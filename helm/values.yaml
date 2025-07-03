@@ -69,7 +69,7 @@ radarr:
   clusterIP: 10.43.231.196
   image:
     repository: linuxserver/radarr
-    tag: '5.25.0'
+    tag: '5.26.2'
     registry: lscr.io
     pullPolicy: Always
   ports:
