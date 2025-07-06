@@ -114,16 +114,6 @@ homeassistant:
   ports:
     http: 8123
 
-readarr:
-  clusterIP: 10.43.253.24
-  image:
-    repository: linuxserver/readarr
-    tag: nightly
-    registry: lscr.io
-    pullPolicy: Always
-  ports:
-    http: 8787
-
 gluetun:
   clusterIP: 10.43.178.129
   image:

@@ -126,13 +126,6 @@ spec:
             name: jellyfin-service
             port:
               number: {{ .Values.jellyfin.ports.http.cluster }}
-      - path: /readarr
-        pathType: Prefix
-        backend:
-          service:
-            name: readarr-service
-            port:
-              number: {{ .Values.readarr.ports.http }}
       - path: /calibre
         pathType: Prefix
         backend:
