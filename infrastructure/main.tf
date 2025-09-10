@@ -27,8 +27,7 @@ resource "cloudflare_zero_trust_access_application" "home_media_server" {
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
   policies                  = [{
     id                      = cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
-    precedence              = 0
-    decision                = "allow"
+    precedence              = 1
   }]
 }
 
