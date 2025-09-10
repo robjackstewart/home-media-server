@@ -19,7 +19,7 @@ heimdall:
   clusterIP: 10.43.181.121
   image:
     repository: linuxserver/heimdall
-    tag: '2.7.4'
+    tag: '2.7.5'
     registry: lscr.io
     pullPolicy: Always
   ports:
