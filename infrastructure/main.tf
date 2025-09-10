@@ -17,10 +17,6 @@ provider "kubernetes" {
   config_context = var.kubernetes_context
 }
 
-resource "random_uuid" "allow_granted_users_only_policy_id" {
-
-}
-
 resource "cloudflare_zero_trust_access_application" "home_media_server" {
   zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name                      = var.cloudflare_application_name
@@ -30,14 +26,8 @@ resource "cloudflare_zero_trust_access_application" "home_media_server" {
   auto_redirect_to_identity = true
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
   policies                  = [{
-    id                      = random_uuid.allow_granted_users_only_policy_id.result
-    name                    = "Allow home media server users"
-    decision                = "allow"
-    include                 = [{
-      group = {
-        id = cloudflare_zero_trust_access_group.home_media_server_users.id
-      }
-    }]
+    id                      = cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
+    precedence              = 1
   }]
 }
 
@@ -192,6 +182,18 @@ resource "cloudflare_zero_trust_access_group" "home_media_server_users" {
     azure_ad = {
       identity_provider_id = cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id
       id                   = var.entra_id_access_group_object_id
+    }
+  }]
+}
+
+resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_based_on_entra_id_group" {
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  name       = "Allow home media server users"
+  decision   = "allow"
+
+  include = [{
+    group = {
+      id = cloudflare_zero_trust_access_group.home_media_server_users.id
     }
   }]
 }
