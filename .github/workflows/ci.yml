@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Helm Lint
         run: docker run --rm -v ${PWD}/helm:/mount -w /mount alpine/helm lint --values values.yaml --values sample.infrastructure.values.yaml --namespace home-media-server
   k3d-image:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Build K3d Image
         run: docker build . --tag k3d-cuda:${{ env.tag }}
         working-directory: .k3d
