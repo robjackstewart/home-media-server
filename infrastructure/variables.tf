@@ -33,13 +33,13 @@ variable "azure_subscription_id" {
 
 variable "azure_resource_group_name" {
   type = string
-  description = "The name of the Azure resource group in which security resources will be created."
+  description = "The name of the Azure resource group in which home media server resources will be created."
   default = "home-media-server-rg"
 }
 
 variable "azure_resource_group_location" {
   type = string
-  description = "The location of the Azure resource group in which security resources will be created."
+  description = "The location of the Azure resource group in which home media server resources will be created."
   default = "uksouth"
 }
 
