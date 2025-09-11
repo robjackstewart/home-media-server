@@ -5,20 +5,26 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: local-storage
   capacity:
     storage: {{ .Values.storage.host.config.capacity }}
   accessModes:
     - ReadWriteMany
-  hostPath:
+  local:
     path: {{ .Values.storage.host.config.dir }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: Exists  # Can run on any node
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: config
 spec:
-  storageClassName: manual
+  storageClassName: local-storage
   accessModes:
     - ReadWriteMany
   resources:
