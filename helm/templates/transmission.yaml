@@ -112,6 +112,30 @@ spec:
             - name: config
               mountPath: /config
               subPath: transmission
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.transmission.ports.http }}
+            initialDelaySeconds: 30  # Wait for Gluetun
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /transmission/web/
+              port: {{ .Values.transmission.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - "transmission-remote --session-info | grep -q 'version'"
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 2
         - name: transmission-monitor
           image: {{ include "image" .Values.transmission.image }}
           command: ["/bin/sh", "-c"]

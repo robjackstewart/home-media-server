@@ -61,18 +61,18 @@ spec:
               mountPath: /config
               subPath: radarr
           livenessProbe:
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - curl "http://localhost:{{ .Values.radarr.ports.http }}/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            httpGet:
+              path: /radarr/ping
+              port: {{ .Values.radarr.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
           readinessProbe:
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - curl "http://localhost:{{ .Values.radarr.ports.http }}/radarr/api/health?ApiKey=$(sed -ne '/ApiKey/{s/.*<ApiKey>\(.*\)<\/ApiKey>.*/\1/p;q;}' </config/config.xml)"
+            httpGet:
+              path: /radarr/ping
+              port: {{ .Values.radarr.ports.http }}
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1
