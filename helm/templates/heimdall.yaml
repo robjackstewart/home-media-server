@@ -48,5 +48,21 @@ spec:
           - name: config
             mountPath: /config
             subPath: heimdall
+        livenessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.heimdall.ports.http }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: {{ .Values.heimdall.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 1
         ports:
         - containerPort: {{ .Values.heimdall.ports.http }}

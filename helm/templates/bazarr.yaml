@@ -60,4 +60,10 @@ spec:
             mountPath: tv
             subPath: tv
         ports:
-        - containerPort: {{ .Values.bazarr.ports.http }}
+          - containerPort: {{ .Values.bazarr.ports.http }}
+        startupProbe:
+          tcpSocket:
+            port: {{ .Values.bazarr.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20

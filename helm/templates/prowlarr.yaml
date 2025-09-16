@@ -64,5 +64,27 @@ spec:
           - name: config
             mountPath: /config
             subPath: prowlarr
+        startupProbe:
+          tcpSocket:
+            port: {{ .Values.prowlarr.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
+        livenessProbe:
+          httpGet:
+            path: /prowlarr/ping
+            port: {{ .Values.prowlarr.ports.http }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /prowlarr/ping
+            port: {{ .Values.prowlarr.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 1
         ports:
           - containerPort: {{ .Values.prowlarr.ports.http }}
