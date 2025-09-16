@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyseerr-service
+spec:
+  clusterIP: {{ .Values.jellyseerr.clusterIP }}
+  ports:
+    - name: http
+      port: {{ .Values.jellyseerr.ports.nginx }}
+      protocol: TCP
+      targetPort: {{ .Values.jellyseerr.ports.nginx }}
+  selector:
+    app: jellyseerr
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jellyseerr-nginx-config
+data:
+  nginx.conf: |
+    location ^~ /overseerr {
+        set $app 'overseerr';
+
+        # Remove /overseerr path to pass to the app
+        rewrite ^/overseerr/?(.*)$ /$1 break;
+        proxy_pass http://localhost:5055; # NO TRAILING SLASH
+
+        # Redirect location headers
+        proxy_redirect ^ /$app;
+        proxy_redirect /setup /$app/setup;
+        proxy_redirect /login /$app/login;
+
+        # Sub filters to replace hardcoded paths
+        proxy_set_header Accept-Encoding "";
+        sub_filter_once off;
+        sub_filter_types *;
+        sub_filter 'href="/"' 'href="/$app"';
+        sub_filter 'href="/login"' 'href="/$app/login"';
+        sub_filter 'href:"/"' 'href:"/$app"';
+        sub_filter '\/_next' '\/$app\/_next';
+        sub_filter '/_next' '/$app/_next';
+        sub_filter '/api/v1' '/$app/api/v1';
+        sub_filter '/login/plex/loading' '/$app/login/plex/loading';
+        sub_filter '/images/' '/$app/images/';
+        sub_filter '/android-' '/$app/android-';
+        sub_filter '/apple-' '/$app/apple-';
+        sub_filter '/favicon' '/$app/favicon';
+        sub_filter '/logo_' '/$app/logo_';
+        sub_filter '/site.webmanifest' '/$app/site.webmanifest';
+    }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jellyseerr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jellyseerr
+  template:
+    metadata:
+      labels:
+        app: jellyseerr
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+        - name: nginx-config-volume
+          configMap:
+            name: jellyseerr-nginx-config
+      containers:
+        - name: nginx
+          image: {{ include "image" .Values.jellyseerr.image }}
+          imagePullPolicy: {{ .Values.jellyseerr.image.pullPolicy }}
+          env:
+            - name: TZ
+              value: {{ .Values.Timezone }}
+            - name: PUID
+              value: "{{ .Values.PUID }}"
+            - name: PGID
+              value: "{{ .Values.PGID }}"
+          volumeMounts:
+            - name: nginx-config-volume
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          ports:
+            - containerPort: {{ .Values.jellyseerr.ports.nginx }}
+        - name: jellyseerr
+          env:
+            - name: TZ
+              value: {{ .Values.Timezone }}
+            - name: PUID
+              value: "{{ .Values.PUID }}"
+            - name: PGID
+              value: "{{ .Values.PGID }}"
+          image: {{ include "image" .Values.jellyseerr.image }}
+          imagePullPolicy: {{ .Values.jellyseerr.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.jellyseerr.ports.http }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              subPath: jellyseerr
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.jellyseerr.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: {{ .Values.jellyseerr.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/status
+              port: {{ .Values.jellyseerr.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1

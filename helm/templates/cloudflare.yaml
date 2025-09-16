@@ -128,13 +128,20 @@ spec:
             name: jellyfin-service
             port:
               number: {{ .Values.jellyfin.ports.http.cluster }}
+      - path: /jellyseerr
+        pathType: Prefix
+        backend:
+          service:
+            name: jellyseerr-service
+            port:
+              number: {{ .Values.jellyseerr.ports.nginx }}
       - path: /calibre
         pathType: Prefix
         backend:
           service:
             name: calibre-service
             port:
-              number: {{ .Values.calibre.nginx.ports.http }}
+              number: {{ .Values.calibre.ports.nginx }}
       - path: /heimdall
         pathType: Prefix
         backend:

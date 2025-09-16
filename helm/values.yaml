@@ -87,24 +87,23 @@ sonarr:
   ports:
     http: 8989
 
+nginx:
+  image:
+    repository: nginx
+    tag: latest
+    registry: docker.io
+    pullPolicy: Always
+
 calibre:
   clusterIP: 10.43.35.158
-  nginx:
-    image:
-      repository: nginx
-      tag: latest
-      registry: docker.io
-      pullPolicy: Always
-    ports:
-      http: 80
-  web:
-    image:
-      repository: linuxserver/calibre-web
-      tag: latest
-      registry: lscr.io
-      pullPolicy: Always
-    ports:
-      http: 8083
+  image:
+    repository: linuxserver/calibre-web
+    tag: latest
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 8083
+    nginx: 80
 
 homeassistant:
   clusterIP: 10.43.178.128
@@ -136,3 +135,14 @@ transmission:
     pullPolicy: Always
   ports:
     http: 9091
+
+jellyseerr:
+  clusterIP: 10.43.178.130
+  image:
+    repository: fallenbagel/jellyseerr
+    tag: '2.7.3'
+    registry: docker.io
+    pullPolicy: Always
+  ports:
+    http: 5055
+    nginx: 80
