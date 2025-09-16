@@ -60,6 +60,12 @@ spec:
           - name: config
             mountPath: /config
             subPath: sonarr
+        startupProbe:
+          tcpSocket:
+            port: {{ .Values.sonarr.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          failureThreshold: 20
         livenessProbe:
           httpGet:
             path: /sonarr/ping

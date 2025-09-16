@@ -60,6 +60,12 @@ spec:
             - name: config
               mountPath: /config
               subPath: radarr
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.radarr.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 20
           livenessProbe:
             httpGet:
               path: /radarr/ping

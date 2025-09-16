@@ -14,6 +14,8 @@ cloudflared:
     tag: '2025.8.1'
     registry: docker.io
     pullPolicy: Always
+  ports:
+    http: 2000
 
 heimdall:
   clusterIP: 10.43.181.121

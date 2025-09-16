@@ -26,13 +26,20 @@ spec:
         - run
         livenessProbe:
           httpGet:
-            # Cloudflared has a /ready endpoint which returns 200 if and only if
-            # it has an active connection to the edge.
             path: /ready
-            port: 2000
-          failureThreshold: 1
-          initialDelaySeconds: 10
+            port: {{ .Values.cloudflared.ports.http }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: {{ .Values.cloudflared.ports.http }}
+          initialDelaySeconds: 30
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 1
         volumeMounts:
         - name: config
           mountPath: /etc/cloudflared/config
