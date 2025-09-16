@@ -49,6 +49,15 @@ jellyfin:
         cluster: 1900
         node: 30099
 
+jellyseerr:
+  image:
+    repository: fallenbagel/jellyseerr
+    tag: '2.7.3'
+    registry: docker.io
+    pullPolicy: Always
+  ports:
+    http: 5055
+
 prowlarr:
   clusterIP: 10.43.22.107
   flaresolverr:
