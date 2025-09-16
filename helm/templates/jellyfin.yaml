@@ -106,12 +106,6 @@ spec:
           - name: media
             mountPath: /tv
             subPath: tv
-        startupProbe:
-          tcpSocket:
-            port: {{ .Values.jellyfin.ports.http.cluster }}
-          initialDelaySeconds: 30
-          periodSeconds: 5
-          failureThreshold: 20
         livenessProbe:
           httpGet:
             path: /jellyfin/health
@@ -124,7 +118,7 @@ spec:
           httpGet:
             path: /jellyfin/health
             port: {{ .Values.jellyfin.ports.http.cluster }}
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 1
