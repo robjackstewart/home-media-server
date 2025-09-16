@@ -132,7 +132,7 @@ spec:
               - /bin/sh
               - -c
               - "transmission-remote --session-info | grep -q 'version'"
-            initialDelaySeconds: 0
+            initialDelaySeconds: 60
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 2
