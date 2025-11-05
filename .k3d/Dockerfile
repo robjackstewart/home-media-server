@@ -1,7 +1,7 @@
 ARG K3S_TAG="v1.33.1-k3s1"
 FROM rancher/k3s:$K3S_TAG AS k3s
 
-FROM nvidia/cuda:13.0.1-base-ubuntu22.04
+FROM nvidia/cuda:13.0.2-base-ubuntu22.04
 
 RUN apt-get update && \
     apt-get -y install gnupg2 curl nvidia-container-runtime && \
