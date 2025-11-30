@@ -3,9 +3,11 @@ FROM rancher/k3s:$K3S_TAG AS k3s
 
 FROM nvidia/cuda:13.0.1-base-ubuntu22.04
 
+ARG NVIDIA_CONTAINER_TOOLKIT_VERSION="1.17.8-1"
+
 RUN apt update && \
     apt upgrade -y && \
-    apt -y install gnupg2 curl nvidia-container-runtime libnvidia-container-tools=1.17.8-1 libnvidia-container1=1.17.8-1 nvidia-container-toolkit=1.17.8-1 nvidia-container-toolkit-base=1.17.8-1 && \
+    apt -y install gnupg2 curl libnvidia-container-tools=$NVIDIA_CONTAINER_TOOLKIT_VERSION libnvidia-container1=$NVIDIA_CONTAINER_TOOLKIT_VERSION nvidia-container-toolkit=$NVIDIA_CONTAINER_TOOLKIT_VERSION nvidia-container-toolkit-base=$NVIDIA_CONTAINER_TOOLKIT_VERSION && \
     chmod 1777 /tmp && \
     mkdir -p /var/lib/rancher/k3s/agent/etc/containerd && \
     mkdir -p /var/lib/rancher/k3s/server/manifests
