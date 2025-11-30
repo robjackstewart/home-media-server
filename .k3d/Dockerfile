@@ -22,6 +22,7 @@ VOLUME /var/log
 
 ENV PATH="$PATH:/bin/aux"
 ENV CRI_CONFIG_FILE=/var/lib/rancher/k3s/agent/etc/crictl.yaml
+ENV DEVICE_DISCOVERY_STRATEGY=nvml
 
 ENTRYPOINT ["/bin/k3s"]
 CMD ["agent"]
