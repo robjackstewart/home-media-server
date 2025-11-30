@@ -12,6 +12,6 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Recreate cluster
         run: INFRASTRUCTURE_APPLY_ARGS="-auto-approve" task recreate
