@@ -71,101 +71,115 @@ data:
     metrics: 0.0.0.0:2000
     no-autoupdate: true
     ingress:
-    # This rule sends all requests to nginx ingress controller, which proxies them further to correct services
-    - service: http://{{ .Release.Name }}-ingress-nginx-controller:80
+    # This rule sends all requests to the Gateway API service
+    - service: http://{{ .Release.Name }}-gateway-nginx:80
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
 metadata:
-  name: media-server-cloudflare-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  name: media-server-gateway
 spec:
-  ingressClassName: nginx
-  rules:
-  - host: {{ .Values.domain.main }}
-    http:
-      paths:
-      - path: /radarr
-        pathType: Prefix
-        backend:
-          service:
-            name: radarr-service
-            port:
-              number: {{ .Values.radarr.ports.http }}
-      - path: /sonarr
-        pathType: Prefix
-        backend:
-          service:
-            name: sonarr-service
-            port:
-              number: {{ .Values.sonarr.ports.http }}
-      - path: /bazarr
-        pathType: Prefix
-        backend:
-          service:
-            name: bazarr-service
-            port:
-              number: {{ .Values.bazarr.ports.http }}
-      - path: /prowlarr
-        pathType: Prefix
-        backend:
-          service:
-            name: prowlarr-service
-            port:
-              number: {{ .Values.prowlarr.ports.http }}
-      - path: /transmission
-        pathType: Prefix
-        backend:
-          service:
-            name: transmission-service
-            port:
-              number: {{ .Values.transmission.ports.http }}
-      - path: /jellyfin
-        pathType: Prefix
-        backend:
-          service:
-            name: jellyfin-service
-            port:
-              number: {{ .Values.jellyfin.ports.http.cluster }}
-      - path: /calibre
-        pathType: Prefix
-        backend:
-          service:
-            name: calibre-service
-            port:
-              number: {{ .Values.calibre.nginx.ports.http }}
-      - path: /heimdall
-        pathType: Prefix
-        backend:
-          service:
-            name: heimdall-service
-            port:
-              number: {{ .Values.heimdall.ports.http }}
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: heimdall-service
-            port:
-              number: {{ .Values.heimdall.ports.http }}
+  gatewayClassName: nginx
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    hostname: {{ .Values.domain.main }}
+  - name: homeassistant-http
+    port: 80
+    protocol: HTTP
+    hostname: {{ .Values.domain.homeassistant }}
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
-  name: homeassistant-cloudflare-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  name: media-server-routes
 spec:
-  ingressClassName: nginx
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ .Values.domain.main }}
   rules:
-  - host: {{ .Values.domain.homeassistant }}
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: homeassistant-service
-            port:
-              number: {{ .Values.homeassistant.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /radarr
+    backendRefs:
+    - name: radarr-service
+      port: {{ .Values.radarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /sonarr
+    backendRefs:
+    - name: sonarr-service
+      port: {{ .Values.sonarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /bazarr
+    backendRefs:
+    - name: bazarr-service
+      port: {{ .Values.bazarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /prowlarr
+    backendRefs:
+    - name: prowlarr-service
+      port: {{ .Values.prowlarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /transmission
+    backendRefs:
+    - name: transmission-service
+      port: {{ .Values.transmission.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /jellyfin
+    backendRefs:
+    - name: jellyfin-service
+      port: {{ .Values.jellyfin.ports.http.cluster }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /calibre
+    backendRefs:
+    - name: calibre-service
+      port: {{ .Values.calibre.nginx.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /heimdall
+    backendRefs:
+    - name: heimdall-service
+      port: {{ .Values.heimdall.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: heimdall-service
+      port: {{ .Values.heimdall.ports.http }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: homeassistant-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: homeassistant-http
+  hostnames:
+  - {{ .Values.domain.homeassistant }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: homeassistant-service
+      port: {{ .Values.homeassistant.ports.http }}
