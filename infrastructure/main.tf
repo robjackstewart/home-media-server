@@ -204,7 +204,7 @@ resource "kubernetes_namespace_v1" "home-media-server" {
   }
 }
 
-resource "kubernetes_secret" "argo_tunnel_credentials" {
+resource "kubernetes_secret_v1" "argo_tunnel_credentials" {
   metadata {
     name = var.cloudflare_tunnel_credential_secret_name
     namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
@@ -215,7 +215,7 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 }
 
-resource "kubernetes_secret" "vpn_credentials" {
+resource "kubernetes_secret_v1" "vpn_credentials" {
   metadata {
     name = var.transmission_vpn_secret_name
     namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
