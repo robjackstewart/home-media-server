@@ -198,16 +198,16 @@ resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_ba
   }]
 }
 
-resource "kubernetes_namespace" "home-media-server" {
+resource "kubernetes_namespace_v1" "home-media-server" {
   metadata {
     name = var.kubernetes_namespace
   }
 }
 
-resource "kubernetes_secret" "argo_tunnel_credentials" {
+resource "kubernetes_secret_v1" "argo_tunnel_credentials" {
   metadata {
     name = var.cloudflare_tunnel_credential_secret_name
-    namespace = var.kubernetes_namespace
+    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
   }
 
   data = {
@@ -215,10 +215,10 @@ resource "kubernetes_secret" "argo_tunnel_credentials" {
   }
 }
 
-resource "kubernetes_secret" "vpn_credentials" {
+resource "kubernetes_secret_v1" "vpn_credentials" {
   metadata {
     name = var.transmission_vpn_secret_name
-    namespace = var.kubernetes_namespace
+    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
   }
 
   data = {
