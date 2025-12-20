@@ -4,7 +4,7 @@ version: 0.0.1
 appVersion: v0.0.1
 dependencies:
   - name: nginx-gateway-fabric
-    version: '1.5.1'
+    version: '1.6.2'
     repository: oci://ghcr.io/nginx/charts
   - name: nvidia-device-plugin
     version: '0.17.4'
