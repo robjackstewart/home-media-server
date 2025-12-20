@@ -1,0 +1,107 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: media-server-gateway
+spec:
+  gatewayClassName: {{ .Values.gateway.className | default "nginx" }}
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: media-server-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ .Values.domain.main }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /radarr
+    backendRefs:
+    - name: radarr-service
+      port: {{ .Values.radarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /sonarr
+    backendRefs:
+    - name: sonarr-service
+      port: {{ .Values.sonarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /bazarr
+    backendRefs:
+    - name: bazarr-service
+      port: {{ .Values.bazarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /prowlarr
+    backendRefs:
+    - name: prowlarr-service
+      port: {{ .Values.prowlarr.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /transmission
+    backendRefs:
+    - name: transmission-service
+      port: {{ .Values.transmission.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /jellyfin
+    backendRefs:
+    - name: jellyfin-service
+      port: {{ .Values.jellyfin.ports.http.cluster }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /calibre
+    backendRefs:
+    - name: calibre-service
+      port: {{ .Values.calibre.nginx.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /heimdall
+    backendRefs:
+    - name: heimdall-service
+      port: {{ .Values.heimdall.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: heimdall-service
+      port: {{ .Values.heimdall.ports.http }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: homeassistant-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ .Values.domain.homeassistant }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: homeassistant-service
+      port: {{ .Values.homeassistant.ports.http }}
