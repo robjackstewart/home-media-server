@@ -8,6 +8,9 @@ bazarr:
   ports:
     http: 6767
 
+gateway:
+  className: nginx
+
 cloudflared:
   image:
     repository: cloudflare/cloudflared
