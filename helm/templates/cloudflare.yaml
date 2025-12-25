@@ -72,4 +72,4 @@ data:
     no-autoupdate: true
     ingress:
     # This rule sends all requests to the gateway, which routes them to correct services
-    - service: http://{{ .Release.Name }}-nginx-gateway-fabric.{{ .Release.Namespace }}.svc.cluster.local:80
+    - service: http://media-server-gateway-nginx.{{ .Release.Namespace }}.svc.cluster.local:80
