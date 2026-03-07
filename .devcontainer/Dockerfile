@@ -32,3 +32,6 @@ RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/sh
 RUN curl -L "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" \
     -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq
+
+# Install k3d
+RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
