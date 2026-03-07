@@ -3,7 +3,7 @@ FROM rancher/k3s:$K3S_TAG AS k3s
 
 FROM nvidia/cuda:13.1.0-base-ubuntu22.04
 
-ARG NVIDIA_CONTAINER_TOOLKIT_VERSION="1.17.9-1"
+ARG NVIDIA_CONTAINER_TOOLKIT_VERSION="1.18.2-1"
 
 RUN apt update && \
     apt upgrade -y && \

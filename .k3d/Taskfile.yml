@@ -9,7 +9,7 @@ env:
     sh: yq '.image' config.yml
 
 tasks:
-  dependencies:check:
+  environment:check:
     preconditions:
       - sh: k3d version
         msg: K3d must be installed
