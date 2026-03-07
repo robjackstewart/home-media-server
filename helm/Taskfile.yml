@@ -28,10 +28,23 @@ tasks:
     cmds:
       - helm dependency build
 
+  crds:apply:
+    desc: Apply all required CRDs
+    cmds:
+      - task gateway-api:crds:apply
+      - task nginx-gateway-fabric:crds:apply
+
   gateway-api:crds:apply:
     desc: Apply Gateway API CRDs for the required version
     cmds:
       - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v{{.GATEWAY_API_VERSION}}/standard-install.yaml
+
+  nginx-gateway-fabric:crds:apply:
+    desc: Apply nginx-gateway-fabric CRDs from the local subchart
+    cmds:
+      - |
+        NGF_VERSION=$(grep -A2 'nginx-gateway-fabric' Chart.lock | grep version | awk '{print $2}')
+        helm show crds ./charts/nginx-gateway-fabric-${NGF_VERSION}.tgz | kubectl apply --server-side -f -
 
   release:
     desc: Create a helm release
@@ -39,7 +52,6 @@ tasks:
       - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
       - test -f $HELM_VALUES_FILE
     cmds:
-      - task: gateway-api:crds:apply
       - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --create-namespace --timeout 3000s {{.CLI_ARGS}} --skip-crds
 
   release:uninstall:
