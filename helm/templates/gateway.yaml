@@ -68,13 +68,6 @@ spec:
   - matches:
     - path:
         type: PathPrefix
-        value: /calibre
-    backendRefs:
-    - name: calibre-service
-      port: {{ .Values.calibre.nginx.ports.http }}
-  - matches:
-    - path:
-        type: PathPrefix
         value: /heimdall
     backendRefs:
     - name: heimdall-service
