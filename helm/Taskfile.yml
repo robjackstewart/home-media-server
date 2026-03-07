@@ -23,6 +23,11 @@ tasks:
     cmds:
       - helm dependency build
 
+  dependencies:update:
+    desc: update helm dependencies
+    cmds:
+      - helm dependency update
+
   crds:apply:
     desc: Apply all required CRDs
     cmds:
