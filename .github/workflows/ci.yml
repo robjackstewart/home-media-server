@@ -7,13 +7,29 @@ env:
   tag: ${GITHUB_RUN_ID}-${GITHUB_RUN_NUMBER}
 
 jobs:
-  lint:
+  helm:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Helm Lint
-        run: docker run --rm -v ${PWD}/helm:/mount -w /mount alpine/helm lint . --values values.yaml --values sample.infrastructure.values.yaml --namespace home-media-server
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Start dev container
+        run: devcontainer up --workspace-folder .
+
+      - name: Check dependencies
+        run: devcontainer exec --workspace-folder . -- task dependencies:check
+
+      - name: Check environment
+        run: devcontainer exec --workspace-folder . -- task environment:check
+
+      - name: Check helm dependency compatability
+        run: devcontainer exec --workspace-folder . -- task helm:dependencies:compatability:check
   k3d-image:
     runs-on: ubuntu-24.04
     steps:
