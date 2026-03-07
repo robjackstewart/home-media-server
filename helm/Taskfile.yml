@@ -6,16 +6,45 @@ env:
   HELM_VALUES_FILE: values.yaml
   HELM_INFRASTRUCTURE_VALUES_FILE: infrastructure.values.yaml
 
+vars:
+  # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+  GATEWAY_API_VERSION: "1.4.1"
+
 tasks:
   dependencies:check:
     preconditions:
       - sh: helm version
         msg: Helm must be installed
+      - sh: kubectl version --client
+        msg: kubectl must be installed
+      - sh: |
+          NGF_VERSION=$(grep -A2 'nginx-gateway-fabric' Chart.lock | grep version | awk '{print $2}')
+          REQUIRED=$(curl -s "https://raw.githubusercontent.com/nginx/nginx-gateway-fabric/v${NGF_VERSION}/config/crd/gateway-api/standard/kustomization.yaml" | grep -oP 'ref=\Kv[^&]+' | sed 's/^v//')
+          [ "$REQUIRED" = "{{.GATEWAY_API_VERSION}}" ]
+        msg: "GATEWAY_API_VERSION ({{.GATEWAY_API_VERSION}}) does not match the version required by nginx-gateway-fabric. Update GATEWAY_API_VERSION in helm/Taskfile.yml."
 
   dependencies:build:
     desc: build helm dependencies
     cmds:
       - helm dependency build
+
+  crds:apply:
+    desc: Apply all required CRDs
+    cmds:
+      - task gateway-api:crds:apply
+      - task nginx-gateway-fabric:crds:apply
+
+  gateway-api:crds:apply:
+    desc: Apply Gateway API CRDs for the required version
+    cmds:
+      - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v{{.GATEWAY_API_VERSION}}/standard-install.yaml
+
+  nginx-gateway-fabric:crds:apply:
+    desc: Apply nginx-gateway-fabric CRDs from the local subchart
+    cmds:
+      - |
+        NGF_VERSION=$(grep -A2 'nginx-gateway-fabric' Chart.lock | grep version | awk '{print $2}')
+        helm show crds ./charts/nginx-gateway-fabric-${NGF_VERSION}.tgz | kubectl apply --server-side -f -
 
   release:
     desc: Create a helm release
@@ -23,7 +52,7 @@ tasks:
       - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
       - test -f $HELM_VALUES_FILE
     cmds:
-      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s {{.CLI_ARGS}}
+      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --create-namespace --timeout 3000s {{.CLI_ARGS}} --skip-crds
 
   release:uninstall:
     desc: Create a helm release

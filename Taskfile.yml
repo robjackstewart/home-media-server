@@ -37,6 +37,7 @@ tasks:
         vars:
           CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
       - task: helm:dependencies:build
+      - task: helm:crds:apply
       - task: helm:release
 
 
