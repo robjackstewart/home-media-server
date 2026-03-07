@@ -27,3 +27,8 @@ RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/sh
     | tee /etc/apt/sources.list.d/hashicorp.list \
     && apt-get update && apt-get install -y terraform \
     && rm -rf /var/lib/apt/lists/*
+
+# Install yq
+RUN curl -L "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" \
+    -o /usr/local/bin/yq \
+    && chmod +x /usr/local/bin/yq
