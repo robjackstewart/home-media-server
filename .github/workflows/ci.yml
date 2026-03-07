@@ -23,7 +23,7 @@ jobs:
         run: devcontainer up --workspace-folder .
 
       - name: Check dependencies
-        run: devcontainer exec --workspace-folder . -- task dependencies:check
+        run: devcontainer exec --workspace-folder . -- task environment:check
 
       - name: Check environment
         run: devcontainer exec --workspace-folder . -- task environment:check
