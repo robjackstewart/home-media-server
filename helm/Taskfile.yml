@@ -11,17 +11,12 @@ vars:
   GATEWAY_API_VERSION: "1.4.1"
 
 tasks:
-  dependencies:check:
+  environment:check:
     preconditions:
       - sh: helm version
         msg: Helm must be installed
       - sh: kubectl version --client
         msg: kubectl must be installed
-      - sh: |
-          NGF_VERSION=$(grep -A2 'nginx-gateway-fabric' Chart.lock | grep version | awk '{print $2}')
-          REQUIRED=$(curl -s "https://raw.githubusercontent.com/nginx/nginx-gateway-fabric/v${NGF_VERSION}/config/crd/gateway-api/standard/kustomization.yaml" | grep -oP 'ref=\Kv[^&]+' | sed 's/^v//')
-          [ "$REQUIRED" = "{{.GATEWAY_API_VERSION}}" ]
-        msg: "GATEWAY_API_VERSION ({{.GATEWAY_API_VERSION}}) does not match the version required by nginx-gateway-fabric. Update GATEWAY_API_VERSION in helm/Taskfile.yml."
 
   dependencies:build:
     desc: build helm dependencies
@@ -33,6 +28,15 @@ tasks:
     cmds:
       - task gateway-api:crds:apply
       - task nginx-gateway-fabric:crds:apply
+
+  dependencies:compatability:check:
+    preconditions:
+      - sh: |
+          NGF_VERSION=$(grep -A2 'nginx-gateway-fabric' Chart.lock | grep version | awk '{print $2}')
+          REQUIRED=$(curl -s "https://raw.githubusercontent.com/nginx/nginx-gateway-fabric/v${NGF_VERSION}/config/crd/gateway-api/standard/kustomization.yaml" | grep -oP 'ref=\Kv[^&]+' | sed 's/^v//')
+          [ "$REQUIRED" = "{{.GATEWAY_API_VERSION}}" ]
+        msg: "GATEWAY_API_VERSION ({{.GATEWAY_API_VERSION}}) does not match the version required by nginx-gateway-fabric. Update GATEWAY_API_VERSION in helm/Taskfile.yml."
+
 
   gateway-api:crds:apply:
     desc: Apply Gateway API CRDs for the required version

@@ -12,11 +12,11 @@ includes:
     dir: .k3d
 
 tasks:
-  dependencies:check:
+  environment:check:
     deps:
-      - task: infrastructure:dependencies:check
-      - task: helm:dependencies:check
-      - task: k3d:dependencies:check
+      - task: infrastructure:environment:check
+      - task: helm:environment:check
+      - task: k3d:environment:check
 
   recreate:
     desc: |
