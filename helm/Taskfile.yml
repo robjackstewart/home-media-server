@@ -6,16 +6,27 @@ env:
   HELM_VALUES_FILE: values.yaml
   HELM_INFRASTRUCTURE_VALUES_FILE: infrastructure.values.yaml
 
+vars:
+  # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+  GATEWAY_API_VERSION: "1.4.1"
+
 tasks:
   dependencies:check:
     preconditions:
       - sh: helm version
         msg: Helm must be installed
+      - sh: kubectl version --client
+        msg: kubectl must be installed
 
   dependencies:build:
     desc: build helm dependencies
     cmds:
       - helm dependency build
+
+  gateway-api:crds:apply:
+    desc: Apply Gateway API CRDs for the required version
+    cmds:
+      - kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v{{.GATEWAY_API_VERSION}}/standard-install.yaml
 
   release:
     desc: Create a helm release
@@ -23,7 +34,8 @@ tasks:
       - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
       - test -f $HELM_VALUES_FILE
     cmds:
-      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --timeout 3000s {{.CLI_ARGS}}
+      - task: gateway-api:crds:apply
+      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --create-namespace --timeout 3000s {{.CLI_ARGS}} --skip-crds
 
   release:uninstall:
     desc: Create a helm release
