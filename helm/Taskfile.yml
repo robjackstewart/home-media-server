@@ -8,7 +8,7 @@ env:
 
 vars:
   # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
-  GATEWAY_API_VERSION: "1.4.1"
+  GATEWAY_API_VERSION: "1.5.1"
 
 tasks:
   environment:check:
