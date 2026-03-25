@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-manager-service
+spec:
+  ports:
+  - name: http
+    port: {{ .Values.paymentManager.ports.http }}
+    targetPort: {{ .Values.paymentManager.ports.http }}
+    protocol: TCP
+  selector:
+    app: payment-manager
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: payment-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-manager
+  template:
+    metadata:
+      labels:
+        app: payment-manager
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+      - name: payment-manager
+        image: {{ include "image" .Values.paymentManager.image }}
+        imagePullPolicy: {{ .Values.paymentManager.image.pullPolicy }}
+        env:
+          - name: BASE_PATH
+            value: /paymentmanager
+        ports:
+          - containerPort: {{ .Values.paymentManager.ports.http }}
+        volumeMounts:
+          - name: config
+            mountPath: /data
+            subPath: paymentmanager
+        startupProbe:
+          tcpSocket:
+            port: {{ .Values.paymentManager.ports.http }}
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 20

@@ -139,3 +139,13 @@ transmission:
     pullPolicy: Always
   ports:
     http: 9091
+
+paymentManager:
+  clusterIP: 10.43.178.130
+  image:
+    repository: robjackstewart/payment-manager
+    tag: latest
+    registry: ghcr.io
+    pullPolicy: Always
+  ports:
+    http: 8080

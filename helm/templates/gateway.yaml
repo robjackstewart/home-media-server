@@ -75,6 +75,13 @@ spec:
   - matches:
     - path:
         type: PathPrefix
+        value: /paymentmanager
+    backendRefs:
+    - name: payment-manager-service
+      port: {{ .Values.paymentManager.ports.http }}
+  - matches:
+    - path:
+        type: PathPrefix
         value: /
     backendRefs:
     - name: heimdall-service
