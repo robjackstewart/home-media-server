@@ -14,7 +14,7 @@ gateway:
 cloudflared:
   image:
     repository: cloudflare/cloudflared
-    tag: '2026.6.0'
+    tag: '2026.6.1'
     registry: docker.io
     pullPolicy: Always
   ports:
