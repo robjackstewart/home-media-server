@@ -3,7 +3,7 @@
 ## Current State Summary
 
 A K3d-based home media server running on a single node with NVIDIA GPU. Services:
-- **Media**: Jellyfin (GPU-accelerated), Sonarr, Radarr, Bazarr, Prowlarr, Transmission+Gluetun (Mullvad WireGuard VPN)
+- **Media**: Jellyfin (GPU-accelerated), Sonarr, Radarr, Bazarr, Prowlarr, Transmission+Gluetun (Mullvad WireGuard VPN), Seerr (media request portal)
 - **Automation**: Home Assistant
 - **Dashboard**: Heimdall
 - **Ingress**: Cloudflared → nginx-gateway-fabric (Gateway API), each app on its own first-level subdomain behind a wildcard DNS record
@@ -229,10 +229,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ## 🟢 LOW PRIORITY — New Features
 
-### FEAT-1: Jellyseerr — Media Request Portal
+### FEAT-1: Seerr — Media Request Portal ✅ DONE
 **Requirement:** Self-service media requests without *arr admin access
-- **Current State:** Users need direct access to Sonarr/Radarr admin UIs to request media.
-- **Improvement:** Deploy Jellyseerr (Overseerr fork with Jellyfin integration) as a StatefulSet. Expose via Gateway route `/jellyseerr`.
+- **Previous State:** Users needed direct access to Sonarr/Radarr admin UIs to request media.
+- **Improvement:** Deployed [Seerr](https://docs.seerr.dev/) — the merged successor to Jellyseerr/Overseerr — as a StatefulSet, exposed at its own subdomain (`seerr.<zone>`) via `helm/templates/seerr.yaml`, consistent with every other app's per-app-subdomain routing.
 
 ### FEAT-2: Unpackerr — Automated Archive Extraction
 **Requirement:** Automatic post-download extraction
@@ -311,20 +311,19 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 | 25 | OBS-4 | Application-level metrics (APM) | Observability |
 | 26 | STOR-1 | Storage class tiering | Storage |
 | 27 | STOR-2 | PostgreSQL for *arr metadata | Storage |
-| 28 | FEAT-1 | Jellyseerr media request portal | Features |
-| 29 | FEAT-2 | Unpackerr auto-extraction | Features |
-| 30 | FEAT-3 | Local DNS / split-horizon DNS | Features |
-| 31 | FEAT-4 | Homepage dashboard | Features |
-| 32 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
-| 33 | OPS-7 | IaC enhancement (K3d + Terraform modules) | Operations |
-| 34 | REL-4 | HPA for Prowlarr/Flaresolverr/Jellyfin | Reliability |
-| 35 | FEAT-6 | WireGuard direct access | Features |
-| 36 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
-| 37 | FEAT-7 | Service mesh (Linkerd) | Features |
-| 38 | OBS-5 | Distributed tracing (Jaeger/Tempo) | Observability |
-| 39 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
-| 40 | PERF-3 | Usage-aware dynamic throttling (custom build — see note) | Performance |
-| 41 | QA-2 | Chaos engineering (Litmus) | Quality |
+| 28 | FEAT-2 | Unpackerr auto-extraction | Features |
+| 29 | FEAT-3 | Local DNS / split-horizon DNS | Features |
+| 30 | FEAT-4 | Homepage dashboard | Features |
+| 31 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
+| 32 | OPS-7 | IaC enhancement (K3d + Terraform modules) | Operations |
+| 33 | REL-4 | HPA for Prowlarr/Flaresolverr/Jellyfin | Reliability |
+| 34 | FEAT-6 | WireGuard direct access | Features |
+| 35 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
+| 36 | FEAT-7 | Service mesh (Linkerd) | Features |
+| 37 | OBS-5 | Distributed tracing (Jaeger/Tempo) | Observability |
+| 38 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
+| 39 | PERF-3 | Usage-aware dynamic throttling (custom build — see note) | Performance |
+| 40 | QA-2 | Chaos engineering (Litmus) | Quality |
 
 ---
 
