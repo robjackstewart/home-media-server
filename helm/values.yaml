@@ -1,4 +1,5 @@
 bazarr:
+  subdomain: bazarr
   clusterIP: 10.43.163.13
   image:
     repository: linuxserver/bazarr
@@ -21,6 +22,7 @@ cloudflared:
     http: 2000
 
 heimdall:
+  subdomain: heimdall
   clusterIP: 10.43.181.121
   image:
     repository: linuxserver/heimdall
@@ -31,6 +33,7 @@ heimdall:
     http: 80
 
 jellyfin:
+  subdomain: jellyfin
   clusterIP: 10.43.18.241
   image:
     repository: linuxserver/jellyfin
@@ -53,6 +56,7 @@ jellyfin:
         node: 30099
 
 prowlarr:
+  subdomain: prowlarr
   clusterIP: 10.43.22.107
   flaresolverr:
     image:
@@ -71,6 +75,7 @@ prowlarr:
     http: 9696
 
 radarr:
+  subdomain: radarr
   clusterIP: 10.43.231.196
   image:
     repository: linuxserver/radarr
@@ -81,6 +86,7 @@ radarr:
     http: 7878
 
 sonarr:
+  subdomain: sonarr
   clusterIP: 10.43.26.211
   image:
     repository: linuxserver/sonarr
@@ -110,6 +116,7 @@ calibre:
       http: 8083
 
 homeassistant:
+  subdomain: home-assistant
   clusterIP: 10.43.178.128
   image:
     repository: home-assistant/home-assistant
@@ -131,6 +138,7 @@ gluetun:
     healthcheck: 9999
 
 transmission:
+  subdomain: transmission
   clusterIP: 10.43.26.112
   image:
     repository: linuxserver/transmission
@@ -141,6 +149,7 @@ transmission:
     http: 9091
 
 paymentManager:
+  subdomain: paymentmanager
   clusterIP: 10.43.178.130
   image:
     repository: robjackstewart/payment-manager

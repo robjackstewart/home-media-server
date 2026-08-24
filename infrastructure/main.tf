@@ -20,13 +20,36 @@ provider "kubernetes" {
 resource "cloudflare_zero_trust_access_application" "home_media_server" {
   zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name                      = var.cloudflare_application_name
-  domain                    = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
+  domain                    = format("*.%s", var.cloudflare_domain)
   type                      = "self_hosted"
   session_duration          = "24h"
   auto_redirect_to_identity = true
   allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
   policies                  = [{
     id                      = cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
+    precedence              = 1
+  }]
+}
+
+resource "cloudflare_zero_trust_access_policy" "bypass_everyone" {
+  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
+  name       = "Bypass Access"
+  decision   = "bypass"
+
+  include = [{
+    everyone = {}
+  }]
+}
+
+resource "cloudflare_zero_trust_access_application" "home_assistant" {
+  zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  name                      = "Home Assistant"
+  domain                    = format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)
+  type                      = "self_hosted"
+  session_duration          = "24h"
+  auto_redirect_to_identity = false
+  policies                  = [{
+    id                      = cloudflare_zero_trust_access_policy.bypass_everyone.id
     precedence              = 1
   }]
 }
@@ -155,6 +178,15 @@ resource "cloudflare_dns_record" "home_assistant_cname" {
   ttl = 1
 }
 
+resource "cloudflare_dns_record" "wildcard_cname" {
+  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
+  name    = "*"
+  content = "${cloudflare_zero_trust_tunnel_cloudflared.tunnel.id}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+  ttl = 1
+}
+
 
 resource "azurerm_key_vault_secret" "tunnel_credentials" {
   name         = "tunnel-credentials"
@@ -252,8 +284,8 @@ resource "local_file" "values" {
       }
     }
     domain = {
-      main          = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
-      homeassistant = format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)
+      zone = var.cloudflare_domain
+      main = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
     }
     storage = {
       host = {

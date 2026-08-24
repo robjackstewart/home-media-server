@@ -34,9 +34,6 @@ spec:
       - name: payment-manager
         image: {{ include "image" .Values.paymentManager.image }}
         imagePullPolicy: {{ .Values.paymentManager.image.pullPolicy }}
-        env:
-          - name: BASE_PATH
-            value: /paymentmanager
         ports:
           - containerPort: {{ .Values.paymentManager.ports.http }}
         volumeMounts:
@@ -49,3 +46,22 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 5
           failureThreshold: 20
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: payment-manager-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ printf "%s.%s" .Values.paymentManager.subdomain .Values.domain.zone }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: payment-manager-service
+      port: {{ .Values.paymentManager.ports.http }}
