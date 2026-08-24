@@ -18,8 +18,8 @@ vpn:
         username: username
         password: password
 domain:
+  zone: example.domain.com
   main: example.domain.com
-  homeassistant: homeassistant.example.domain.com
 storage:
   host:
     config:

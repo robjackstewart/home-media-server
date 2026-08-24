@@ -54,3 +54,22 @@ spec:
             - name: config
               mountPath: /config
               subPath: homeassistant
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: homeassistant-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ printf "%s.%s" .Values.homeassistant.subdomain .Values.domain.zone }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: homeassistant-service
+      port: {{ .Values.homeassistant.ports.http }}
