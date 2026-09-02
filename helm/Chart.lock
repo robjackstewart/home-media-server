@@ -1,9 +1,9 @@
 dependencies:
 - name: nginx-gateway-fabric
   repository: oci://ghcr.io/nginx/charts
-  version: 2.4.2
+  version: 2.7.0
 - name: nvidia-device-plugin
   repository: https://nvidia.github.io/k8s-device-plugin
   version: 0.18.2
-digest: sha256:8dcba5762d53badb6548e2fc51841b7e20570bce1e5e58fd07967eb3d53a8002
-generated: "2026-03-07T19:37:00.11380234Z"
+digest: sha256:4b5395481b71eca2e1b1f8c788ee39750aaa06eb6daf3d7ca96d3d6c4ccb94d4
+generated: "2026-09-02T21:04:02.507985706Z"
