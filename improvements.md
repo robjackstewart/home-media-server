@@ -5,6 +5,7 @@
 A K3d-based home media server running on a single node with NVIDIA GPU. Services:
 - **Media**: Jellyfin (GPU-accelerated), Sonarr, Radarr, Bazarr, Prowlarr, Transmission+Gluetun (Mullvad WireGuard VPN), Seerr (media request portal)
 - **Automation**: Home Assistant
+- **Household**: BabyBuddy (childcare tracking), Gramps Web (genealogy, with a Celery worker + Valkey broker)
 - **Dashboard**: Heimdall
 - **Ingress**: Cloudflared → nginx-gateway-fabric (Gateway API), each app on its own first-level subdomain behind a wildcard DNS record
 - **Auth**: Cloudflare Zero Trust → Azure Entra ID OAuth, via a single wildcard Access application (Home Assistant explicitly bypassed)

@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gramps-service
+spec:
+  clusterIP: {{ .Values.gramps.clusterIP }}
+  ports:
+  - name: http
+    port: {{ .Values.gramps.ports.http }}
+    targetPort: {{ .Values.gramps.ports.http }}
+    protocol: TCP
+  selector:
+    app: gramps
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gramps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gramps
+  template:
+    metadata:
+      labels:
+        app: gramps
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+        - name: tmp
+          emptyDir: {}
+      containers:
+        - name: grampsweb
+          env:
+          - name: GRAMPSWEB_TREE
+            value: {{ .Values.gramps.tree | quote }}
+          - name: GUNICORN_NUM_WORKERS
+            value: "2"
+          - name: GRAMPSWEB_CELERY_CONFIG__broker_url
+            value: {{ printf "redis://localhost:%d/0" (.Values.gramps.redis.ports.redis | int) | quote }}
+          - name: GRAMPSWEB_CELERY_CONFIG__result_backend
+            value: {{ printf "redis://localhost:%d/0" (.Values.gramps.redis.ports.redis | int) | quote }}
+          - name: GRAMPSWEB_RATELIMIT_STORAGE_URI
+            value: {{ printf "redis://localhost:%d/1" (.Values.gramps.redis.ports.redis | int) | quote }}
+          resources:
+            limits:
+              memory: 768Mi
+          image: {{ include "image" .Values.gramps.image }}
+          imagePullPolicy: {{ .Values.gramps.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gramps.ports.http }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/users
+              subPath: gramps/users
+            - name: config
+              mountPath: /app/indexdir
+              subPath: gramps/indexdir
+            - name: config
+              mountPath: /app/thumbnail_cache
+              subPath: gramps/thumbnail_cache
+            - name: config
+              mountPath: /app/cache
+              subPath: gramps/cache
+            - name: config
+              mountPath: /app/secret
+              subPath: gramps/secret
+            - name: config
+              mountPath: /root/.gramps/grampsdb
+              subPath: gramps/grampsdb
+            - name: media
+              mountPath: /app/media
+              subPath: genealogy
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.gramps.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.gramps.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.gramps.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1
+        - name: gramps-celery
+          args:
+            - celery
+            - -A
+            - gramps_webapi.celery
+            - worker
+            - --loglevel=INFO
+            - --concurrency=2
+          env:
+          - name: GRAMPSWEB_TREE
+            value: {{ .Values.gramps.tree | quote }}
+          - name: GRAMPSWEB_CELERY_CONFIG__broker_url
+            value: {{ printf "redis://localhost:%d/0" (.Values.gramps.redis.ports.redis | int) | quote }}
+          - name: GRAMPSWEB_CELERY_CONFIG__result_backend
+            value: {{ printf "redis://localhost:%d/0" (.Values.gramps.redis.ports.redis | int) | quote }}
+          - name: GRAMPSWEB_RATELIMIT_STORAGE_URI
+            value: {{ printf "redis://localhost:%d/1" (.Values.gramps.redis.ports.redis | int) | quote }}
+          resources:
+            limits:
+              memory: 512Mi
+          image: {{ include "image" .Values.gramps.image }}
+          imagePullPolicy: {{ .Values.gramps.image.pullPolicy }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/users
+              subPath: gramps/users
+            - name: config
+              mountPath: /app/indexdir
+              subPath: gramps/indexdir
+            - name: config
+              mountPath: /app/thumbnail_cache
+              subPath: gramps/thumbnail_cache
+            - name: config
+              mountPath: /app/cache
+              subPath: gramps/cache
+            - name: config
+              mountPath: /app/secret
+              subPath: gramps/secret
+            - name: config
+              mountPath: /root/.gramps/grampsdb
+              subPath: gramps/grampsdb
+            - name: media
+              mountPath: /app/media
+              subPath: genealogy
+            - name: tmp
+              mountPath: /tmp
+        - name: gramps-redis
+          image: {{ include "image" .Values.gramps.redis.image }}
+          imagePullPolicy: {{ .Values.gramps.redis.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gramps.redis.ports.redis }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: gramps-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ printf "%s.%s" .Values.gramps.subdomain .Values.domain.zone }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: gramps-service
+      port: {{ .Values.gramps.ports.http }}

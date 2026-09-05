@@ -169,3 +169,34 @@ seerr:
     pullPolicy: Always
   ports:
     http: 5055
+
+babybuddy:
+  subdomain: babybuddy
+  clusterIP: 10.43.178.132
+  image:
+    repository: linuxserver/babybuddy
+    tag: '2.10.0'
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 8000
+
+gramps:
+  subdomain: gramps
+  clusterIP: 10.43.178.133
+  tree: Family Tree
+  image:
+    repository: gramps-project/grampsweb
+    tag: '26.8.0'
+    registry: ghcr.io
+    pullPolicy: Always
+  redis:
+    image:
+      repository: valkey/valkey
+      tag: '8-alpine'
+      registry: docker.io
+      pullPolicy: Always
+    ports:
+      redis: 6379
+  ports:
+    http: 5000
