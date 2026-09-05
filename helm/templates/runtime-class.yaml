@@ -1,0 +1,10 @@
+# Maps the "nvidia" runtime class onto the containerd handler that k3s writes into
+# /var/lib/rancher/k3s/agent/etc/containerd/config.toml when it detects
+# nvidia-container-runtime on the host.
+#
+# Pods needing the GPU set `runtimeClassName: nvidia` (see jellyfin.yaml).
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia

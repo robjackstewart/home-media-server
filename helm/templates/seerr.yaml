@@ -48,7 +48,7 @@ spec:
       containers:
         - env:
           - name: TZ
-            value: {{ .Values.timezone }}
+            value: {{ .Values.Timezone }}
           resources:
             limits:
               memory: 1Gi

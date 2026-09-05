@@ -1,0 +1,14 @@
+# Declarative k3s server configuration.
+# Installed to /etc/rancher/k3s/config.yaml by `task k3s:config:install`.
+# k3s reads this on start, so changes require a service restart.
+
+# Traefik is disabled: ingress is handled by nginx-gateway-fabric via the Gateway API.
+disable:
+  - traefik
+
+# Marks the node as GPU-capable. The nvidia-device-plugin DaemonSet selects on this.
+node-label:
+  - nvidia.com/gpu.present=true
+
+# Lets the kubeconfig be read without sudo so `task k3s:use-kube-context` works.
+write-kubeconfig-mode: "0644"

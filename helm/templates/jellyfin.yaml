@@ -25,10 +25,17 @@ spec:
     app: jellyfin
   type: ClusterIP
 ---
+# Exposed on the LAN for the NVIDIA Shield. k3s's built-in ServiceLB (klipper) binds these
+# ports directly onto the host's LAN interface, so the Shield reaches 8096 as 8096.
+#
+# This replaces the old NodePort service, which only reached the LAN because k3d mapped
+# host 8096 -> nodePort 30096 and a PowerShell netsh portproxy forwarded Windows -> WSL.
+# Both of those layers are gone. UDP 7359/1900 auto-discovery now works natively, rather
+# than being broken by WSL2's NAT.
 apiVersion: v1
 kind: Service
 metadata:
-  name: jellyfin-node-port
+  name: jellyfin-lan
 spec:
   selector:
     app: jellyfin
@@ -37,23 +44,19 @@ spec:
       name: http
       port: {{ .Values.jellyfin.ports.http.cluster }}
       targetPort: {{ .Values.jellyfin.ports.http.cluster }}
-      nodePort: {{ .Values.jellyfin.ports.http.node }}
     - protocol: TCP
       name: https
       port: {{ .Values.jellyfin.ports.https.cluster }}
       targetPort: {{ .Values.jellyfin.ports.https.cluster }}
-      nodePort: {{ .Values.jellyfin.ports.https.node }}
     - protocol: UDP
       name: standard-auto-discovery
       port: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
       targetPort: {{ .Values.jellyfin.ports.autoDiscovery.standard.cluster }}
-      nodePort: {{ .Values.jellyfin.ports.autoDiscovery.standard.node }}
     - name: service-auto-discovery
       protocol: UDP
       port: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
       targetPort: {{ .Values.jellyfin.ports.autoDiscovery.service.cluster }}
-      nodePort: {{ .Values.jellyfin.ports.autoDiscovery.service.node }}
-  type: NodePort
+  type: LoadBalancer
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -69,6 +72,7 @@ spec:
       labels:
         app: jellyfin
     spec:
+      runtimeClassName: nvidia
       volumes:
         - name: config
           persistentVolumeClaim:

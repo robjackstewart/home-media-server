@@ -7,37 +7,32 @@ includes:
   helm:
     taskfile: helm/Taskfile.yml
     dir: helm
-  k3d:
-    taskfile: .k3d/Taskfile.yml
-    dir: .k3d
+  k3s:
+    taskfile: k3s/Taskfile.yml
+    dir: k3s
 
 tasks:
   environment:check:
     deps:
       - task: infrastructure:environment:check
       - task: helm:environment:check
-      - task: k3d:environment:check
+      - task: k3s:environment:check
 
   recreate:
     desc: |
-      Teardown an existing cluster if exists.
-      Rebuild cluster image.
+      Redeploy onto the existing native k3s cluster.
       Initialise Terraform.
-      Create a new cluster.
       Apply the infrastructure state.
       Create a helm release.
-    deps:
-      - task: k3d:cluster:delete
-        silent: true
+
+      Note: unlike the old k3d setup, this does NOT tear the cluster down first.
+      k3s is a long-lived systemd service, not a disposable container. To rebuild it
+      from scratch, run `task k3s:cluster:delete` then `task k3s:cluster:install`.
     cmds:
       - task: infrastructure:init
-      - task: k3d:image:build
-      - task: k3d:cluster:create
       - task: infrastructure:apply
         vars:
           CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
       - task: helm:dependencies:build
       - task: helm:crds:apply
       - task: helm:release
-
-

@@ -1,0 +1,56 @@
+version: '3'
+
+env:
+  K3S_CONFIG_DIR: /etc/rancher/k3s
+  K3S_CONFIG_FILE: /etc/rancher/k3s/config.yaml
+
+tasks:
+  environment:check:
+    preconditions:
+      - sh: k3s --version
+        msg: k3s must be installed
+      - sh: systemctl is-active --quiet k3s
+        msg: "The k3s service is not running: sudo systemctl start k3s"
+      - sh: test -e /dev/nvidia0
+        msg: NVIDIA device nodes are missing - check the driver and nvidia-persistenced
+
+  config:install:
+    desc: Install the declarative k3s config and restart the service.
+    cmds:
+      - sudo mkdir -p $K3S_CONFIG_DIR
+      - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
+      - sudo systemctl restart k3s
+
+  cluster:install:
+    desc: Install or upgrade k3s using the config in this directory.
+    cmds:
+      - sudo mkdir -p $K3S_CONFIG_DIR
+      - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
+      - curl -sfL https://get.k3s.io | sh -
+      - sudo systemctl enable --now k3s
+
+  gpu:check:
+    desc: Confirm k3s auto-detected the NVIDIA container runtime and the GPU is schedulable.
+    cmds:
+      # k3s writes the nvidia runtime into containerd's config itself when it finds
+      # nvidia-container-runtime on the host. This replaces the old custom CUDA node image.
+      - grep -q nvidia /var/lib/rancher/k3s/agent/etc/containerd/config.toml
+      - kubectl get runtimeclass nvidia
+      - kubectl describe node | grep -F 'nvidia.com/gpu'
+
+  use-kube-context:
+    desc: Point kubectl at the local k3s cluster.
+    cmds:
+      - mkdir -p $HOME/.kube
+      - sudo cat /etc/rancher/k3s/k3s.yaml > $HOME/.kube/config
+      - chmod 600 $HOME/.kube/config
+      - kubectl config use-context default
+
+  cluster:delete:
+    desc: DESTRUCTIVE - uninstall k3s and destroy all cluster state.
+    prompt: This uninstalls k3s and destroys all cluster state. Continue?
+    preconditions:
+      - sh: test -x /usr/local/bin/k3s-uninstall.sh
+        msg: k3s-uninstall.sh not found - k3s does not appear to be installed
+    cmds:
+      - sudo /usr/local/bin/k3s-uninstall.sh

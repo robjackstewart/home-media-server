@@ -24,8 +24,8 @@ tasks:
   apply:
     desc: Apply infrastructure
     preconditions:
-      - sh: k3d cluster list home-media-server
-        msg: The home-media-server K3d cluster does not exist
+      - sh: systemctl is-active --quiet k3s
+        msg: "The k3s service is not running: sudo systemctl start k3s"
       - sh: az account show
         msg: You must be logged in with the Azure CLI
       - sh: test -f $VARIABLES_TFVARS_PATH

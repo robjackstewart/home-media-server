@@ -23,9 +23,9 @@ transmission_vpn_provider_environment_variables=[
         value = "10.73.48.99/32"
     }
 ]
-host_storage_config_dir="/home-media-server/config"
+host_storage_config_dir="/srv/home-media-server/config"
 host_storage_config_capacity="5Gi"
-host_storage_media_dir="/home-media-server/media"
-host_storage_media_capacity="500Gi"
+host_storage_media_dir="/srv/home-media-server/media"
+host_storage_media_capacity="600Gi"
 entra_id_access_group_object_id="a0f74747-ec30-4632-b9d5-fc9e0b39d3f9"
 local_network_ip_address="192.168.50.109"
