@@ -41,6 +41,19 @@ hostStorageBootstrap:
     registry: docker.io
     pullPolicy: IfNotPresent
 
+# The device plugin needs the NVIDIA container runtime for itself, not just for the pods
+# it serves: its default `auto` device-discovery strategy resolves via NVML, and NVML is
+# only present inside the container when the nvidia runtime injects the driver libraries.
+# Without this it crash-loops with "Incompatible strategy detected auto", the node never
+# advertises nvidia.com/gpu, and Jellyfin sits Pending on "Insufficient nvidia.com/gpu".
+#
+# nodeSelector pins it to GPU nodes using the label k3s applies from k3s/config.yaml,
+# which is what that label exists for. Harmless on one node, correct when REL-5 adds more.
+nvidia-device-plugin:
+  runtimeClassName: nvidia
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
 jellyfin:
   subdomain: jellyfin
   clusterIP: 10.43.18.241
