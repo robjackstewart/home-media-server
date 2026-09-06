@@ -18,13 +18,27 @@ tasks:
       - sh: kubectl version --client
         msg: kubectl must be installed
 
+  repos:add:
+    desc: Register the classic (non-OCI) chart repositories this chart depends on.
+    cmds:
+      # `helm dependency build` resolves classic HTTP repositories through the local repo
+      # list, so they have to be registered before it will run - on a fresh machine it
+      # fails with "no repository definition for ...". OCI dependencies such as
+      # nginx-gateway-fabric need no registration. `--force-update` makes this idempotent.
+      - helm repo add nvidia-device-plugin https://nvidia.github.io/k8s-device-plugin --force-update
+      - helm repo update nvidia-device-plugin
+
   dependencies:build:
     desc: build helm dependencies
+    deps:
+      - repos:add
     cmds:
       - helm dependency build
 
   dependencies:update:
     desc: update helm dependencies
+    deps:
+      - repos:add
     cmds:
       - helm dependency update
 

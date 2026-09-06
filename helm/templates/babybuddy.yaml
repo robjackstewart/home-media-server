@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: babybuddy-service
+spec:
+  clusterIP: {{ .Values.babybuddy.clusterIP }}
+  ports:
+  - name: http
+    port: {{ .Values.babybuddy.ports.http }}
+    targetPort: {{ .Values.babybuddy.ports.http }}
+    protocol: TCP
+  selector:
+    app: babybuddy
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: babybuddy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: babybuddy
+  template:
+    metadata:
+      labels:
+        app: babybuddy
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: "{{ .Values.PUID }}"
+          - name: PGID
+            value: "{{ .Values.PGID }}"
+          - name: CSRF_TRUSTED_ORIGINS
+            value: {{ printf "https://%s.%s" .Values.babybuddy.subdomain .Values.domain.zone | quote }}
+          resources:
+            limits:
+              cpu: '1'
+              memory: 250Mi
+          image: {{ include "image" .Values.babybuddy.image }}
+          imagePullPolicy: {{ .Values.babybuddy.image.pullPolicy }}
+          name: babybuddy
+          ports:
+            - containerPort: {{ .Values.babybuddy.ports.http }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              subPath: babybuddy
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.babybuddy.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.babybuddy.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.babybuddy.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: babybuddy-routes
+spec:
+  parentRefs:
+  - name: media-server-gateway
+    sectionName: http
+  hostnames:
+  - {{ printf "%s.%s" .Values.babybuddy.subdomain .Values.domain.zone }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: babybuddy-service
+      port: {{ .Values.babybuddy.ports.http }}

@@ -32,6 +32,28 @@ heimdall:
   ports:
     http: 80
 
+# Creates and chowns the host directories behind the `config` and `media` local PVs, as a
+# pre-install/pre-upgrade hook. See templates/host-storage.bootstrap.yaml.
+hostStorageBootstrap:
+  image:
+    repository: library/busybox
+    tag: '1.38.0'
+    registry: docker.io
+    pullPolicy: IfNotPresent
+
+# The device plugin needs the NVIDIA container runtime for itself, not just for the pods
+# it serves: its default `auto` device-discovery strategy resolves via NVML, and NVML is
+# only present inside the container when the nvidia runtime injects the driver libraries.
+# Without this it crash-loops with "Incompatible strategy detected auto", the node never
+# advertises nvidia.com/gpu, and Jellyfin sits Pending on "Insufficient nvidia.com/gpu".
+#
+# nodeSelector pins it to GPU nodes using the label k3s applies from k3s/config.yaml,
+# which is what that label exists for. Harmless on one node, correct when REL-5 adds more.
+nvidia-device-plugin:
+  runtimeClassName: nvidia
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+
 jellyfin:
   subdomain: jellyfin
   clusterIP: 10.43.18.241
@@ -40,20 +62,18 @@ jellyfin:
     tag: '10.11.11'
     registry: lscr.io
     pullPolicy: Always
+  # ServiceLB binds these directly onto the host's LAN interface, so the port the Shield
+  # connects to is the port itself. The old `node:` NodePort numbers (30096-30099) are gone.
   ports:
     http:
       cluster: 8096
-      node: 30096
     https:
       cluster: 8920
-      node: 30097
     autoDiscovery:
       standard:
         cluster: 7359
-        node: 30098
       service:
         cluster: 1900
-        node: 30099
 
 prowlarr:
   subdomain: prowlarr
@@ -169,3 +189,34 @@ seerr:
     pullPolicy: Always
   ports:
     http: 5055
+
+babybuddy:
+  subdomain: babybuddy
+  clusterIP: 10.43.178.132
+  image:
+    repository: linuxserver/babybuddy
+    tag: '2.10.0'
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 8000
+
+gramps:
+  subdomain: gramps
+  clusterIP: 10.43.178.133
+  tree: Family Tree
+  image:
+    repository: gramps-project/grampsweb
+    tag: '26.8.0'
+    registry: ghcr.io
+    pullPolicy: Always
+  redis:
+    image:
+      repository: valkey/valkey
+      tag: '8-alpine'
+      registry: docker.io
+      pullPolicy: Always
+    ports:
+      redis: 6379
+  ports:
+    http: 5000

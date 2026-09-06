@@ -22,14 +22,15 @@ jobs:
       - name: Start dev container
         run: devcontainer up --workspace-folder .
 
-      - name: Check dependencies
-        run: devcontainer exec --workspace-folder . -- task environment:check
+      # Note: the full `task environment:check` is deliberately not run here. It now includes
+      # k3s:environment:check, which requires a running k3s service and /dev/nvidia0 - neither
+      # of which exists on a GitHub-hosted runner. Those are checked on the self-hosted runner
+      # at deploy time instead.
+      - name: Check helm environment
+        run: devcontainer exec --workspace-folder . -- task helm:environment:check
 
-      - name: Check environment
-        run: devcontainer exec --workspace-folder . -- task environment:check
+      - name: Check infrastructure environment
+        run: devcontainer exec --workspace-folder . -- task infrastructure:environment:check
 
       - name: Check helm dependency compatability
         run: devcontainer exec --workspace-folder . -- task helm:dependencies:compatability:check
-
-      - name: Build K3D image
-        run: devcontainer exec --workspace-folder . -- task k3d:image:build

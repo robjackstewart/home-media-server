@@ -263,9 +263,13 @@ resource "kubernetes_secret_v1" "vpn_credentials" {
 resource "local_file" "values" {
   filename = "../helm/infrastructure.values.yaml"
   content = yamlencode({
-    timezone    = var.timezone
-    PUID        = var.puid
-    GUID        = var.guid
+    # These key names must match what the Helm templates read. They previously emitted
+    # `timezone` and `GUID` while every template read `.Values.Timezone` and `.Values.PGID`,
+    # so TZ and PGID silently rendered as empty strings across the chart (20 env vars,
+    # verified with `helm template` before and after).
+    Timezone = var.timezone
+    PUID     = var.puid
+    PGID     = var.guid
     transmission = {
       webui = var.transmission_web_ui
     }

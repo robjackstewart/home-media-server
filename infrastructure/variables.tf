@@ -138,7 +138,9 @@ variable "host_storage_media_capacity" {
 
 variable "kubernetes_context" {
   type = string
-  default = "k3d-home-media-server"
+  # Native k3s writes a context named "default" into /etc/rancher/k3s/k3s.yaml.
+  # k3d used to name it "k3d-<cluster-name>".
+  default = "default"
 }
 
 variable "kubernetes_namespace" {
