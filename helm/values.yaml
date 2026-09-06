@@ -207,7 +207,7 @@ gramps:
   tree: Family Tree
   image:
     repository: gramps-project/grampsweb
-    tag: '26.8.0'
+    tag: '26.8.1'
     registry: ghcr.io
     pullPolicy: Always
   redis:
