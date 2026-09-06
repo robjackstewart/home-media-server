@@ -29,14 +29,6 @@ Order matters: install the container toolkit **before** k3s, because k3s only pr
 1. **NVIDIA Container Toolkit** — see
    [NVIDIA's installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
-1. **Host storage** — these paths are bound into the cluster as hostPath PersistentVolumes,
-   and must be owned by the UID/GID the containers run as (`puid`/`guid`, default `1000`):
-
-    ``` shell
-    sudo mkdir -p /srv/home-media-server/{config,media}
-    sudo chown -R 1000:1000 /srv/home-media-server
-    ```
-
 1. **k3s** — installed with the declarative config in [`k3s/config.yaml`](k3s/config.yaml),
    which disables Traefik (ingress is nginx-gateway-fabric) and labels the node as GPU-capable:
 
@@ -52,10 +44,16 @@ Order matters: install the container toolkit **before** k3s, because k3s only pr
     task k3s:gpu:check
     ```
 
+Host storage needs no step of its own. The `config` and `media` directories are created and
+chowned to `puid`/`guid` by a pre-install/pre-upgrade hook in the chart
+([`helm/templates/host-storage.bootstrap.yaml`](helm/templates/host-storage.bootstrap.yaml)),
+so `task recreate` prepares them. Only data you restore onto the host by hand needs its own
+`chown -R`, since the release cannot know about files it did not put there.
+
 ## Getting started
 
 1. Install the [Task CLI](https://taskfile.dev/installation/), plus `helm`, `kubectl`,
-   `terraform`, `az` and `yq`.
+   `terraform` and `az`. `task environment:check` verifies all of them.
 1. Check the environment. This errors if any tooling, the k3s service, or the GPU is missing:
 
     ``` shell
@@ -124,9 +122,15 @@ sudo ufw allow 7359,1900/udp
 
 Pods that need the GPU set `runtimeClassName: nvidia` (see
 [`helm/templates/jellyfin.yaml`](helm/templates/jellyfin.yaml)) alongside a
-`nvidia.com/gpu` resource limit. The [`nvidia` RuntimeClass](helm/templates/runtime-class.yaml)
-maps onto the containerd handler k3s configures, and `nvidia-device-plugin` advertises the GPU
-as a schedulable resource.
+`nvidia.com/gpu` resource limit. `nvidia-device-plugin` advertises the GPU as a schedulable
+resource.
+
+The `nvidia` RuntimeClass itself is **not** part of this chart. k3s creates it automatically
+when it detects `nvidia-container-runtime` on the host, from its own bundled addon at
+`/var/lib/rancher/k3s/server/manifests/runtimes.yaml`. That object carries no Helm ownership
+metadata and is continuously reconciled by the k3s addon controller, so a chart-managed copy
+cannot coexist with it - `helm upgrade --install` aborts with an ownership error. Confirm k3s
+made it with `kubectl get runtimeclass nvidia`.
 
 To verify hardware transcoding end to end, start a transcode in Jellyfin and check that the
 encoder is actually busy:

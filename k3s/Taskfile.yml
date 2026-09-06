@@ -34,16 +34,24 @@ tasks:
     cmds:
       # k3s writes the nvidia runtime into containerd's config itself when it finds
       # nvidia-container-runtime on the host. This replaces the old custom CUDA node image.
-      - grep -q nvidia /var/lib/rancher/k3s/agent/etc/containerd/config.toml
+      # /var/lib/rancher/k3s/agent is mode 0700, so reading containerd's config needs root.
+      - sudo grep -q nvidia /var/lib/rancher/k3s/agent/etc/containerd/config.toml
       - kubectl get runtimeclass nvidia
       - kubectl describe node | grep -F 'nvidia.com/gpu'
 
   use-kube-context:
     desc: Point kubectl at the local k3s cluster.
+    preconditions:
+      # write-kubeconfig-mode in config.yaml makes this readable without sudo. Check it
+      # up front so the failure names the cause instead of surfacing as a bare EACCES.
+      - sh: test -r /etc/rancher/k3s/k3s.yaml
+        msg: "/etc/rancher/k3s/k3s.yaml is not readable - check write-kubeconfig-mode in k3s/config.yaml, then: sudo systemctl restart k3s"
     cmds:
       - mkdir -p $HOME/.kube
-      - sudo cat /etc/rancher/k3s/k3s.yaml > $HOME/.kube/config
-      - chmod 600 $HOME/.kube/config
+      # NOT `sudo cat ... > $HOME/.kube/config`: the shell truncates the destination
+      # before sudo runs, so a sudo failure leaves an empty kubeconfig behind. `install`
+      # writes the destination only on success, and sets the mode in the same step.
+      - install -m 600 /etc/rancher/k3s/k3s.yaml $HOME/.kube/config
       - kubectl config use-context default
 
   cluster:delete:

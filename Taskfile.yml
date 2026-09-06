@@ -1,5 +1,14 @@
 version: '3'
 
+env:
+  # k3s symlinks /usr/local/bin/kubectl to the k3s binary, and that wrapper defaults
+  # KUBECONFIG to the root-owned /etc/rancher/k3s/k3s.yaml whenever the variable is unset.
+  # Read-only commands work (write-kubeconfig-mode makes it 0644), but any command that
+  # WRITES the kubeconfig - `kubectl config use-context` - fails trying to create
+  # /etc/rancher/k3s/k3s.yaml.lock in that root-owned directory. Pin every task to the
+  # user's own copy so kubectl, helm and the terraform kubernetes provider all agree.
+  KUBECONFIG: '{{.HOME}}/.kube/config'
+
 includes:
   infrastructure:
     taskfile: infrastructure/Taskfile.yml

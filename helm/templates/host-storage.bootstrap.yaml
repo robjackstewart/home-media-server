@@ -1,0 +1,74 @@
+# Prepares the host directories the `config` and `media` local PersistentVolumes point at,
+# as part of the release rather than as manual `mkdir`/`chown` steps before it.
+#
+# A `local` PersistentVolume does not create its backing directory - unlike a hostPath
+# volume, the path must already exist or the pod stays stuck mounting. The two hostPath
+# volumes below are declared `DirectoryOrCreate`, so the kubelet creates them (with
+# parents) as root, and this Job then hands them to the uid/gid the app containers run as.
+#
+# It runs as a pre-install/pre-upgrade hook at a negative weight, so it completes before
+# anything that claims those volumes is scheduled.
+#
+# The chown is deliberately NOT recursive: it fixes the mount points only. Recursing over
+# a restored media library would take a long time to no purpose, and the linuxserver.io
+# images chown their own /config subtree on start. Data restored onto the host by hand
+# still needs its own chown - see the restore step in the README.
+#
+# Single-node assumption: this is one Job, so it prepares the node it lands on. If this
+# cluster ever gains a second node (REL-5), the local PVs and this hook both need
+# revisiting together.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: host-storage-bootstrap
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      name: host-storage-bootstrap
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: bootstrap
+          image: {{ include "image" .Values.hostStorageBootstrap.image }}
+          imagePullPolicy: {{ .Values.hostStorageBootstrap.image.pullPolicy }}
+          securityContext:
+            # Needs root to chown a directory the kubelet created as root:root.
+            runAsUser: 0
+          resources:
+            limits:
+              cpu: '250m'
+              memory: 64Mi
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              for dir in /mnt/config /mnt/media; do
+                chown "$PUID:$PGID" "$dir"
+                chmod 0755 "$dir"
+                echo "$dir -> $(stat -c '%u:%g %a' "$dir")"
+              done
+          env:
+            - name: PUID
+              value: "{{ .Values.PUID }}"
+            - name: PGID
+              value: "{{ .Values.PGID }}"
+          volumeMounts:
+            - name: config
+              mountPath: /mnt/config
+            - name: media
+              mountPath: /mnt/media
+      volumes:
+        - name: config
+          hostPath:
+            path: {{ .Values.storage.host.config.dir | quote }}
+            type: DirectoryOrCreate
+        - name: media
+          hostPath:
+            path: {{ .Values.storage.host.media.dir | quote }}
+            type: DirectoryOrCreate

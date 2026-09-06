@@ -32,6 +32,15 @@ heimdall:
   ports:
     http: 80
 
+# Creates and chowns the host directories behind the `config` and `media` local PVs, as a
+# pre-install/pre-upgrade hook. See templates/host-storage.bootstrap.yaml.
+hostStorageBootstrap:
+  image:
+    repository: library/busybox
+    tag: '1.38.0'
+    registry: docker.io
+    pullPolicy: IfNotPresent
+
 jellyfin:
   subdomain: jellyfin
   clusterIP: 10.43.18.241
