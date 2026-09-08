@@ -100,6 +100,11 @@ resource "tailscale_acl" "policy" {
     tagOwners = {
       "tag:k8s-operator" = []
       "tag:k8s"          = ["tag:k8s-operator"]
+      # Tags the bootstrap Terraform OAuth client - required by Tailscale whenever a client is
+      # scoped to devices:core/auth_keys, even though this client never actually assigns it to a
+      # real device (it only needs those scopes to delegate them to tailscale_oauth_client.k8s_operator).
+      # Empty owner list: nothing should be able to self-assign this via `tailscale up --advertise-tags`.
+      "tag:terraform" = []
     }
     # ProxyGroup-backed Ingress advertises Tailscale Services; without this the proxies come up
     # healthy but the Services stay unapproved and the MagicDNS names never resolve.
