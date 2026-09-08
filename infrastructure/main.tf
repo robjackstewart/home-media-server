@@ -98,12 +98,16 @@ resource "tailscale_acl" "policy" {
 
   acl = jsonencode({
     tagOwners = {
-      "tag:k8s-operator" = []
+      # Owned by tag:terraform, not left empty: tailscale_oauth_client.k8s_operator assigns this
+      # tag when Terraform creates that client, and Tailscale enforces tagOwners on that
+      # assignment the same as it would a device self-tagging via `tailscale up --advertise-tags` -
+      # without this, creating the client fails with "requested tags ... invalid or not permitted".
+      "tag:k8s-operator" = ["tag:terraform"]
       "tag:k8s"          = ["tag:k8s-operator"]
       # Tags the bootstrap Terraform OAuth client - required by Tailscale whenever a client is
-      # scoped to devices:core/auth_keys, even though this client never actually assigns it to a
-      # real device (it only needs those scopes to delegate them to tailscale_oauth_client.k8s_operator).
-      # Empty owner list: nothing should be able to self-assign this via `tailscale up --advertise-tags`.
+      # scoped to devices:core/auth_keys. Empty owner list: nothing should be able to self-assign
+      # this via `tailscale up --advertise-tags` - only the client itself, pre-tagged at creation
+      # in the console, ever holds it.
       "tag:terraform" = []
     }
     # ProxyGroup-backed Ingress advertises Tailscale Services; without this the proxies come up
