@@ -34,6 +34,10 @@ spec:
       dnsConfig:
         nameservers:
           - 1.1.1.1
+      initContainers:
+      {{- include "arrExternalAuthInitContainer" (dict
+           "image" .Values.hostStorageBootstrap.image
+           "subPath" "prowlarr") | nindent 6 }}
       containers:
       - name: flaresolverr
         env:
