@@ -8,3 +8,17 @@ metadata:
 spec:
   type: ingress
   replicas: {{ .Values.tailscale.proxyGroup.replicas }}
+  proxyClass: {{ .Values.tailscale.proxyGroup.name }}
+---
+# Carries the ProxyGroup's own resource requests/limits - not exposed directly on ProxyGroup
+# itself, only via a referenced ProxyClass (spec.statefulSet.pod.tailscaleContainer.resources).
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: {{ .Values.tailscale.proxyGroup.name }}
+spec:
+  statefulSet:
+    pod:
+      tailscaleContainer:
+        resources:
+          {{- .Values.tailscale.proxyGroup.resources | toYaml | nindent 10 }}
