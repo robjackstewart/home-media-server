@@ -12,15 +12,6 @@ bazarr:
 gateway:
   className: nginx
 
-cloudflared:
-  image:
-    repository: cloudflare/cloudflared
-    tag: '2026.8.3'
-    registry: docker.io
-    pullPolicy: Always
-  ports:
-    http: 2000
-
 # Kubernetes operator that joins the cluster to the tailnet and exposes each app as its own
 # Tailscale Ingress (helper in templates/functions.tpl). oauth.clientId/clientSecret are
 # deliberately left unset here - Terraform precreates a Secret named operator-oauth from Key
