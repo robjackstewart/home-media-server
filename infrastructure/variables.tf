@@ -170,3 +170,33 @@ variable "entra_id_access_group_object_id" {
 variable "local_network_ip_address" {
   type = string
 }
+variable "azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client ID of the Tailscale OAuth client used by Terraform to manage the tailnet policy file. Needs the 'policy file: write' scope."
+}
+
+variable "azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client secret of the Tailscale OAuth client used by Terraform to manage the tailnet policy file."
+}
+
+variable "azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client ID of the Tailscale OAuth client used by the Kubernetes operator to join devices to the tailnet. Needs write scope on General/Services, Devices/Core and Keys/Auth Keys, tagged tag:k8s-operator."
+}
+
+variable "azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client secret of the Tailscale OAuth client used by the Kubernetes operator."
+}
+
+variable "tailscale_tailnet_name" {
+  type        = string
+  description = "The tailnet's MagicDNS suffix (e.g. 'tailxxxx.ts.net'), used to build each app's https://<subdomain>.<tailnet> address."
+}
+
+variable "tailscale_operator_oauth_secret_name" {
+  type        = string
+  description = "The name of the kubernetes secret in which the Tailscale operator's OAuth credentials will be stored. Must be 'operator-oauth' - this name and its client_id/client_secret keys are hardcoded by the tailscale-operator Helm chart."
+  default     = "operator-oauth"
+}

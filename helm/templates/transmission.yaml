@@ -133,3 +133,10 @@ spec:
     backendRefs:
     - name: transmission-service
       port: {{ .Values.transmission.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "transmission-ingress"
+     "subdomain" .Values.transmission.subdomain
+     "service" "transmission-service"
+     "port" .Values.transmission.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

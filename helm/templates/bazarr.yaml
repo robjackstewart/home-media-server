@@ -86,3 +86,10 @@ spec:
     backendRefs:
     - name: bazarr-service
       port: {{ .Values.bazarr.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "bazarr-ingress"
+     "subdomain" .Values.bazarr.subdomain
+     "service" "bazarr-service"
+     "port" .Values.bazarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

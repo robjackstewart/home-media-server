@@ -101,3 +101,10 @@ spec:
     backendRefs:
     - name: radarr-service
       port: {{ .Values.radarr.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "radarr-ingress"
+     "subdomain" .Values.radarr.subdomain
+     "service" "radarr-service"
+     "port" .Values.radarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

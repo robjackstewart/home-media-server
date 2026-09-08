@@ -65,3 +65,10 @@ spec:
     backendRefs:
     - name: payment-manager-service
       port: {{ .Values.paymentManager.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "payment-manager-ingress"
+     "subdomain" .Values.paymentManager.subdomain
+     "service" "payment-manager-service"
+     "port" .Values.paymentManager.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

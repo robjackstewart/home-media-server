@@ -95,3 +95,10 @@ spec:
     backendRefs:
     - name: babybuddy-service
       port: {{ .Values.babybuddy.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "babybuddy-ingress"
+     "subdomain" .Values.babybuddy.subdomain
+     "service" "babybuddy-service"
+     "port" .Values.babybuddy.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

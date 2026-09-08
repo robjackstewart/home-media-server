@@ -17,6 +17,11 @@ provider "kubernetes" {
   config_context = var.kubernetes_context
 }
 
+provider "tailscale" {
+  oauth_client_id     = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_id.value
+  oauth_client_secret = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_secret.value
+}
+
 resource "cloudflare_zero_trust_access_application" "home_media_server" {
   zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
   name                      = var.cloudflare_application_name
@@ -139,6 +144,26 @@ data "azurerm_key_vault_secret" "cloudflare_account_id" {
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
+data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_id" {
+  name         = var.azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_secret" {
+  name         = var.azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "tailscale_operator_oauth_client_id" {
+  name         = var.azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "tailscale_operator_oauth_client_secret" {
+  name         = var.azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
 resource "azurerm_key_vault_secret" "client_secret" {
   name         = "client-secret"
   value        = data.azurerm_key_vault_secret.common_kv_client_secret.value
@@ -230,6 +255,31 @@ resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_ba
   }]
 }
 
+# Replaces the Cloudflare Access application + Entra ID group as the authorization boundary:
+# only devices signed into this tailnet can reach tag:k8s. Note this resource replaces the
+# entire tailnet policy file - if the tailnet already has hand-written rules, fold them in here
+# before the first apply.
+resource "tailscale_acl" "policy" {
+  acl = jsonencode({
+    tagOwners = {
+      "tag:k8s-operator" = []
+      "tag:k8s"          = ["tag:k8s-operator"]
+    }
+    # ProxyGroup-backed Ingress advertises Tailscale Services; without this the proxies come up
+    # healthy but the Services stay unapproved and the MagicDNS names never resolve.
+    autoApprovers = {
+      services = {
+        "tag:k8s" = ["tag:k8s"]
+      }
+    }
+    grants = [{
+      src = ["autogroup:member"]
+      dst = ["tag:k8s"]
+      ip  = ["*"]
+    }]
+  })
+}
+
 resource "kubernetes_namespace_v1" "home-media-server" {
   metadata {
     name = var.kubernetes_namespace
@@ -245,6 +295,20 @@ resource "kubernetes_secret_v1" "argo_tunnel_credentials" {
   data = {
     "credentials.json" = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_zero_trust_tunnel_cloudflared.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
   }
+}
+
+resource "kubernetes_secret_v1" "tailscale_operator_oauth" {
+  metadata {
+    name      = var.tailscale_operator_oauth_secret_name
+    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
+  }
+
+  data = {
+    client_id     = data.azurerm_key_vault_secret.tailscale_operator_oauth_client_id.value
+    client_secret = data.azurerm_key_vault_secret.tailscale_operator_oauth_client_secret.value
+  }
+
+  type = "Opaque"
 }
 
 resource "kubernetes_secret_v1" "vpn_credentials" {
@@ -291,6 +355,7 @@ resource "local_file" "values" {
       zone = var.cloudflare_domain
       main = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
     }
+    tailnet = var.tailscale_tailnet_name
     storage = {
       host = {
         config = {

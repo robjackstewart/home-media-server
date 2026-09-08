@@ -101,3 +101,10 @@ spec:
     backendRefs:
     - name: sonarr-service
       port: {{ .Values.sonarr.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "sonarr-ingress"
+     "subdomain" .Values.sonarr.subdomain
+     "service" "sonarr-service"
+     "port" .Values.sonarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

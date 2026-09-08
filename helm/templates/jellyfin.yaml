@@ -145,3 +145,10 @@ spec:
     backendRefs:
     - name: jellyfin-service
       port: {{ .Values.jellyfin.ports.http.cluster }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "jellyfin-ingress"
+     "subdomain" .Values.jellyfin.subdomain
+     "service" "jellyfin-service"
+     "port" .Values.jellyfin.ports.http.cluster
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

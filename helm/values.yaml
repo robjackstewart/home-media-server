@@ -21,6 +21,30 @@ cloudflared:
   ports:
     http: 2000
 
+# Kubernetes operator that joins the cluster to the tailnet and exposes each app as its own
+# Tailscale Ingress (helper in templates/functions.tpl). oauth.clientId/clientSecret are
+# deliberately left unset here - Terraform precreates a Secret named operator-oauth from Key
+# Vault (see infrastructure/main.tf), which is the chart's own documented fallback and keeps the
+# credential out of this file, matching every other secret in this repo.
+tailscale-operator:
+  # The chart ships its CRDs (ProxyGroup, ProxyClass, Connector, ...) as ordinary templates
+  # gated on this value rather than in a genuine crds/ folder, so --skip-crds on the release
+  # has no effect on them. Pre-applying them via `task tailscale:crds:apply` (so the ProxyGroup
+  # custom resource below never races the CRD's registration) and then also letting this release
+  # manage them would hit the same ownership conflict documented in README.md for the nvidia
+  # RuntimeClass - so this chart's own release never touches them.
+  installCRDs: false
+  operatorConfig:
+    hostname: home-media-server-operator
+  proxyConfig:
+    defaultTags: "tag:k8s"
+
+tailscale:
+  proxyGroup:
+    name: ingress-proxies
+    # Single-node cluster, so extra replicas buy no availability. Raise alongside REL-5.
+    replicas: 1
+
 heimdall:
   subdomain: heimdall
   clusterIP: 10.43.181.121

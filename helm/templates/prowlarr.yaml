@@ -107,3 +107,10 @@ spec:
     backendRefs:
     - name: prowlarr-service
       port: {{ .Values.prowlarr.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "prowlarr-ingress"
+     "subdomain" .Values.prowlarr.subdomain
+     "service" "prowlarr-service"
+     "port" .Values.prowlarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

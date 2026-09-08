@@ -107,3 +107,10 @@ spec:
     backendRefs:
     - name: seerr-service
       port: {{ .Values.seerr.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "seerr-ingress"
+     "subdomain" .Values.seerr.subdomain
+     "service" "seerr-service"
+     "port" .Values.seerr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

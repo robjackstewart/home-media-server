@@ -1,0 +1,10 @@
+# Fronts every app's Tailscale Ingress (see templates/functions.tpl's "tailscaleIngress" helper)
+# with one shared proxy StatefulSet and one tailnet device, rather than the operator's default
+# of a separate StatefulSet and device per Ingress.
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyGroup
+metadata:
+  name: {{ .Values.tailscale.proxyGroup.name }}
+spec:
+  type: ingress
+  replicas: {{ .Values.tailscale.proxyGroup.replicas }}

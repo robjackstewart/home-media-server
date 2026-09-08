@@ -172,3 +172,10 @@ spec:
     backendRefs:
     - name: gramps-service
       port: {{ .Values.gramps.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "gramps-ingress"
+     "subdomain" .Values.gramps.subdomain
+     "service" "gramps-service"
+     "port" .Values.gramps.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

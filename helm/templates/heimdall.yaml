@@ -85,3 +85,10 @@ spec:
     backendRefs:
     - name: heimdall-service
       port: {{ .Values.heimdall.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "heimdall-ingress"
+     "subdomain" .Values.heimdall.subdomain
+     "service" "heimdall-service"
+     "port" .Values.heimdall.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

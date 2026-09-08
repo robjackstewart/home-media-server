@@ -73,3 +73,10 @@ spec:
     backendRefs:
     - name: homeassistant-service
       port: {{ .Values.homeassistant.ports.http }}
+---
+{{ include "tailscaleIngress" (dict
+     "name" "homeassistant-ingress"
+     "subdomain" .Values.homeassistant.subdomain
+     "service" "homeassistant-service"
+     "port" .Values.homeassistant.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}
