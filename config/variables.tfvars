@@ -1,4 +1,3 @@
-cloudflare_domain="robjackstewart.com"
 azure_subscription_id="5148aaa5-6d59-4c4c-bbc9-ad55f535a0c7"
 azure_common_keyvault_name="robstewart-terraform-kv"
 azure_common_keyvault_resource_group="tfstate"

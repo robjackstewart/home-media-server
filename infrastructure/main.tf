@@ -179,10 +179,6 @@ resource "local_file" "values" {
         }
       }
     }
-    domain = {
-      zone = var.cloudflare_domain
-      main = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
-    }
     tailnet = var.tailscale_tailnet_name
     storage = {
       host = {

@@ -83,25 +83,6 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 1
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: sonarr-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.sonarr.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: sonarr-service
-      port: {{ .Values.sonarr.ports.http }}
----
 {{ include "tailscaleIngress" (dict
      "name" "sonarr-ingress"
      "subdomain" .Values.sonarr.subdomain

@@ -9,9 +9,6 @@ bazarr:
   ports:
     http: 6767
 
-gateway:
-  className: nginx
-
 # Kubernetes operator that joins the cluster to the tailnet and exposes each app as its own
 # Tailscale Ingress (helper in templates/functions.tpl). oauth.clientId/clientSecret are
 # deliberately left unset here - Terraform precreates a Secret named operator-oauth from Key

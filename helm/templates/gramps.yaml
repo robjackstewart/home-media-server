@@ -154,25 +154,6 @@ spec:
           ports:
             - containerPort: {{ .Values.gramps.redis.ports.redis }}
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: gramps-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.gramps.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: gramps-service
-      port: {{ .Values.gramps.ports.http }}
----
 {{ include "tailscaleIngress" (dict
      "name" "gramps-ingress"
      "subdomain" .Values.gramps.subdomain

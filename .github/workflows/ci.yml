@@ -31,6 +31,3 @@ jobs:
 
       - name: Check infrastructure environment
         run: devcontainer exec --workspace-folder . -- task infrastructure:environment:check
-
-      - name: Check helm dependency compatability
-        run: devcontainer exec --workspace-folder . -- task helm:dependencies:compatability:check

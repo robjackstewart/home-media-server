@@ -40,7 +40,7 @@ spec:
           - name: PGID
             value: "{{ .Values.PGID }}"
           - name: CSRF_TRUSTED_ORIGINS
-            value: {{ printf "https://%s.%s" .Values.babybuddy.subdomain .Values.domain.zone | quote }}
+            value: {{ printf "https://%s.%s" .Values.babybuddy.subdomain .Values.tailnet | quote }}
           resources:
             limits:
               cpu: '1'
@@ -76,25 +76,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 1
----
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: babybuddy-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.babybuddy.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: babybuddy-service
-      port: {{ .Values.babybuddy.ports.http }}
 ---
 {{ include "tailscaleIngress" (dict
      "name" "babybuddy-ingress"

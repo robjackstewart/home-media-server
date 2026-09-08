@@ -2,7 +2,9 @@
 # Installed to /etc/rancher/k3s/config.yaml by `task k3s:config:install`.
 # k3s reads this on start, so changes require a service restart.
 
-# Traefik is disabled: ingress is handled by nginx-gateway-fabric via the Gateway API.
+# Traefik is disabled: this chart uses no in-cluster Ingress controller. Each app is exposed
+# individually over the tailnet by the tailscale-operator's own "tailscale" IngressClass - see
+# the "Remote access" section in README.md.
 disable:
   - traefik
 

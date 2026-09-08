@@ -1,14 +1,3 @@
-variable "cloudflare_application_name" {
-  type = string
-  description = "The name of the cloudflare zero trust access application."
-  default = "home-media-server"
-}
-
-variable "cloudflare_domain" {
-  type = string
-  description = "The domain in cloudflare under which your home media server will be accessed."
-}
-
 variable "azure_subscription_id" {
   type = string
   description = "The ID of the subscription in which all azure resources exist."
