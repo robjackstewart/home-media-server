@@ -34,6 +34,10 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+      initContainers:
+      {{- include "arrExternalAuthInitContainer" (dict
+           "image" .Values.hostStorageBootstrap.image
+           "subPath" "radarr") | nindent 6 }}
       containers:
         - env:
           - name: TZ
