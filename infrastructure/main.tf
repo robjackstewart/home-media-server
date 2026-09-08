@@ -49,7 +49,8 @@ resource "azurerm_key_vault" "keyvault" {
       "Set",
       "List",
       "Recover",
-      "Delete"
+      "Delete",
+      "Purge"
     ]
 
     storage_permissions = [
@@ -99,6 +100,12 @@ resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
 # entire tailnet policy file - if the tailnet already has hand-written rules, fold them in here
 # before the first apply.
 resource "tailscale_acl" "policy" {
+  # This tailnet already has a non-default policy (Tailscale's own default template, with the
+  # tag:k8s-operator entry the OAuth client auto-created). tailscale_acl replaces the whole file
+  # wholesale, so this is required the first time - confirmed by hand that nothing else of value
+  # was in it before setting this.
+  overwrite_existing_content = true
+
   acl = jsonencode({
     tagOwners = {
       "tag:k8s-operator" = []
@@ -111,10 +118,22 @@ resource "tailscale_acl" "policy" {
         "tag:k8s" = ["tag:k8s"]
       }
     }
+    # Narrower than the tailnet's previous default (which allowed every device to reach every
+    # other device unrestricted) - only tailnet members can reach the app proxies. This is the
+    # actual authorization boundary for the whole migration.
     grants = [{
       src = ["autogroup:member"]
       dst = ["tag:k8s"]
       ip  = ["*"]
+    }]
+    # Carried over from the tailnet's previous default policy so Tailscale SSH between your own
+    # devices keeps working - overwrite_existing_content replaces the whole file, so anything not
+    # listed here is dropped, not merged.
+    ssh = [{
+      action = "check"
+      src    = ["autogroup:member"]
+      dst    = ["autogroup:self"]
+      users  = ["autogroup:nonroot", "root"]
     }]
   })
 }
