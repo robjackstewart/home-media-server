@@ -9,7 +9,7 @@ azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name="home-
 azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name="home-media-server-tailscale-operator-oauth-client-id"
 azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name="home-media-server-tailscale-operator-oauth-client-secret"
 # Replace with your own tailnet's MagicDNS suffix, from the admin console's DNS page.
-tailscale_tailnet_name="<your-tailnet>.ts.net"
+tailscale_tailnet_name="T3UUSVzTHr11CNTRL.ts.net"
 transmission_vpn_provider_name="mullvad"
 transmission_vpn_provider_environment_variables=[
     {
