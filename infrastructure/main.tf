@@ -79,16 +79,6 @@ data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_secret" {
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "tailscale_operator_oauth_client_id" {
-  name         = var.azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name
-  key_vault_id = data.azurerm_key_vault.common.id
-}
-
-data "azurerm_key_vault_secret" "tailscale_operator_oauth_client_secret" {
-  name         = var.azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name
-  key_vault_id = data.azurerm_key_vault.common.id
-}
-
 resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
   name         = "vpn-wireguard-private-key"
   value        = data.azurerm_key_vault_secret.common_kv_vpn_wireguard_private_key.value
@@ -138,6 +128,35 @@ resource "tailscale_acl" "policy" {
   })
 }
 
+# Replaces the "enable MagicDNS" manual console step.
+resource "tailscale_dns_preferences" "magic_dns" {
+  magic_dns = true
+}
+
+# Replaces the "enable HTTPS Certificates" manual console step. This resource manages the
+# tailnet's settings as a whole singleton - the provider's docs don't state whether omitted
+# optional fields are left alone or reset to a schema default. Only https_enabled is set here
+# deliberately; before applying for the first time, `terraform import tailscale_tailnet_settings.settings
+# tailnet_settings` and check the resulting plan proposes changing ONLY https_enabled. If it
+# proposes touching anything else (devices_approval_on, users_approval_on, etc.), stop and pin
+# those fields explicitly to their current values first.
+resource "tailscale_tailnet_settings" "settings" {
+  https_enabled = true
+}
+
+# Replaces manually creating the operator's OAuth client in the console. Scopes match the
+# operator's documented requirement (write on Devices/Core, Keys/Auth Keys, and General/Services,
+# tagged tag:k8s-operator) - the exact API scope string for "General/Services" isn't confirmed
+# against Tailscale's own scope reference (only shown as a UI category name in their install
+# guide), so "services" here follows the same bare-name-means-write convention every other
+# documented scope uses. If the operator has trouble advertising Tailscale Services after
+# switching to this, that's the first thing to check in the console.
+resource "tailscale_oauth_client" "k8s_operator" {
+  description = "home-media-server k8s-operator"
+  scopes      = ["devices:core", "auth_keys", "services"]
+  tags        = ["tag:k8s-operator"]
+}
+
 resource "kubernetes_namespace_v1" "home-media-server" {
   metadata {
     name = var.kubernetes_namespace
@@ -151,8 +170,8 @@ resource "kubernetes_secret_v1" "tailscale_operator_oauth" {
   }
 
   data = {
-    client_id     = data.azurerm_key_vault_secret.tailscale_operator_oauth_client_id.value
-    client_secret = data.azurerm_key_vault_secret.tailscale_operator_oauth_client_secret.value
+    client_id     = tailscale_oauth_client.k8s_operator.id
+    client_secret = tailscale_oauth_client.k8s_operator.key
   }
 
   type = "Opaque"

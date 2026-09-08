@@ -71,8 +71,6 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     azure_common_keyvault_vpn_wireguard_private_key_secret_name="vpn-private-key-secret"
     azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name="home-media-server-tailscale-terraform-oauth-client-id"
     azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name="home-media-server-tailscale-terraform-oauth-client-secret"
-    azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name="home-media-server-tailscale-operator-oauth-client-id"
-    azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name="home-media-server-tailscale-operator-oauth-client-secret"
     tailscale_tailnet_name="tailxxxx.ts.net"
     timezone="Europe/London"
     transmission_vpn_provider_name="mullvad"
@@ -106,23 +104,36 @@ tailnet; there is no public DNS record and no port exposed to the internet.
 
 **One-time setup**, before your first `task recreate`:
 
-1. In the Tailscale admin console → **DNS**, enable **MagicDNS** and **HTTPS Certificates**.
-   The resulting `<tailnet>.ts.net` suffix is `tailscale_tailnet_name` in
-   `config/variables.tfvars`.
-1. Create two OAuth clients (Settings → OAuth clients):
-   - `terraform`, scoped to **policy file: write**. Used by the `tailscale_acl` resource in
-     `infrastructure/main.tf` to manage the tailnet's ACL — tailnet membership is the whole
-     authorization boundary, so this is what grants access to your devices.
-   - `k8s-operator`, scoped to **write** on `General/Services`, `Devices/Core` and
-     `Keys/Auth Keys`, each tagged `tag:k8s-operator`.
-1. Put all four values (two client IDs, two client secrets) in your common Key Vault, and
-   reference their secret names from the four `azure_common_keyvault_tailscale_*_secret_name`
-   variables.
+1. Note your tailnet's MagicDNS suffix from the admin console's **DNS** page (e.g.
+   `tailxxxx.ts.net`) — this is `tailscale_tailnet_name` in `config/variables.tfvars`. Terraform
+   enables MagicDNS and HTTPS Certificates itself (`tailscale_dns_preferences`,
+   `tailscale_tailnet_settings` in `infrastructure/main.tf`); it doesn't need to be turned on by
+   hand first.
+1. Create **one** bootstrap OAuth client (Settings → OAuth clients) named `terraform`, scoped to
+   **write** on: `policy file` (the tailnet ACL), `dns` (MagicDNS), `feature_settings` (HTTPS
+   certificates), and `oauth_keys` (creating the Kubernetes operator's own OAuth client below).
+   No tag needed - this client only manages tailnet-wide settings, not devices.
+1. Put its client ID and secret in your common Key Vault, and reference their secret names from
+   `azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name` and
+   `..._client_secret_secret_name`.
 1. Install Tailscale on every device that should reach the server, and sign in.
 
-`tailscale_acl` **replaces the entire tailnet policy file** on apply - if your tailnet already
-has hand-written ACL rules, copy them out of the admin console first and fold them into
-`infrastructure/main.tf` before running `task recreate`.
+Terraform creates the Kubernetes operator's own OAuth client itself
+(`tailscale_oauth_client.k8s_operator`), scoped to `devices:core`, `auth_keys` and `services`,
+tagged `tag:k8s-operator`, and wires its resulting credentials straight into the Kubernetes
+secret the operator reads - no second manually-created client or extra Key Vault secrets needed.
+
+Two things worth knowing before your first apply:
+
+- `tailscale_acl` **replaces the entire tailnet policy file**, and `tailscale_tailnet_settings`
+  manages the tailnet's settings as a whole singleton whose provider docs don't say whether
+  omitted fields are left alone or reset - if your tailnet already has hand-written ACL rules,
+  or non-default tailnet settings beyond HTTPS certificates, `terraform import` them first
+  (`terraform import tailscale_tailnet_settings.settings tailnet_settings`) and check the plan
+  proposes changing only what you intended before applying.
+- The bootstrap client's scope grants it write access to create further OAuth clients
+  (`oauth_keys`) and edit the ACL (`policy file`) - treat its Key Vault secret with the same care
+  as any other admin-level credential in this repo.
 
 **Migrating an existing deployment from the old Cloudflare Tunnel setup:** the Gateway API CRDs
 that setup installed are not managed by this chart at all any more and won't be removed by

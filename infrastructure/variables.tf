@@ -112,22 +112,12 @@ variable "guid" {
 
 variable "azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name" {
   type        = string
-  description = "The name of the secret in the common keyvault holding the client ID of the Tailscale OAuth client used by Terraform to manage the tailnet policy file. Needs the 'policy file: write' scope."
+  description = "The name of the secret in the common keyvault holding the client ID of the bootstrap Tailscale OAuth client Terraform authenticates as. Needs write scope on: policy file (the tailnet ACL), dns (MagicDNS), feature_settings (HTTPS certificates), and oauth_keys (creating the Kubernetes operator's own OAuth client)."
 }
 
 variable "azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name" {
   type        = string
-  description = "The name of the secret in the common keyvault holding the client secret of the Tailscale OAuth client used by Terraform to manage the tailnet policy file."
-}
-
-variable "azure_common_keyvault_tailscale_operator_oauth_client_id_secret_name" {
-  type        = string
-  description = "The name of the secret in the common keyvault holding the client ID of the Tailscale OAuth client used by the Kubernetes operator to join devices to the tailnet. Needs write scope on General/Services, Devices/Core and Keys/Auth Keys, tagged tag:k8s-operator."
-}
-
-variable "azure_common_keyvault_tailscale_operator_oauth_client_secret_secret_name" {
-  type        = string
-  description = "The name of the secret in the common keyvault holding the client secret of the Tailscale OAuth client used by the Kubernetes operator."
+  description = "The name of the secret in the common keyvault holding the client secret of the bootstrap Tailscale OAuth client Terraform authenticates as."
 }
 
 variable "tailscale_tailnet_name" {
