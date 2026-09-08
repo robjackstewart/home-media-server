@@ -34,6 +34,10 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+      initContainers:
+      {{- include "arrExternalAuthInitContainer" (dict
+           "image" .Values.hostStorageBootstrap.image
+           "subPath" "sonarr") | nindent 6 }}
       containers:
       - env:
         - name: TZ
@@ -83,21 +87,9 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 1
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: sonarr-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.sonarr.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: sonarr-service
-      port: {{ .Values.sonarr.ports.http }}
+{{ include "tailscaleIngress" (dict
+     "name" "sonarr-ingress"
+     "subdomain" .Values.sonarr.subdomain
+     "service" "sonarr-service"
+     "port" .Values.sonarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

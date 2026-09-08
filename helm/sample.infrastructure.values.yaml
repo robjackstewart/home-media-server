@@ -19,9 +19,7 @@ vpn:
       keys:
         username: username
         password: password
-domain:
-  zone: example.domain.com
-  main: example.domain.com
+tailnet: tailxxxx.ts.net
 storage:
   host:
     config:
@@ -30,8 +28,3 @@ storage:
     media:
       dir: /example-media-dir-path
       capacity: 1Gi
-argoTunnel:
-  name: example-argo-tunnel
-  id: example-argo-tunnel-id
-  credentials:
-    secretName: argo-tunnel-credentials

@@ -9,17 +9,48 @@ bazarr:
   ports:
     http: 6767
 
-gateway:
-  className: nginx
+# Kubernetes operator that joins the cluster to the tailnet and exposes each app as its own
+# Tailscale Ingress (helper in templates/functions.tpl). oauth.clientId/clientSecret are
+# deliberately left unset here - Terraform precreates a Secret named operator-oauth from Key
+# Vault (see infrastructure/main.tf), which is the chart's own documented fallback and keeps the
+# credential out of this file, matching every other secret in this repo.
+tailscale-operator:
+  # The chart ships its CRDs (ProxyGroup, ProxyClass, Connector, ...) as ordinary templates
+  # gated on this value rather than in a genuine crds/ folder, so --skip-crds on the release
+  # has no effect on them. Pre-applying them via `task tailscale:crds:apply` (so the ProxyGroup
+  # custom resource below never races the CRD's registration) and then also letting this release
+  # manage them would hit the same ownership conflict documented in README.md for the nvidia
+  # RuntimeClass - so this chart's own release never touches them.
+  installCRDs: false
+  operatorConfig:
+    hostname: home-media-server-operator
+    # The controller itself, not the data-plane proxies (those are tailscale.proxyGroup.resources
+    # above) - just reconciles CRDs and the tailnet API, lighter than the proxies it manages.
+    resources:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  proxyConfig:
+    defaultTags: "tag:k8s"
 
-cloudflared:
-  image:
-    repository: cloudflare/cloudflared
-    tag: '2026.8.3'
-    registry: docker.io
-    pullPolicy: Always
-  ports:
-    http: 2000
+tailscale:
+  proxyGroup:
+    name: ingress-proxies
+    # Single-node cluster, so extra replicas buy no availability. Raise alongside REL-5.
+    replicas: 1
+    # This proxy now fronts every app's remote access - a single point of failure for all of it,
+    # unlike any individual app's own limits. Modest values for a TLS-terminating reverse proxy;
+    # revisit if `kubectl top pod` on the proxy StatefulSet ever shows it pressed.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
 
 heimdall:
   subdomain: heimdall

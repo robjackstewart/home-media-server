@@ -7,10 +7,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 - **Automation**: Home Assistant
 - **Household**: BabyBuddy (childcare tracking), Gramps Web (genealogy, with a Celery worker + Valkey broker)
 - **Dashboard**: Heimdall
-- **Ingress**: Cloudflared → nginx-gateway-fabric (Gateway API), each app on its own first-level subdomain behind a wildcard DNS record
-- **Auth**: Cloudflare Zero Trust → Azure Entra ID OAuth, via a single wildcard Access application (Home Assistant explicitly bypassed)
+- **Ingress**: Tailscale Kubernetes operator, each app its own `Ingress` behind a shared `ProxyGroup`, reachable only over the tailnet at `https://<subdomain>.<tailnet>.ts.net`
+- **Auth**: tailnet membership (`tailscale_acl`) - no separate auth layer; nothing is publicly reachable
 - **Secrets**: Azure Key Vault → Kubernetes Secrets (injected via Terraform)
-- **Infra**: Terraform on Azure (Key Vault, Cloudflare resources, DNS)
+- **Infra**: Terraform on Azure (Key Vault) and Tailscale (ACL policy, OAuth-driven operator)
 
 ---
 
@@ -18,7 +18,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### SEC-1: Add Resource Requests/Limits to All Pods
 **Requirement:** Scheduler efficiency, OOM prevention
-- **Current State:** Many containers have no resource requests or limits at all. Jellyfin, Transmission, Gluetun, Flaresolverr, and Cloudflared have neither. Sonarr, Radarr, Home Assistant have memory limits but no CPU limits or requests. `metrics-server` is already installed and `kubectl top pods` is live — a spot check showed `radarr-0` and `sonarr-0` both over 700m CPU with no limit set, so this is a present risk, not just theoretical.
+- **Current State:** Many containers have no resource requests or limits at all. Jellyfin, Transmission, Gluetun, and Flaresolverr have neither. Sonarr, Radarr, Home Assistant have memory limits but no CPU limits or requests. `metrics-server` is already installed and `kubectl top pods` is live — a spot check showed `radarr-0` and `sonarr-0` both over 700m CPU with no limit set, so this is a present risk, not just theoretical.
 - **Improvement:** Add `resources.requests` and `resources.limits` for every container.
 - **Note:** OPS-5's prerequisite (metrics-server) is already satisfied, so this no longer needs to wait — just needs a representative observation window before picking numbers.
 
@@ -38,10 +38,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 - **Improvement:** Set `purge_protection_enabled = true`; increase `soft_delete_retention_days` to 90.
 - **Caveat:** `purge_protection_enabled` is one-way on Azure — it cannot be turned back off once set on a vault.
 
-### SEC-7: Cloudflare Access Break-Glass Plan
+### SEC-7: Cloudflare Access Break-Glass Plan ✅ OBSOLETED
 **Requirement:** Recovery path if the auth layer itself misconfigures
-- **Current State:** A single wildcard `cloudflare_zero_trust_access_application` (`*.robjackstewart.com`) now gates every app except Home Assistant's explicit bypass. There's no documented recovery path if that policy, the Entra group, or the IdP config breaks and locks everyone out.
-- **Improvement:** Write a short runbook: how to reach the Cloudflare dashboard directly (outside Access) to disable or fix the policy, and note the account credentials/2FA needed to do so.
+- **Previous State:** A single wildcard `cloudflare_zero_trust_access_application` (`*.robjackstewart.com`) gated every app except Home Assistant's explicit bypass, with no documented recovery path if that policy, the Entra group, or the IdP config broke and locked everyone out.
+- **Resolution:** The whole Cloudflare Access/Entra ID layer was removed in favour of Tailscale (see the "Ingress"/"Auth" lines above). The equivalent break-glass concern now is the tailnet ACL (`tailscale_acl` in `infrastructure/main.tf`) - it's managed by Terraform from a file in this repo, editable and re-appliable independently of the cluster, and the Tailscale admin console remains reachable to fix it directly if a bad ACL ever locks out a device.
 
 ### SEC-4: Add NetworkPolicies
 **Requirement:** Network micro-segmentation
@@ -106,8 +106,8 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 **Requirement:** Metrics, dashboards, alerting
 - **Current State:** No metrics collection, no dashboards, no alerting.
 - **Improvement:** Deploy `kube-prometheus-stack` as an additional Helm release.
-  - Scrape all pods via annotations, nginx-gateway-fabric, node-exporter, and cloudflared (port 2000 already exposes Prometheus metrics)
-  - Pre-built community dashboards exist for Kubernetes, NGINX, and Jellyfin
+  - Scrape all pods via annotations and node-exporter
+  - Pre-built community dashboards exist for Kubernetes and Jellyfin
   - Alerts: disk usage thresholds, pod crash loops, VPN health, GPU utilisation
 - **Caveat:** Real memory overhead (likely 500Mi–1Gi+ for Prometheus+Grafana+AlertManager+node-exporter combined) on the same single node that's also doing GPU transcoding. Worth sizing/testing before committing, not assumed free.
 
@@ -117,11 +117,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 - **Improvement:** Deploy Loki + Promtail (or Grafana Alloy). Surface logs in the same Grafana instance as OBS-1 with log-based alert rules.
 - **Caveat:** Same resource-overhead consideration as OBS-1 — this is additive on top of it, not free.
 
-### OBS-3: ServiceMonitor for Cloudflared
+### OBS-3: ServiceMonitor for Cloudflared ✅ OBSOLETED
 **Requirement:** Tunnel health visibility
-- **Current State:** Cloudflared exposes Prometheus metrics on port 2000 but nothing scrapes them. No `ServiceMonitor` CRD exists in the cluster yet — confirmed via `kubectl get crd`.
-- **Improvement:** Add a `ServiceMonitor` CRD targeting the cloudflared service on port 2000. Low effort, high value.
-- **Dependency:** Requires OBS-1 (or at least the Prometheus Operator CRDs it installs) first — the `ServiceMonitor` kind doesn't exist without it. Not independently achievable; should come after OBS-1 in the priority order below, not before.
+- **Previous State:** Cloudflared exposed Prometheus metrics on port 2000 but nothing scraped them.
+- **Resolution:** Cloudflared is gone; there's no tunnel left to monitor. The tailscale-operator and its proxy pods expose their own metrics if this is revisited - see the operator's `--metrics-address` flag - but nothing scrapes those either today, so a fresh version of this item could be opened once OBS-1 lands.
 
 ### OBS-4: Application-Level Metrics (APM)
 **Requirement:** Media-specific performance insights
@@ -149,7 +148,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### OPS-3: Extend Renovate to Track All Image Tags
 **Requirement:** Automated dependency updates
-- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, prowlarr, and cloudflared. It cannot track the five images still pinned to `latest` (`gluetun`, `transmission`, `flaresolverr`, `payment-manager`, plus the dead `calibre` block), since there's no version to diff a floating tag against. `renovate.json`'s only custom manager targets the unrelated `GATEWAY_API_VERSION` in `helm/Taskfile.yml`.
+- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, and prowlarr. It cannot track the five images still pinned to `latest` (`gluetun`, `transmission`, `flaresolverr`, `payment-manager`, plus the dead `calibre` block), since there's no version to diff a floating tag against. `renovate.json` has no custom managers left since the `GATEWAY_API_VERSION` one it used to carry was removed along with Gateway API/nginx-gateway-fabric.
 - **Improvement:** This is really a side effect of **SEC-5** — once those five images are pinned to real tags, Renovate picks them up automatically. No new regex/custom manager is needed.
 
 ### OPS-4: Azure Resource Locks
@@ -240,10 +239,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 - **Current State:** `.rar` archives downloaded by Transmission are not extracted, so Sonarr/Radarr cannot import them.
 - **Improvement:** Deploy Unpackerr as a standalone Deployment watching the downloads directory. Configure it with Sonarr/Radarr API keys for post-extraction notifications.
 
-### FEAT-3: Local DNS / Split-Horizon DNS
+### FEAT-3: Local DNS / Split-Horizon DNS ✅ OBSOLETED
 **Requirement:** Keep LAN traffic on the LAN
-- **Current State:** `local.home-media-server.robjackstewart.com` resolves to 192.168.50.109 via an external DNS record; LAN traffic unnecessarily transits Cloudflare.
-- **Improvement:** Deploy Pi-hole or configure CoreDNS with rewrite rules to resolve internal domains locally. This also blocks ads cluster-wide as a side effect.
+- **Previous State:** `local.home-media-server.robjackstewart.com` resolved to 192.168.50.109 via an external DNS record; LAN traffic unnecessarily transited Cloudflare.
+- **Resolution:** Remote access moved to Tailscale, which is peer-to-peer by construction - traffic between two devices on the same LAN stays on the LAN without ever reaching a relay, let alone a third-party proxy. There's no longer an equivalent "everything goes through an external service" record to work around. A Pi-hole/CoreDNS setup for ad-blocking DNS is still a separate, independently worthwhile idea, just no longer tied to this problem.
 
 ### FEAT-4: Homepage Dashboard
 **Requirement:** Live service stats on the landing page
@@ -255,10 +254,10 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 - **Current State:** Basic NVIDIA device plugin; GPU is exclusively allocated to Jellyfin.
 - **Improvement:** Deploy the NVIDIA GPU Operator and configure GPU time-slicing so the GPU can be shared across pods when Jellyfin is idle. Add GPU utilisation metrics to Grafana (via DCGM exporter).
 
-### FEAT-6: VPN Integration Enhancement
+### FEAT-6: VPN Integration Enhancement ✅ DONE
 **Requirement:** Secure direct access from trusted devices
-- **Current State:** External access is Cloudflare Tunnel only; no direct WireGuard access for trusted clients.
-- **Improvement:** Deploy a WireGuard server in the cluster (e.g. wg-easy) and create a dedicated ingress route. Useful for low-latency access from known devices without traversing Cloudflare.
+- **Previous State:** External access was Cloudflare Tunnel only; no direct WireGuard access for trusted clients.
+- **Improvement:** Replaced Cloudflare Tunnel with Tailscale (a WireGuard mesh) via the Tailscale Kubernetes operator - see the "Ingress"/"Auth" lines above and the README's "Remote access" section. Every app is reachable directly, peer-to-peer where NAT traversal allows, from any device signed into the tailnet.
 
 ### FEAT-7: Service Mesh (Linkerd)
 **Requirement:** Automatic mTLS, advanced traffic policies, built-in observability
@@ -297,34 +296,30 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 | 10 | SEC-2 | Add pod security contexts (test per-image first — see caveat) | Security |
 | 11 | SEC-3 | Enable Key Vault purge protection (irreversible — see caveat) | Security |
 | 12 | OPS-4 | Add Azure resource locks | Operations |
-| 13 | SEC-7 | Cloudflare Access break-glass plan | Security |
-| 14 | SEC-4 | Add NetworkPolicies | Security |
-| 15 | PERF-1 | Scale-to-zero for idle apps (KEDA, cron tier first) | Performance |
-| 16 | OBS-1 | Deploy kube-prometheus-stack | Observability |
-| 17 | OBS-3 | Add ServiceMonitor for cloudflared metrics (requires #16) | Observability |
-| 18 | OBS-2 | Deploy Loki + Promtail | Observability |
-| 19 | REL-3 | Deploy Velero backups (ongoing Azure Blob cost — see caveat) | Reliability |
-| 20 | OPS-2 | Azure Key Vault CSI driver | Operations |
-| 21 | OPS-1 | GitOps with Flux CD | Operations |
-| 22 | SEC-6 | Container vulnerability scanning (Trivy/Polaris; Falco needs a spike) | Security |
-| 23 | OPS-6 | Advanced CI/CD pipeline | Operations |
-| 24 | OPS-10 | Track GPU/CUDA base image in Renovate | Operations |
-| 25 | OBS-4 | Application-level metrics (APM) | Observability |
-| 26 | STOR-1 | Storage class tiering | Storage |
-| 27 | STOR-2 | PostgreSQL for *arr metadata | Storage |
-| 28 | FEAT-2 | Unpackerr auto-extraction | Features |
-| 29 | FEAT-3 | Local DNS / split-horizon DNS | Features |
-| 30 | FEAT-4 | Homepage dashboard | Features |
-| 31 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
-| 32 | OPS-7 | IaC enhancement (K3d + Terraform modules) | Operations |
-| 33 | REL-4 | HPA for Prowlarr/Flaresolverr/Jellyfin | Reliability |
-| 34 | FEAT-6 | WireGuard direct access | Features |
-| 35 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
-| 36 | FEAT-7 | Service mesh (Linkerd) | Features |
-| 37 | OBS-5 | Distributed tracing (Jaeger/Tempo) | Observability |
-| 38 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
-| 39 | PERF-3 | Usage-aware dynamic throttling (custom build — see note) | Performance |
-| 40 | QA-2 | Chaos engineering (Litmus) | Quality |
+| 13 | SEC-4 | Add NetworkPolicies | Security |
+| 14 | PERF-1 | Scale-to-zero for idle apps (KEDA, cron tier first) | Performance |
+| 15 | OBS-1 | Deploy kube-prometheus-stack | Observability |
+| 16 | OBS-2 | Deploy Loki + Promtail | Observability |
+| 17 | REL-3 | Deploy Velero backups (ongoing Azure Blob cost — see caveat) | Reliability |
+| 18 | OPS-2 | Azure Key Vault CSI driver | Operations |
+| 19 | OPS-1 | GitOps with Flux CD | Operations |
+| 20 | SEC-6 | Container vulnerability scanning (Trivy/Polaris; Falco needs a spike) | Security |
+| 21 | OPS-6 | Advanced CI/CD pipeline | Operations |
+| 22 | OPS-10 | Track GPU/CUDA base image in Renovate | Operations |
+| 23 | OBS-4 | Application-level metrics (APM) | Observability |
+| 24 | STOR-1 | Storage class tiering | Storage |
+| 25 | STOR-2 | PostgreSQL for *arr metadata | Storage |
+| 26 | FEAT-2 | Unpackerr auto-extraction | Features |
+| 27 | FEAT-4 | Homepage dashboard | Features |
+| 28 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
+| 29 | OPS-7 | IaC enhancement (K3d + Terraform modules) | Operations |
+| 30 | REL-4 | HPA for Prowlarr/Flaresolverr/Jellyfin | Reliability |
+| 31 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
+| 32 | FEAT-7 | Service mesh (Linkerd) | Features |
+| 33 | OBS-5 | Distributed tracing (Jaeger/Tempo) | Observability |
+| 34 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
+| 35 | PERF-3 | Usage-aware dynamic throttling (custom build — see note) | Performance |
+| 36 | QA-2 | Chaos engineering (Litmus) | Quality |
 
 ---
 

@@ -1,7 +1,3 @@
-provider "cloudflare" {
-  api_token = data.azurerm_key_vault_secret.cloudflare_api_token.value
-}
-
 provider "azurerm" {
   features {
     key_vault {
@@ -17,56 +13,9 @@ provider "kubernetes" {
   config_context = var.kubernetes_context
 }
 
-resource "cloudflare_zero_trust_access_application" "home_media_server" {
-  zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name                      = var.cloudflare_application_name
-  domain                    = format("*.%s", var.cloudflare_domain)
-  type                      = "self_hosted"
-  session_duration          = "24h"
-  auto_redirect_to_identity = true
-  allowed_idps              = [cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id]
-  policies                  = [{
-    id                      = cloudflare_zero_trust_access_policy.allow_home_media_server_users_based_on_entra_id_group.id
-    precedence              = 1
-  }]
-}
-
-resource "cloudflare_zero_trust_access_policy" "bypass_everyone" {
-  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  name       = "Bypass Access"
-  decision   = "bypass"
-
-  include = [{
-    everyone = {}
-  }]
-}
-
-resource "cloudflare_zero_trust_access_application" "home_assistant" {
-  zone_id                   = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name                      = "Home Assistant"
-  domain                    = format("%s.%s", var.home_assistant_subdomain, var.cloudflare_domain)
-  type                      = "self_hosted"
-  session_duration          = "24h"
-  auto_redirect_to_identity = false
-  policies                  = [{
-    id                      = cloudflare_zero_trust_access_policy.bypass_everyone.id
-    precedence              = 1
-  }]
-}
-
-resource "random_id" "argo_secret" {
-  byte_length = 35
-}
-
-resource "cloudflare_zero_trust_tunnel_cloudflared" "tunnel" {
-  account_id    = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  name          = var.cloudflare_tunnel_name
-  tunnel_secret = random_id.argo_secret.b64_std
-  config_src    = "local"
-
-  depends_on    = [
-    cloudflare_zero_trust_access_application.home_media_server
-  ]
+provider "tailscale" {
+  oauth_client_id     = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_id.value
+  oauth_client_secret = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_secret.value
 }
 
 data "azurerm_client_config" "current" {}
@@ -100,7 +49,8 @@ resource "azurerm_key_vault" "keyvault" {
       "Set",
       "List",
       "Recover",
-      "Delete"
+      "Delete",
+      "Purge"
     ]
 
     storage_permissions = [
@@ -114,35 +64,19 @@ data "azurerm_key_vault" "common" {
   resource_group_name = var.azure_common_keyvault_resource_group
 }
 
-data "azurerm_key_vault_secret" "common_kv_client_secret" {
-  name         = var.azure_common_keyvault_client_secret_secret_name
-  key_vault_id = data.azurerm_key_vault.common.id
-}
-
 data "azurerm_key_vault_secret" "common_kv_vpn_wireguard_private_key" {
   name         = var.azure_common_keyvault_vpn_wireguard_private_key_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "cloudflare_api_token" {
-  name         = var.azure_common_keyvault_cloudflare_api_token_secret_name
+data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_id" {
+  name         = var.azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
-data "azurerm_key_vault_secret" "cloudflare_zone_id" {
-  name         = var.azure_common_keyvault_cloudflare_zone_id_secret_name
+data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_secret" {
+  name         = var.azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name
   key_vault_id = data.azurerm_key_vault.common.id
-}
-
-data "azurerm_key_vault_secret" "cloudflare_account_id" {
-  name         = var.azure_common_keyvault_cloudflare_account_id_secret_name
-  key_vault_id = data.azurerm_key_vault.common.id
-}
-
-resource "azurerm_key_vault_secret" "client_secret" {
-  name         = "client-secret"
-  value        = data.azurerm_key_vault_secret.common_kv_client_secret.value
-  key_vault_id = azurerm_key_vault.keyvault.id
 }
 
 resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
@@ -151,83 +85,85 @@ resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
   key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "cloudflare_dns_record" "home_media_server_cname" {
-  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name    = var.cloudflare_application_name
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.tunnel.id}.cfargotunnel.com"
-  type    = "CNAME"
-  proxied = true
-  ttl = 1
-}
+# Replaces the Cloudflare Access application + Entra ID group as the authorization boundary:
+# only devices signed into this tailnet can reach tag:k8s. Note this resource replaces the
+# entire tailnet policy file - if the tailnet already has hand-written rules, fold them in here
+# before the first apply.
+resource "tailscale_acl" "policy" {
+  # This tailnet already has a non-default policy (Tailscale's own default template, with the
+  # tag:k8s-operator entry the OAuth client auto-created). tailscale_acl replaces the whole file
+  # wholesale, so this is required the first time - confirmed by hand that nothing else of value
+  # was in it before setting this.
+  overwrite_existing_content = true
 
-resource "cloudflare_dns_record" "home_media_server_local_a" {
-  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name    = format("local.%s", var.cloudflare_application_name)
-  content = var.local_network_ip_address
-  type    = "A"
-  proxied = false
-  ttl     = 1
-}
-
-resource "cloudflare_dns_record" "home_assistant_cname" {
-  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name    = var.home_assistant_subdomain
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.tunnel.id}.cfargotunnel.com"
-  type    = "CNAME"
-  proxied = true
-  ttl = 1
-}
-
-resource "cloudflare_dns_record" "wildcard_cname" {
-  zone_id = data.azurerm_key_vault_secret.cloudflare_zone_id.value
-  name    = "*"
-  content = "${cloudflare_zero_trust_tunnel_cloudflared.tunnel.id}.cfargotunnel.com"
-  type    = "CNAME"
-  proxied = true
-  ttl = 1
-}
-
-
-resource "azurerm_key_vault_secret" "tunnel_credentials" {
-  name         = "tunnel-credentials"
-  value        = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_zero_trust_tunnel_cloudflared.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
-  key_vault_id = azurerm_key_vault.keyvault.id
-}
-
-
-resource "cloudflare_zero_trust_access_identity_provider" "azure_ad_oauth" {
-  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  name       = "Azure Active Directory via Home Media Server App Registration"
-  type       = "azureAD"
-  config     = {
-    client_id       = var.app_registration_client_id
-    client_secret   = azurerm_key_vault_secret.client_secret.value
-    directory_id    = data.azurerm_client_config.current.tenant_id
-    support_groups  = true
-  }
-}
-
-resource "cloudflare_zero_trust_access_group" "home_media_server_users" {
-  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  name       = "Home media server users"
-  include = [{
-    azure_ad = {
-      identity_provider_id = cloudflare_zero_trust_access_identity_provider.azure_ad_oauth.id
-      id                   = var.entra_id_access_group_object_id
+  acl = jsonencode({
+    tagOwners = {
+      # Owned by tag:terraform, not left empty: tailscale_oauth_client.k8s_operator assigns this
+      # tag when Terraform creates that client, and Tailscale enforces tagOwners on that
+      # assignment the same as it would a device self-tagging via `tailscale up --advertise-tags` -
+      # without this, creating the client fails with "requested tags ... invalid or not permitted".
+      "tag:k8s-operator" = ["tag:terraform"]
+      "tag:k8s"          = ["tag:k8s-operator"]
+      # Tags the bootstrap Terraform OAuth client - required by Tailscale whenever a client is
+      # scoped to devices:core/auth_keys. Empty owner list: nothing should be able to self-assign
+      # this via `tailscale up --advertise-tags` - only the client itself, pre-tagged at creation
+      # in the console, ever holds it.
+      "tag:terraform" = []
     }
-  }]
+    # ProxyGroup-backed Ingress advertises Tailscale Services; without this the proxies come up
+    # healthy but the Services stay unapproved and the MagicDNS names never resolve.
+    autoApprovers = {
+      services = {
+        "tag:k8s" = ["tag:k8s"]
+      }
+    }
+    # Narrower than the tailnet's previous default (which allowed every device to reach every
+    # other device unrestricted) - only tailnet members can reach the app proxies. This is the
+    # actual authorization boundary for the whole migration.
+    grants = [{
+      src = ["autogroup:member"]
+      dst = ["tag:k8s"]
+      ip  = ["*"]
+    }]
+    # Carried over from the tailnet's previous default policy so Tailscale SSH between your own
+    # devices keeps working - overwrite_existing_content replaces the whole file, so anything not
+    # listed here is dropped, not merged.
+    ssh = [{
+      action = "check"
+      src    = ["autogroup:member"]
+      dst    = ["autogroup:self"]
+      users  = ["autogroup:nonroot", "root"]
+    }]
+  })
 }
 
-resource "cloudflare_zero_trust_access_policy" "allow_home_media_server_users_based_on_entra_id_group" {
-  account_id = data.azurerm_key_vault_secret.cloudflare_account_id.value
-  name       = "Allow home media server users"
-  decision   = "allow"
+# Replaces the "enable MagicDNS" manual console step.
+resource "tailscale_dns_preferences" "magic_dns" {
+  magic_dns = true
+}
 
-  include = [{
-    group = {
-      id = cloudflare_zero_trust_access_group.home_media_server_users.id
-    }
-  }]
+# Replaces the "enable HTTPS Certificates" manual console step. This resource manages the
+# tailnet's settings as a whole singleton - the provider's docs don't state whether omitted
+# optional fields are left alone or reset to a schema default. Only https_enabled is set here
+# deliberately; before applying for the first time, `terraform import tailscale_tailnet_settings.settings
+# tailnet_settings` and check the resulting plan proposes changing ONLY https_enabled. If it
+# proposes touching anything else (devices_approval_on, users_approval_on, etc.), stop and pin
+# those fields explicitly to their current values first.
+resource "tailscale_tailnet_settings" "settings" {
+  https_enabled = true
+}
+
+# Replaces manually creating the operator's OAuth client in the console. Scopes match the
+# operator's documented requirement (write on Devices/Core, Keys/Auth Keys, and General/Services,
+# tagged tag:k8s-operator) - the exact API scope string for "General/Services" isn't confirmed
+# against Tailscale's own scope reference (only shown as a UI category name in their install
+# guide), so "services" here follows the same bare-name-means-write convention every other
+# documented scope uses. If the operator has trouble advertising Tailscale Services after
+# switching to this, that's the first thing to check in the console.
+resource "tailscale_oauth_client" "k8s_operator" {
+  description = "home-media-server k8s-operator"
+  scopes      = ["devices:core", "auth_keys", "services"]
+  tags        = ["tag:k8s-operator"]
 }
 
 resource "kubernetes_namespace_v1" "home-media-server" {
@@ -236,15 +172,18 @@ resource "kubernetes_namespace_v1" "home-media-server" {
   }
 }
 
-resource "kubernetes_secret_v1" "argo_tunnel_credentials" {
+resource "kubernetes_secret_v1" "tailscale_operator_oauth" {
   metadata {
-    name = var.cloudflare_tunnel_credential_secret_name
+    name      = var.tailscale_operator_oauth_secret_name
     namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
   }
 
   data = {
-    "credentials.json" = jsonencode({"AccountTag"=data.azurerm_key_vault_secret.cloudflare_account_id.value, "TunnelID"=cloudflare_zero_trust_tunnel_cloudflared.tunnel.id, "TunnelSecret"=random_id.argo_secret.b64_std})
+    client_id     = tailscale_oauth_client.k8s_operator.id
+    client_secret = tailscale_oauth_client.k8s_operator.key
   }
+
+  type = "Opaque"
 }
 
 resource "kubernetes_secret_v1" "vpn_credentials" {
@@ -287,10 +226,7 @@ resource "local_file" "values" {
         }
       }
     }
-    domain = {
-      zone = var.cloudflare_domain
-      main = format("%s.%s", var.cloudflare_application_name, var.cloudflare_domain)
-    }
+    tailnet = var.tailscale_tailnet_name
     storage = {
       host = {
         config = {
@@ -301,13 +237,6 @@ resource "local_file" "values" {
           dir      = var.host_storage_media_dir
           capacity = var.host_storage_media_capacity
         }
-      }
-    }
-    argoTunnel = {
-      name         = var.cloudflare_tunnel_name
-      id           = cloudflare_zero_trust_tunnel_cloudflared.tunnel.id
-      credentials = {
-        secretName = var.cloudflare_tunnel_credential_secret_name
       }
     }
   })

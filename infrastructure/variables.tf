@@ -1,31 +1,3 @@
-variable "cloudflare_application_name" {
-  type = string
-  description = "The name of the cloudflare zero trust access application."
-  default = "home-media-server"
-}
-
-variable "cloudflare_domain" {
-  type = string
-  description = "The domain in cloudflare under which your home media server will be accessed."
-}
-
-variable "cloudflare_tunnel_name" {
-  type = string
-  description = "The name of the cloudflare tunnel via which your home media server will be accessed."
-  default = "home-media-server"
-}
-
-variable "cloudflare_tunnel_credential_secret_name" {
-  type = string
-  description = "The name of the kubernetes secrets in which the cloudflare tunnel credentials will be stored."
-  default = "cloudflare-tunnel-credentials"
-}
-
-variable "app_registration_client_id" {
-  type = string
-  description = "The client ID of the app registration which will be used for authentication by the cloudflare application."
-}
-
 variable "azure_subscription_id" {
   type = string
   description = "The ID of the subscription in which all azure resources exist."
@@ -59,29 +31,9 @@ variable "azure_common_keyvault_resource_group" {
   description = "The name of the resource group which contains the key vault from which secrets will be pulled at infrastructure deployment time."
 }
 
-variable "azure_common_keyvault_client_secret_secret_name" {
-  type = string
-  description = "The name of the secret in the common keyvault in which the app registration client secret is stored."
-}
-
 variable "azure_common_keyvault_vpn_wireguard_private_key_secret_name" {
   type = string
   description = "The name of the secret in the common keyvault in which the vpn wireguard private key is stored."
-}
-
-variable "azure_common_keyvault_cloudflare_api_token_secret_name" {
-  type = string
-  description = "The name of the secret in the common keyvaukt the value of which is the API token for your Cloudflare account. Needs to have the following account level grants: Cloudflare Tunnel:Edit, Access: Organizations, Identity Providers, and Groups:Edit, Access: Apps and Policies:Edit, and DNS:Edit for the domain on which your media server will be accessed."
-}
-
-variable "azure_common_keyvault_cloudflare_zone_id_secret_name" {
-  type = string
-  description = "he name of the secret in the common keyvaukt the value of which is the zone ID for the domain through which you will access your home media server"
-}
-
-variable "azure_common_keyvault_cloudflare_account_id_secret_name" {
-  type = string
-  description = "he name of the secret in the common keyvaukt the value of which is the account ID for the domain through which you will access your home media server"
 }
 
 variable "timezone" {
@@ -158,15 +110,23 @@ variable "guid" {
   default = "1000"
 }
 
-variable "home_assistant_subdomain" {
-  type = string
-  default = "home-assistant"
+variable "azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client ID of the bootstrap Tailscale OAuth client Terraform authenticates as. Needs write scope on: policy file (the tailnet ACL), dns (MagicDNS), feature_settings (HTTPS certificates), and oauth_keys (creating the Kubernetes operator's own OAuth client)."
 }
 
-variable "entra_id_access_group_object_id" {
-  type = string
+variable "azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the client secret of the bootstrap Tailscale OAuth client Terraform authenticates as."
 }
 
-variable "local_network_ip_address" {
-  type = string
+variable "tailscale_tailnet_name" {
+  type        = string
+  description = "The tailnet's MagicDNS suffix (e.g. 'tailxxxx.ts.net'), used to build each app's https://<subdomain>.<tailnet> address."
+}
+
+variable "tailscale_operator_oauth_secret_name" {
+  type        = string
+  description = "The name of the kubernetes secret in which the Tailscale operator's OAuth credentials will be stored. Must be 'operator-oauth' - this name and its client_id/client_secret keys are hardcoded by the tailscale-operator Helm chart."
+  default     = "operator-oauth"
 }

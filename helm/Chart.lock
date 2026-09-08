@@ -1,9 +1,9 @@
 dependencies:
-- name: nginx-gateway-fabric
-  repository: oci://ghcr.io/nginx/charts
-  version: 2.4.2
 - name: nvidia-device-plugin
   repository: https://nvidia.github.io/k8s-device-plugin
   version: 0.20.0
-digest: sha256:96a34590da7d16d47d7da2f9eaf64b12f484ac4af7d7b4cd24301f64fa891da3
-generated: "2026-09-06T20:53:55.861877609+01:00"
+- name: tailscale-operator
+  repository: https://pkgs.tailscale.com/helmcharts
+  version: 1.102.3
+digest: sha256:6cfd6471738e585c58d85bb340966c1fd8c83d770b14108c6ac25a45177e300e
+generated: "2026-09-08T19:33:58.912144642+01:00"

@@ -34,6 +34,10 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+      initContainers:
+      {{- include "arrExternalAuthInitContainer" (dict
+           "image" .Values.hostStorageBootstrap.image
+           "subPath" "radarr") | nindent 6 }}
       containers:
         - env:
           - name: TZ
@@ -83,21 +87,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 1
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: radarr-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.radarr.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: radarr-service
-      port: {{ .Values.radarr.ports.http }}
+{{ include "tailscaleIngress" (dict
+     "name" "radarr-ingress"
+     "subdomain" .Values.radarr.subdomain
+     "service" "radarr-service"
+     "port" .Values.radarr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

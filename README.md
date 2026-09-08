@@ -2,11 +2,12 @@
 
 A Jellyfin-centred media stack running on **native k3s** on bare-metal Linux, with the NVIDIA
 GPU attached directly for hardware transcoding, exposed to the LAN via k3s's built-in ServiceLB
-and to the internet through a Cloudflare Tunnel behind Entra ID authentication.
+and to your own devices, wherever they are, over a private [Tailscale](https://tailscale.com)
+tailnet. Nothing is reachable from the public internet.
 
 ## Requirements
 
-1. A Cloudflare account and domain
+1. A Tailscale account and tailnet, with MagicDNS and HTTPS Certificates enabled
 1. An Azure account and subscription
 1. A Linux host with an NVIDIA GPU (Ubuntu 24.04 LTS or similar)
 
@@ -30,7 +31,8 @@ Order matters: install the container toolkit **before** k3s, because k3s only pr
    [NVIDIA's installation guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 
 1. **k3s** — installed with the declarative config in [`k3s/config.yaml`](k3s/config.yaml),
-   which disables Traefik (ingress is nginx-gateway-fabric) and labels the node as GPU-capable:
+   which disables Traefik (this chart uses no in-cluster Ingress controller - see
+   [Remote access](#remote-access)) and labels the node as GPU-capable:
 
     ``` shell
     task k3s:cluster:install
@@ -63,15 +65,13 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
 1. Create [`config/variables.tfvars`](config/variables.tfvars) and populate it. For example:
 
     ```
-    cloudflare_domain="mydomain.com"
-    app_registration_client_id="<your-app-registration-client-id>"
+    azure_subscription_id="<your-azure-subscription-id>"
     azure_common_keyvault_name="terraform-kv"
     azure_common_keyvault_resource_group="tfstate"
-    azure_common_keyvault_client_secret_secret_name="home-media-server-client-secret"
     azure_common_keyvault_vpn_wireguard_private_key_secret_name="vpn-private-key-secret"
-    azure_common_keyvault_cloudflare_api_token_secret_name="home-media-server-cloudflare-api-token"
-    azure_common_keyvault_cloudflare_zone_id_secret_name="home-media-server-cloudflare-zone-id"
-    azure_common_keyvault_cloudflare_account_id_secret_name="home-media-server-cloudflare-account-id"
+    azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name="home-media-server-tailscale-terraform-oauth-client-id"
+    azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name="home-media-server-tailscale-terraform-oauth-client-secret"
+    tailscale_tailnet_name="tailxxxx.ts.net"
     timezone="Europe/London"
     transmission_vpn_provider_name="mullvad"
     transmission_vpn_provider_environment_variables=[]
@@ -79,11 +79,11 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     host_storage_config_capacity="5Gi"
     host_storage_media_dir="/srv/home-media-server/media"
     host_storage_media_capacity="600Gi"
-    local_network_ip_address="192.168.50.109"
     ```
 
     See [`infrastructure/variables.tf`](infrastructure/variables.tf) for all variables and
-    descriptions. Secret *values* live in Azure Key Vault; only their names go here.
+    descriptions, and [Remote access](#remote-access) below for how to create the four
+    Tailscale-related secrets. Secret *values* live in Azure Key Vault; only their names go here.
 
 1. Deploy:
 
@@ -92,6 +92,60 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     ```
 
 1. Configure the individual apps via their UIs.
+
+## Remote access
+
+Every app is exposed individually to your tailnet by the [Tailscale Kubernetes
+operator](https://tailscale.com/kb/1236/kubernetes-operator) (`helm/templates/tailscale.yaml`,
+plus a `tailscaleIngress` template helper each app calls) at
+`https://<subdomain>.<your-tailnet>` — e.g. `https://jellyfin.tailxxxx.ts.net` — with a
+Tailscale-issued TLS certificate. Nothing is reachable except from a device signed into the
+tailnet; there is no public DNS record and no port exposed to the internet.
+
+**One-time setup**, before your first `task recreate`:
+
+1. Note your tailnet's MagicDNS suffix from the admin console's **DNS** page (e.g.
+   `tailxxxx.ts.net`) — this is `tailscale_tailnet_name` in `config/variables.tfvars`. Terraform
+   enables MagicDNS and HTTPS Certificates itself (`tailscale_dns_preferences`,
+   `tailscale_tailnet_settings` in `infrastructure/main.tf`); it doesn't need to be turned on by
+   hand first.
+1. Create **one** bootstrap OAuth client (Settings → OAuth clients) named `terraform`, scoped to
+   **write** on: `policy file` (the tailnet ACL), `dns` (MagicDNS), `feature_settings` (HTTPS
+   certificates), and `oauth_keys` (creating the Kubernetes operator's own OAuth client below).
+   No tag needed - this client only manages tailnet-wide settings, not devices.
+1. Put its client ID and secret in your common Key Vault, and reference their secret names from
+   `azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name` and
+   `..._client_secret_secret_name`.
+1. Install Tailscale on every device that should reach the server, and sign in.
+
+Terraform creates the Kubernetes operator's own OAuth client itself
+(`tailscale_oauth_client.k8s_operator`), scoped to `devices:core`, `auth_keys` and `services`,
+tagged `tag:k8s-operator`, and wires its resulting credentials straight into the Kubernetes
+secret the operator reads - no second manually-created client or extra Key Vault secrets needed.
+
+Two things worth knowing before your first apply:
+
+- `tailscale_acl` **replaces the entire tailnet policy file**, and `tailscale_tailnet_settings`
+  manages the tailnet's settings as a whole singleton whose provider docs don't say whether
+  omitted fields are left alone or reset - if your tailnet already has hand-written ACL rules,
+  or non-default tailnet settings beyond HTTPS certificates, `terraform import` them first
+  (`terraform import tailscale_tailnet_settings.settings tailnet_settings`) and check the plan
+  proposes changing only what you intended before applying.
+- The bootstrap client's scope grants it write access to create further OAuth clients
+  (`oauth_keys`) and edit the ACL (`policy file`) - treat its Key Vault secret with the same care
+  as any other admin-level credential in this repo.
+
+**Migrating an existing deployment from the old Cloudflare Tunnel setup:** the Gateway API CRDs
+that setup installed are not managed by this chart at all any more and won't be removed by
+`task recreate`. Delete them once, by hand:
+
+``` shell
+kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml
+```
+
+You'll also need to update the hostname baked into a few apps' own configuration, since it isn't
+templated by this chart: Heimdall's dashboard tiles, Jellyfin's published server URL (Dashboard →
+Networking), Seerr's application URL, and Home Assistant's `external_url`.
 
 ## LAN access
 

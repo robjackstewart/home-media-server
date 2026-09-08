@@ -89,21 +89,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 1
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: seerr-routes
-spec:
-  parentRefs:
-  - name: media-server-gateway
-    sectionName: http
-  hostnames:
-  - {{ printf "%s.%s" .Values.seerr.subdomain .Values.domain.zone }}
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: seerr-service
-      port: {{ .Values.seerr.ports.http }}
+{{ include "tailscaleIngress" (dict
+     "name" "seerr-ingress"
+     "subdomain" .Values.seerr.subdomain
+     "service" "seerr-service"
+     "port" .Values.seerr.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

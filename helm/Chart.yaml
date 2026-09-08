@@ -3,9 +3,9 @@ name: home-media-server
 version: 0.0.1
 appVersion: v0.0.1
 dependencies:
-  - name: nginx-gateway-fabric
-    version: '2.4.2'
-    repository: oci://ghcr.io/nginx/charts
   - name: nvidia-device-plugin
     version: '0.20.0'
     repository: https://nvidia.github.io/k8s-device-plugin
+  - name: tailscale-operator
+    version: '1.102.3'
+    repository: https://pkgs.tailscale.com/helmcharts
