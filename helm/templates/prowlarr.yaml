@@ -31,9 +31,6 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
-      dnsConfig:
-        nameservers:
-          - 1.1.1.1
       initContainers:
       {{- include "arrExternalAuthInitContainer" (dict
            "image" .Values.hostStorageBootstrap.image
@@ -47,8 +44,34 @@ spec:
             value: debug
         image: {{ include "image" .Values.prowlarr.flaresolverr.image }}
         imagePullPolicy: {{ .Values.prowlarr.flaresolverr.image.pullPolicy }}
+        # Chromium under the hood, solving a JS challenge against the clock: a 1-core limit
+        # throttles it hard enough that Cloudflare challenges blow past FlareSolverr's own
+        # 60s per-request timeout, and since it solves one request at a time, every later
+        # indexer test then queues up behind that backlog - what looked like Prowlarr "test"
+        # hanging forever was actually this. The node has 12 cores and normally idles under
+        # 20%, so there's room to let it burst instead of budget-matching Prowlarr's own 1
+        # core; memory raised alongside it since usage was already brushing the old 1Gi cap.
+        resources:
+          limits:
+            cpu: '4'
+            memory: 2Gi
         ports:
           - containerPort: {{ .Values.prowlarr.flaresolverr.ports.http }}
+        # tcpSocket, not httpGet: "/" returns a JSON banner with no dedicated health endpoint,
+        # and "/v1" only accepts POST.
+        startupProbe:
+          tcpSocket:
+            port: {{ .Values.prowlarr.flaresolverr.ports.http }}
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          failureThreshold: 20
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.prowlarr.flaresolverr.ports.http }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
       - name: prowlarr
         env:
           - name: TZ

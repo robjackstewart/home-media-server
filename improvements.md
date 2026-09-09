@@ -18,7 +18,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### SEC-1: Add Resource Requests/Limits to All Pods
 **Requirement:** Scheduler efficiency, OOM prevention
-- **Current State:** Many containers have no resource requests or limits at all. Jellyfin, Transmission, Gluetun, and Flaresolverr have neither. Sonarr, Radarr, Home Assistant have memory limits but no CPU limits or requests. `metrics-server` is already installed and `kubectl top pods` is live — a spot check showed `radarr-0` and `sonarr-0` both over 700m CPU with no limit set, so this is a present risk, not just theoretical.
+- **Current State:** Many containers have no resource requests or limits at all. Jellyfin, Transmission, and Gluetun have neither (Flaresolverr now has a CPU/memory limit, added alongside its DNS/proxy fixes below, but still no `requests` — matching the rest of the chart, which sets `limits` only). Sonarr, Radarr, Home Assistant have memory limits but no CPU limits or requests. `metrics-server` is already installed and `kubectl top pods` is live — a spot check showed `radarr-0` and `sonarr-0` both over 700m CPU with no limit set, so this is a present risk, not just theoretical.
 - **Improvement:** Add `resources.requests` and `resources.limits` for every container.
 - **Note:** OPS-5's prerequisite (metrics-server) is already satisfied, so this no longer needs to wait — just needs a representative observation window before picking numbers.
 
@@ -52,7 +52,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### SEC-5: Pin All Image Tags to Specific Versions
 **Requirement:** Reproducibility, supply-chain security
-- **Current State:** Gluetun, Transmission, and Flaresolverr use `latest` — unpredictable upgrades, no auditability.
+- **Current State:** Gluetun (both instances) and Transmission use `latest` — unpredictable upgrades, no auditability. Flaresolverr is now pinned to `v3.5.0`.
 - **Improvement:** Pin all images to a specific semver tag or digest. Add these images to Renovate so updates arrive as PRs.
 
 ### SEC-6: Container Vulnerability Scanning
@@ -69,9 +69,9 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 **Requirement:** Kubernetes self-healing
 - **Current State:** Incomplete probe coverage across the cluster:
   - **Home Assistant**: no liveness, readiness, or startup probes
-  - **Gluetun**: no probes at all
-  - **Flaresolverr**: no probes
+  - **Gluetun**: no probes at all (both the Transmission sidecar and the newer standalone `indexer-proxy` instance)
   - **Bazarr**: startup probe only, no liveness or readiness
+  - ~~**Flaresolverr**: no probes~~ — fixed: startup/liveness `tcpSocket` probes on :8191, alongside the DNS/indexer-proxy fixes.
 - **Improvement:** Add appropriate startup, liveness, and readiness probes for each, using the existing port-9999 Gluetun health endpoint for its `livenessProbe`/`readinessProbe`.
 - **Note:** The `transmission-monitor` sidecar this item used to reference was removed in `e2f8f40` ("remove transmission monitor") — it actively polled that same health endpoint and called `transmission-remote --torrent all --stop` when the VPN went down, which no longer happens. The only remaining protection against a torrent leaking outside the tunnel is Gluetun's own iptables kill-switch (`FIREWALL=on` by default, not overridden in `values.yaml`), which blocks the traffic at the network layer but won't stop Transmission from queuing/retrying against a dead tunnel. Worth deciding deliberately whether the kill-switch alone is sufficient or whether the monitor's stop-on-unhealthy behavior should be recreated as part of this item.
 
@@ -148,7 +148,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### OPS-3: Extend Renovate to Track All Image Tags
 **Requirement:** Automated dependency updates
-- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, and prowlarr. It cannot track the five images still pinned to `latest` (`gluetun`, `transmission`, `flaresolverr`, `payment-manager`, plus the dead `calibre` block), since there's no version to diff a floating tag against. `renovate.json` has no custom managers left since the `GATEWAY_API_VERSION` one it used to carry was removed along with Gateway API/nginx-gateway-fabric.
+- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, prowlarr, and now flaresolverr (pinned to `v3.5.0`). It still cannot track the images pinned to `latest` (`gluetun` — both the Transmission sidecar and the newer standalone `indexer-proxy` instance —, `transmission`, `payment-manager`, plus the dead `calibre` block), since there's no version to diff a floating tag against. `renovate.json` has no custom managers left since the `GATEWAY_API_VERSION` one it used to carry was removed along with Gateway API/nginx-gateway-fabric.
 - **Improvement:** This is really a side effect of **SEC-5** — once those five images are pinned to real tags, Renovate picks them up automatically. No new regex/custom manager is needed.
 
 ### OPS-4: Azure Resource Locks
@@ -287,7 +287,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 | 1 | OPS-8 | Validate the Helm chart in CI (`helm template`/`helm lint`) | Operations |
 | 2 | SEC-5 | Pin all image tags to specific versions | Security |
 | 3 | OPS-3 | Extend Renovate to track all image tags (unlocked by #2) | Operations |
-| 4 | REL-1 | Add missing health probes (Gluetun, Home Assistant, Bazarr, Flaresolverr) | Reliability |
+| 4 | REL-1 | Add missing health probes (Gluetun, Home Assistant, Bazarr) | Reliability |
 | 5 | SEC-1 | Add resource requests/limits to all pods (metrics-server already live) | Security |
 | 6 | OPS-5 | Profile resource usage over a representative period (VPA recommend mode) | Operations |
 | 7 | REL-2 | Add consistent CPU limits/requests | Reliability |

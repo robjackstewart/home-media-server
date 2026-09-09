@@ -54,6 +54,13 @@ spec:
             - name: {{ .name }}
               value: {{ .value | quote }}
             {{- end }}
+          # Kubernetes shares IP rules across the pod; an abrupt gluetun exit (node reboot, OOM)
+          # leaves table 51820 behind and the next start fails with "adding IPv6 rule: file
+          # exists" (qdm12/gluetun#2521).
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "(ip rule del table 51820; ip -6 rule del table 51820) || true"]
           ports:
             - containerPort: {{ .Values.gluetun.ports.http }}
           volumeMounts:

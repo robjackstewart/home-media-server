@@ -1,0 +1,105 @@
+# Standalone gluetun HTTP proxy, used only by Prowlarr indexers tagged for it in the UI (an
+# "HTTP" Indexer Proxy pointed at indexer-proxy-service:8888). Deliberately not a sidecar in the
+# Prowlarr pod: sidecar containers share the pod's netns, which would push Prowlarr and
+# FlareSolverr's *entire* egress through the tunnel instead of just the tagged indexers.
+apiVersion: v1
+kind: Service
+metadata:
+  name: indexer-proxy-service
+spec:
+  clusterIP: {{ .Values.gluetun.clusterIP }}
+  ports:
+  - name: http
+    port: {{ .Values.gluetun.ports.http }}
+    targetPort: {{ .Values.gluetun.ports.http }}
+    protocol: TCP
+  selector:
+    app: indexer-proxy
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: indexer-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: indexer-proxy
+  template:
+    metadata:
+      labels:
+        app: indexer-proxy
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      containers:
+        - name: gluetun
+          image: {{ include "image" .Values.gluetun.image }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: {{ .Values.vpn.provider.name }}
+            - name: VPN_TYPE
+              value: wireguard
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.vpn.auth.secret.keys.wireguard_private_key }}
+                  name: {{ .Values.vpn.auth.secret.name }}
+            {{- $overridden := list }}
+            {{- range .Values.indexerProxy.provider.env }}
+            {{- $overridden = append $overridden .name }}
+            {{- end }}
+            {{- range .Values.vpn.provider.env }}
+            {{- if not (has .name $overridden) }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- range .Values.indexerProxy.provider.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+            - name: HTTPPROXY
+              value: 'on'
+            - name: HTTPPROXY_LISTENING_ADDRESS
+              value: ':{{ .Values.gluetun.ports.http }}'
+            # Gluetun's firewall drops inbound traffic on the default interface; without this the
+            # proxy port is unreachable from other pods. FIREWALL_OUTBOUND_SUBNETS lets replies
+            # route back out to the cluster CIDRs. Neither overlaps WIREGUARD_ADDRESSES (10.73.x).
+            - name: FIREWALL_INPUT_PORTS
+              value: '{{ .Values.gluetun.ports.http }}'
+            - name: FIREWALL_OUTBOUND_SUBNETS
+              value: 10.42.0.0/16,10.43.0.0/16
+          # Kubernetes shares IP rules across the pod; an abrupt gluetun exit (node reboot, OOM)
+          # leaves table 51820 behind and the next start fails with "adding IPv6 rule: file
+          # exists" (qdm12/gluetun#2521).
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", "(ip rule del table 51820; ip -6 rule del table 51820) || true"]
+          ports:
+            - containerPort: {{ .Values.gluetun.ports.http }}
+          volumeMounts:
+            - name: config
+              mountPath: /gluetun
+              subPath: indexer-proxy
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.gluetun.ports.http }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.gluetun.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3

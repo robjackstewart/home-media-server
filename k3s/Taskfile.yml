@@ -19,6 +19,7 @@ tasks:
     cmds:
       - sudo mkdir -p $K3S_CONFIG_DIR
       - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
+      - sudo cp {{.TASKFILE_DIR}}/resolv.conf $K3S_CONFIG_DIR/resolv.conf
       - sudo systemctl restart k3s
 
   cluster:install:
@@ -26,6 +27,7 @@ tasks:
     cmds:
       - sudo mkdir -p $K3S_CONFIG_DIR
       - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
+      - sudo cp {{.TASKFILE_DIR}}/resolv.conf $K3S_CONFIG_DIR/resolv.conf
       - curl -sfL https://get.k3s.io | sh -
       - sudo systemctl enable --now k3s
 
