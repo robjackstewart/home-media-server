@@ -135,17 +135,10 @@ Two things worth knowing before your first apply:
   (`oauth_keys`) and edit the ACL (`policy file`) - treat its Key Vault secret with the same care
   as any other admin-level credential in this repo.
 
-**Migrating an existing deployment from the old Cloudflare Tunnel setup:** the Gateway API CRDs
-that setup installed are not managed by this chart at all any more and won't be removed by
-`task recreate`. Delete them once, by hand:
-
-``` shell
-kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.1/standard-install.yaml
-```
-
-You'll also need to update the hostname baked into a few apps' own configuration, since it isn't
-templated by this chart: Heimdall's dashboard tiles, Jellyfin's published server URL (Dashboard →
-Networking), Seerr's application URL, and Home Assistant's `external_url`.
+A few apps bake their own hostname into their own configuration rather than reading it from this
+chart: Heimdall's dashboard tiles, Jellyfin's published server URL (Dashboard → Networking),
+Seerr's application URL, and Home Assistant's `external_url`. Point these at your tailnet
+addresses once, after your first deploy.
 
 ## LAN access
 
