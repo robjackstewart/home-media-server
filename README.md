@@ -165,6 +165,22 @@ sudo ufw allow 22,6443,8096,8920/tcp
 sudo ufw allow 7359,1900/udp
 ```
 
+## Cluster DNS
+
+`k3s/config.yaml` points CoreDNS at `k3s/resolv.conf` (public resolvers, currently 1.1.1.1 and
+9.9.9.9) via k3s's `resolv-conf` server flag, instead of the node's own `/etc/resolv.conf` — i.e.
+the LAN router. This isn't cosmetic: this router's upstream (a UK ISP) intercepts DNS lookups for
+many torrent tracker domains and returns a block record
+(`ukispblk.vo.llnwd.net.edgesuite.net`) instead of failing the query, which Prowlarr surfaces as
+`Unable to connect to indexer ... Name does not resolve`. Restoring the router as CoreDNS's
+upstream (removing or emptying `resolv-conf`) will silently reintroduce that failure for every
+indexer on a hijacked domain — if a LAN-only hostname ever needs resolving from inside the
+cluster, add a scoped `coredns-custom` `.server` block for just that zone instead (the Corefile
+already carries `import /etc/coredns/custom/*.server`).
+
+`k3s/resolv.conf` only takes effect after `task k3s:config:install` (or `k3s:cluster:install`) has
+run and the k3s service restarted.
+
 ## GPU scheduling
 
 Pods that need the GPU set `runtimeClassName: nvidia` (see

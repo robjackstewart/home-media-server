@@ -14,3 +14,9 @@ node-label:
 
 # Lets the kubeconfig be read without sudo so `task k3s:use-kube-context` works.
 write-kubeconfig-mode: "0644"
+
+# CoreDNS (dnsPolicy: Default) forwards to this file. Without it, kubelet falls back to the
+# node's own /etc/resolv.conf - the LAN router - which returns UK ISP block records
+# (ukispblk.vo.llnwd.net.edgesuite.net) for many torrent tracker domains instead of failing,
+# so Prowlarr's indexers see it as a real but wrong answer. See k3s/resolv.conf.
+resolv-conf: /etc/rancher/k3s/resolv.conf

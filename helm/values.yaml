@@ -112,7 +112,7 @@ prowlarr:
   flaresolverr:
     image:
       repository: flaresolverr/flaresolverr
-      tag: latest
+      tag: 'v3.5.0'
       registry: ghcr.io
       pullPolicy: Always
     ports:
@@ -187,6 +187,23 @@ gluetun:
   ports:
     http: 8888
     healthcheck: 9999
+
+# Standalone gluetun HTTP proxy (templates/indexer-proxy.yaml) for the handful of Prowlarr
+# indexers that are IP-blocked from home even with correct DNS. Deliberately not a VPN for all
+# of Prowlarr - see the Servarr wiki's warning against routing the *arr apps through a VPN by
+# default (shared rate limits/bans) - only indexers tagged for it in Prowlarr's UI use this.
+indexerProxy:
+  provider:
+    env:
+      # Any name here replaces the same-named entry from .Values.vpn.provider.env instead of
+      # duplicating it (server-side apply rejects duplicate env keys) - see templates/
+      # indexer-proxy.yaml. This overrides the shared SERVER_COUNTRIES=UK: a UK Mullvad exit
+      # returns 451 Unavailable For Legal Reasons for some indexers blocked in the UK
+      # specifically. Landing on a different country than Transmission's tunnel also means two
+      # simultaneous connections sharing the same Mullvad WireGuard key never land on the same
+      # server.
+      - name: SERVER_COUNTRIES
+        value: Netherlands
 
 transmission:
   subdomain: transmission
