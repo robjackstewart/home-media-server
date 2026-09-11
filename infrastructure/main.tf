@@ -79,10 +79,41 @@ data "azurerm_key_vault_secret" "tailscale_terraform_oauth_client_secret" {
   key_vault_id = data.azurerm_key_vault.common.id
 }
 
+data "azurerm_key_vault_secret" "common_kv_hardcover_api_token" {
+  name         = var.azure_common_keyvault_hardcover_api_token_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
+data "azurerm_key_vault_secret" "common_kv_comicvine_api_key" {
+  name         = var.azure_common_keyvault_comicvine_api_key_secret_name
+  key_vault_id = data.azurerm_key_vault.common.id
+}
+
 resource "azurerm_key_vault_secret" "vpn_wireguard_private_key" {
   name         = "vpn-wireguard-private-key"
   value        = data.azurerm_key_vault_secret.common_kv_vpn_wireguard_private_key.value
   key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_key_vault_secret" "hardcover_api_token" {
+  name         = "hardcover-api-token"
+  value        = data.azurerm_key_vault_secret.common_kv_hardcover_api_token.value
+  key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+resource "azurerm_key_vault_secret" "comicvine_api_key" {
+  name         = "comicvine-api-key"
+  value        = data.azurerm_key_vault_secret.common_kv_comicvine_api_key.value
+  key_vault_id = azurerm_key_vault.keyvault.id
+}
+
+# Unlike every other secret in this repo, there's no external credential to source from Key Vault
+# here - rreading-glasses' Postgres only caches metadata it fetches from Hardcover's API using the
+# token above, so Terraform mints its own password and keeps it in state for the deployment's
+# lifetime, rather than asking for one to be created by hand first.
+resource "random_password" "rreading_glasses_postgres_password" {
+  length  = 32
+  special = false
 }
 
 # Replaces the Cloudflare Access application + Entra ID group as the authorization boundary:
@@ -199,6 +230,37 @@ resource "kubernetes_secret_v1" "vpn_credentials" {
   type = "Opaque"
 }
 
+resource "kubernetes_secret_v1" "mylar3_credentials" {
+  metadata {
+    name      = var.mylar3_secret_name
+    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
+  }
+
+  data = {
+    comicvine_api_key = azurerm_key_vault_secret.comicvine_api_key.value
+  }
+
+  type = "Opaque"
+}
+
+resource "kubernetes_secret_v1" "rreading_glasses_credentials" {
+  metadata {
+    name      = var.rreading_glasses_secret_name
+    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
+  }
+
+  data = {
+    # Key Vault holds the bare token, like every other secret in this repo - rreading-glasses is
+    # just unusual in wanting the literal "Bearer <token>" Authorization header value verbatim in
+    # its own env var, so that prefix is added here rather than asking for it to be pasted in by
+    # hand (trimspace guards against a stray trailing newline from copy/paste too).
+    hardcover_auth    = "Bearer ${trimspace(azurerm_key_vault_secret.hardcover_api_token.value)}"
+    postgres_password = random_password.rreading_glasses_postgres_password.result
+  }
+
+  type = "Opaque"
+}
+
 resource "local_file" "values" {
   filename = "../helm/infrastructure.values.yaml"
   content = yamlencode({
@@ -227,6 +289,27 @@ resource "local_file" "values" {
       }
     }
     tailnet = var.tailscale_tailnet_name
+    mylar3 = {
+      auth = {
+        secret = {
+          name = var.mylar3_secret_name
+          keys = {
+            comicvine_api_key = "comicvine_api_key"
+          }
+        }
+      }
+    }
+    rreadingGlasses = {
+      auth = {
+        secret = {
+          name = var.rreading_glasses_secret_name
+          keys = {
+            hardcover_auth    = "hardcover_auth"
+            postgres_password = "postgres_password"
+          }
+        }
+      }
+    }
     storage = {
       host = {
         config = {

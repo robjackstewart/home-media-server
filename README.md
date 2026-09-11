@@ -69,6 +69,8 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     azure_common_keyvault_name="terraform-kv"
     azure_common_keyvault_resource_group="tfstate"
     azure_common_keyvault_vpn_wireguard_private_key_secret_name="vpn-private-key-secret"
+    azure_common_keyvault_hardcover_api_token_secret_name="home-media-server-hardcover-api-token"
+    azure_common_keyvault_comicvine_api_key_secret_name="home-media-server-comicvine-api-key"
     azure_common_keyvault_tailscale_terraform_oauth_client_id_secret_name="home-media-server-tailscale-terraform-oauth-client-id"
     azure_common_keyvault_tailscale_terraform_oauth_client_secret_secret_name="home-media-server-tailscale-terraform-oauth-client-secret"
     tailscale_tailnet_name="tailxxxx.ts.net"
@@ -82,8 +84,9 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     ```
 
     See [`infrastructure/variables.tf`](infrastructure/variables.tf) for all variables and
-    descriptions, and [Remote access](#remote-access) below for how to create the four
-    Tailscale-related secrets. Secret *values* live in Azure Key Vault; only their names go here.
+    descriptions, [Secrets reference](#secrets-reference) below for the full list of external
+    accounts/API keys this depends on, and [Remote access](#remote-access) for the Tailscale ones
+    specifically. Secret *values* live in Azure Key Vault; only their names go here.
 
 1. Deploy:
 
@@ -91,7 +94,8 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     task recreate
     ```
 
-1. Configure the individual apps via their UIs.
+1. Configure the individual apps via their UIs. See [Books & comics](#books--comics) below for
+   the one-time wiring needed between Prowlarr, Bookshelf/Mylar3 and Kavita.
 
 ## Remote access
 
@@ -140,6 +144,41 @@ chart: Heimdall's dashboard tiles, Jellyfin's published server URL (Dashboard �
 Seerr's application URL, and Home Assistant's `external_url`. Point these at your tailnet
 addresses once, after your first deploy.
 
+## Secrets reference
+
+The number of external accounts/API keys this stack depends on has grown past the point of
+tracking by memory, so here's the full list. The rule throughout this repo (see the top-level
+philosophy: infrastructure lives in the repo, not configured by hand on the host) is: if
+Terraform can plumb a credential in automatically, it goes in the common Azure Key Vault, named
+by a variable in `config/variables.tfvars`, and flows Key Vault → this project's own Key Vault →
+a Kubernetes Secret → the pod that needs it. If a credential only ever matters inside one app's
+own UI and doesn't gate whether `task recreate` reproduces a working deployment, it's entered
+there directly instead, to avoid plumbing that buys nothing.
+
+**Key Vault-managed** (`config/variables.tfvars` names the secret; `infrastructure/main.tf` does
+the wiring):
+
+| `config/variables.tfvars` key | External account needed | Used by | What it's for |
+|---|---|---|---|
+| `azure_common_keyvault_vpn_wireguard_private_key_secret_name` | Mullvad | Transmission, indexer-proxy | The WireGuard tunnel both gluetun instances connect through |
+| `azure_common_keyvault_tailscale_terraform_oauth_client_id/secret_secret_name` | Tailscale (bootstrap OAuth client, one-time console step) | Terraform itself | Manages the tailnet ACL, MagicDNS, HTTPS certs, and creates the operator's own OAuth client below |
+| *(none - created automatically)* | — | Tailscale Kubernetes operator | Its own OAuth client, minted by Terraform from the bootstrap client above; never touches Key Vault by hand |
+| `azure_common_keyvault_hardcover_api_token_secret_name` | Hardcover.app | rreading-glasses (Bookshelf's metadata backend) | Its own Hardcover API quota, so ebook search doesn't share the public proxy's rate limit with every other self-hosted Bookshelf - see [Books & comics](#books--comics) |
+| `azure_common_keyvault_comicvine_api_key_secret_name` | ComicVine (free, GameSpot account) | Mylar3 | Comic search/metadata - patched into `config.ini` by an init container on every start |
+
+**Entered directly in an app's own UI** (not in this repo or Key Vault):
+
+| Credential | Where | Why it stays out of Key Vault |
+|---|---|---|
+| SMTP account (e.g. Brevo) | Kavita → Settings → Email | Only Kavita ever reads it, and losing it doesn't break `task recreate` - just Send-to-Kindle until re-entered |
+| Private tracker accounts | Prowlarr → Indexers, per indexer added | Same reasoning - one-off, app-local, doesn't gate a reproducible deploy |
+
+If a Key Vault-managed credential is ever rotated or expires (the Hardcover token expires
+annually on 1 January), update its value in the common Key Vault and run `task recreate` -
+Terraform picks up the new value and the owning pod gets a fresh Secret automatically. A pod does
+**not** hot-reload an env var sourced from a Secret though, so if `task recreate` doesn't restart
+it for you, `kubectl delete pod -n home-media-server <pod>` to force it to pick the new value up.
+
 ## LAN access
 
 Jellyfin's `jellyfin-lan` Service is `type: LoadBalancer`. k3s's built-in ServiceLB (klipper)
@@ -164,6 +203,47 @@ sudo ufw allow from 10.43.0.0/16 to any
 sudo ufw allow 22,6443,8096,8920/tcp
 sudo ufw allow 7359,1900/udp
 ```
+
+## Books & comics
+
+Ebooks and comics are downloaded the same way as everything else - Prowlarr syncs indexers to an
+`*arr`-style app, which grabs via Transmission - but land in their own `books`/`comics` folders
+under the `media` volume, read only by Kavita. Jellyfin deliberately does **not** mount these:
+Jellyfin has no actual reader built in (its own Books support is a catalog view - cover art and
+titles, nothing you can open and read), so there was no upside to it also holding read access,
+only one more thing that could confuse where a file "lives". Kavita is the one place to read
+from, or to send a book to a Kindle.
+
+- **[Bookshelf](https://github.com/pennydreadful/bookshelf)** (`helm/templates/bookshelf.yaml`)
+  finds and downloads ebooks. It's a maintained fork of Readarr, so it behaves like Sonarr/Radarr
+  in every way that matters here - same External-auth handling, same Prowlarr "Readarr" app type.
+  Set its root folder to `/books` and its download client to Transmission.
+- **[rreading-glasses](https://github.com/blampe/rreading-glasses)**
+  (`helm/templates/rreading-glasses.yaml`) is Bookshelf's metadata backend - the software behind
+  the public `hardcover.bookinfo.pro` proxy the image points at by default, self-hosted here with
+  its own Postgres cache so author/book searches use this deployment's own free Hardcover API
+  quota instead of sharing that public instance's rate limit with every other self-hosted
+  Bookshelf (a multi-word search can burn through it in a handful of keystrokes). It's
+  Bookshelf-internal only - no Ingress, nothing to configure in its own UI. The one manual step:
+  mint a token at Hardcover.app → account icon → Settings → Hardcover API and store just the bare
+  token (no `Bearer ` prefix - Terraform builds the full header value) in the common Key Vault
+  under the name given by `azure_common_keyvault_hardcover_api_token_secret_name` in
+  `config/variables.tfvars`, the same pattern as the VPN and Tailscale credentials. It expires
+  every 1 January - renew it by hand in Hardcover's console and update the Key Vault secret's
+  value; Terraform picks up the new value on the next `task recreate`.
+- **[Mylar3](https://github.com/mylar3/mylar3)** (`helm/templates/mylar3.yaml`) does the same for
+  comics, with its comic location set to `/comics`. Add it to Prowlarr as a "Mylar" app. It needs
+  a free [ComicVine](https://comicvine.gamespot.com/api/) API key - mint one (sign in with a
+  GameSpot account) and store the bare key in the common Key Vault under the name given by
+  `azure_common_keyvault_comicvine_api_key_secret_name` in `config/variables.tfvars`, the same
+  pattern as the Hardcover token above. An init container patches it into Mylar3's `config.ini` on
+  every start, so nothing needs entering by hand in its UI.
+- **[Kavita](https://www.kavitareader.com/)** (`helm/templates/kavita.yaml`) reads `/books` and
+  `/comics` read-only and is the only place in this stack you actually read them, including
+  **emailing a book to a Kindle**: Settings → Email, with an SMTP account entered directly in
+  Kavita's UI (nothing in this repo or Key Vault - see [Secrets reference](#secrets-reference)
+  below for why), and the sending address added to your Amazon account's *Approved Personal
+  Document E-mail List*.
 
 ## Cluster DNS
 
