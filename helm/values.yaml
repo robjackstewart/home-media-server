@@ -321,7 +321,7 @@ gramps:
   redis:
     image:
       repository: valkey/valkey
-      tag: '8-alpine'
+      tag: '9-alpine'
       registry: docker.io
       pullPolicy: Always
     ports:
