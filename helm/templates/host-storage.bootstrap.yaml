@@ -14,6 +14,15 @@
 # images chown their own /config subtree on start. Data restored onto the host by hand
 # still needs its own chown - see the restore step in the README.
 #
+# The extra media subdirectories below are the exception to "mount points only": unlike
+# movies/tv/downloads, which predate this repo's automation and already carry the right
+# ownership from years of manual host setup, books/comics are new paths this chart itself
+# introduces - the kubelet creates them fresh (root:root) the first time something mounts
+# that subPath, same as the top-level mount points. Confirmed the hard way: a freshly
+# created /comics broke Mylar3 with `PermissionError: [Errno 13] Permission denied:
+# '/comics/.zzz_check'`, since its actual process runs as PUID/PGID after s6 drops root,
+# not as the root the image starts as.
+#
 # Single-node assumption: this is one Job, so it prepares the node it lands on. If this
 # cluster ever gains a second node (REL-5), the local PVs and this hook both need
 # revisiting together.
@@ -49,6 +58,12 @@ spec:
             - |
               set -eu
               for dir in /mnt/config /mnt/media; do
+                chown "$PUID:$PGID" "$dir"
+                chmod 0755 "$dir"
+                echo "$dir -> $(stat -c '%u:%g %a' "$dir")"
+              done
+              for dir in /mnt/media/books /mnt/media/comics; do
+                mkdir -p "$dir"
                 chown "$PUID:$PGID" "$dir"
                 chmod 0755 "$dir"
                 echo "$dir -> $(stat -c '%u:%g %a' "$dir")"

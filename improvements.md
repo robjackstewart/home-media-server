@@ -4,6 +4,7 @@
 
 A K3d-based home media server running on a single node with NVIDIA GPU. Services:
 - **Media**: Jellyfin (GPU-accelerated), Sonarr, Radarr, Bazarr, Prowlarr, Transmission+Gluetun (Mullvad WireGuard VPN), Seerr (media request portal)
+- **Books & comics**: Bookshelf (ebook downloader, a maintained Readarr fork, backed by a self-hosted rreading-glasses + Postgres metadata service for its own Hardcover API quota), Mylar3 (comic downloader), Kavita (reader + Send-to-Kindle, the only reader in this stack) - all synced to Prowlarr/Transmission the same way as Sonarr/Radarr
 - **Automation**: Home Assistant
 - **Household**: BabyBuddy (childcare tracking), Gramps Web (genealogy, with a Celery worker + Valkey broker)
 - **Dashboard**: Heimdall
@@ -148,7 +149,7 @@ A K3d-based home media server running on a single node with NVIDIA GPU. Services
 
 ### OPS-3: Extend Renovate to Track All Image Tags
 **Requirement:** Automated dependency updates
-- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, prowlarr, and now flaresolverr (pinned to `v3.5.0`). It still cannot track the images pinned to `latest` (`gluetun` — both the Transmission sidecar and the newer standalone `indexer-proxy` instance —, `transmission`, `payment-manager`, plus the dead `calibre` block), since there's no version to diff a floating tag against. `renovate.json` has no custom managers left since the `GATEWAY_API_VERSION` one it used to carry was removed along with Gateway API/nginx-gateway-fabric.
+- **Current State:** Renovate's built-in `helm-values` manager already tracks the `registry`/`repository`/`tag` triple in `helm/values.yaml` for anything on a real semver tag — confirmed by merged PRs bumping radarr, sonarr, prowlarr, and now flaresolverr (pinned to `v3.5.0`). It still cannot track the images pinned to `latest` (`gluetun` — both the Transmission sidecar and the newer standalone `indexer-proxy` instance —, `transmission`, `payment-manager`, plus the dead `calibre` block) or to another floating tag with no versioned releases upstream (`rreading-glasses`, pinned to `hardcover`), since there's no version to diff a floating tag against. `renovate.json` has no custom managers left since the `GATEWAY_API_VERSION` one it used to carry was removed along with Gateway API/nginx-gateway-fabric.
 - **Improvement:** This is really a side effect of **SEC-5** — once those five images are pinned to real tags, Renovate picks them up automatically. No new regex/custom manager is needed.
 
 ### OPS-4: Azure Resource Locks

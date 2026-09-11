@@ -20,6 +20,19 @@ vpn:
         username: username
         password: password
 tailnet: tailxxxx.ts.net
+mylar3:
+  auth:
+    secret:
+      name: mylar3-credentials
+      keys:
+        comicvine_api_key: comicvine_api_key
+rreadingGlasses:
+  auth:
+    secret:
+      name: rreading-glasses-credentials
+      keys:
+        hardcover_auth: hardcover_auth
+        postgres_password: postgres_password
 storage:
   host:
     config:

@@ -106,6 +106,17 @@ jellyfin:
       service:
         cluster: 1900
 
+kavita:
+  subdomain: kavita
+  clusterIP: 10.43.178.134
+  image:
+    repository: linuxserver/kavita
+    tag: '0.9.1'
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 5000
+
 prowlarr:
   subdomain: prowlarr
   clusterIP: 10.43.22.107
@@ -124,6 +135,17 @@ prowlarr:
     pullPolicy: Always
   ports:
     http: 9696
+
+mylar3:
+  subdomain: mylar
+  clusterIP: 10.43.178.135
+  image:
+    repository: linuxserver/mylar3
+    tag: '0.11.0'
+    registry: lscr.io
+    pullPolicy: Always
+  ports:
+    http: 8090
 
 radarr:
   subdomain: radarr
@@ -146,6 +168,44 @@ sonarr:
     pullPolicy: Always
   ports:
     http: 8989
+
+bookshelf:
+  subdomain: bookshelf
+  clusterIP: 10.43.178.136
+  image:
+    repository: pennydreadful/bookshelf
+    tag: 'hardcover-v0.4.21.182'
+    registry: ghcr.io
+    pullPolicy: Always
+  ports:
+    http: 8787
+
+# Self-hosted metadata backend for Bookshelf (helm/templates/rreading-glasses.yaml), so its author
+# searches use this deployment's own free Hardcover API quota instead of the shared rate limit on
+# the public https://hardcover.bookinfo.pro proxy the image points at by default. No Ingress -
+# purely an internal backend for Bookshelf, same as indexer-proxy-service.
+rreadingGlasses:
+  clusterIP: 10.43.178.137
+  image:
+    repository: blampe/rreading-glasses
+    # Upstream only publishes floating `hardcover`/`latest` tags, no versioned releases, so -
+    # like gluetun/transmission/payment-manager (see improvements.md OPS-3) - Renovate can't track
+    # this one for updates; `pullPolicy: Always` is what keeps it current.
+    tag: hardcover
+    registry: docker.io
+    pullPolicy: Always
+  postgres:
+    image:
+      repository: postgres
+      tag: '17'
+      registry: docker.io
+      pullPolicy: IfNotPresent
+    user: rreading-glasses
+    database: rreading-glasses
+    ports:
+      postgres: 5432
+  ports:
+    http: 8788
 
 calibre:
   clusterIP: 10.43.35.158
