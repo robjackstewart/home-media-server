@@ -197,7 +197,7 @@ rreadingGlasses:
   postgres:
     image:
       repository: postgres
-      tag: '17'
+      tag: '18'
       registry: docker.io
       pullPolicy: IfNotPresent
     user: rreading-glasses
