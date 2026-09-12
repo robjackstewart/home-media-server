@@ -6,6 +6,14 @@ provider "azurerm" {
     }
   }
   subscription_id = var.azure_subscription_id
+
+  # azurerm 5.0 changed `resource_provider_registrations` from "legacy" (~60 resource providers
+  # registered automatically) to "none", so nothing is registered on our behalf any more. An
+  # existing subscription already has Microsoft.KeyVault registered from earlier applies and
+  # won't notice, but a fresh one would fail at apply time with MissingSubscriptionRegistration,
+  # so name it here rather than relying on a manual `az provider register`. Microsoft.Resources
+  # (the resource group) is always registered by Azure itself and needs no entry.
+  resource_providers_to_register = ["Microsoft.KeyVault"]
 }
 
 provider "kubernetes" {
@@ -33,6 +41,10 @@ resource "azurerm_key_vault" "keyvault" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   soft_delete_retention_days  = 7
   purge_protection_enabled    = false
+  # Required as of azurerm 5.0 (it was optional, defaulting to false, as `enable_rbac_authorization`
+  # in 4.x). False keeps the vault on the access-policy model that the `access_policy` block below
+  # configures - the two are mutually exclusive, so this must stay false while that block exists.
+  rbac_authorization_enabled = false
 
   sku_name = "standard"
 
