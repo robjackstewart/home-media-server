@@ -123,7 +123,7 @@ prowlarr:
   flaresolverr:
     image:
       repository: flaresolverr/flaresolverr
-      tag: 'v3.5.0'
+      tag: 'v3.5.2'
       registry: ghcr.io
       pullPolicy: Always
     ports:
