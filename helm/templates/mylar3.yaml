@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mylar3-service
+spec:
+  clusterIP: {{ .Values.mylar3.clusterIP }}
+  ports:
+  - name: http
+    port: {{ .Values.mylar3.ports.http }}
+    targetPort: {{ .Values.mylar3.ports.http }}
+    protocol: TCP
+  selector:
+    app: mylar3
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mylar3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mylar3
+  template:
+    metadata:
+      labels:
+        app: mylar3
+    spec:
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      initContainers:
+        # Mylar3 has no env var for its ComicVine API key - it's a plain `comicvine_api = ...`
+        # line in config.ini, editable only via its own UI or, here, by patching the file
+        # directly before it starts (same idea as arrExternalAuthInitContainer in
+        # functions.tpl, just app-specific enough not to share that helper). Runs on every
+        # start so a key rotated in Key Vault takes effect on the next restart, and skips
+        # silently if config.ini doesn't exist yet (first boot, before Mylar3 has created it).
+        - name: set-comicvine-api-key
+          image: {{ include "image" .Values.hostStorageBootstrap.image }}
+          imagePullPolicy: {{ .Values.hostStorageBootstrap.image.pullPolicy }}
+          env:
+            - name: COMICVINE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.mylar3.auth.secret.keys.comicvine_api_key }}
+                  name: {{ .Values.mylar3.auth.secret.name }}
+          command:
+            - sh
+            - -c
+            - |
+              if [ -f /config/mylar/config.ini ]; then
+                sed -i "s|^comicvine_api = .*|comicvine_api = $COMICVINE_API_KEY|" /config/mylar/config.ini
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              subPath: mylar3
+      containers:
+        - env:
+          - name: TZ
+            value: {{ .Values.Timezone }}
+          - name: PUID
+            value: "{{ .Values.PUID }}"
+          - name: PGID
+            value: "{{ .Values.PGID }}"
+          resources:
+            limits:
+              memory: 512Mi
+          image: {{ include "image" .Values.mylar3.image }}
+          imagePullPolicy: {{ .Values.mylar3.image.pullPolicy }}
+          name: mylar3
+          ports:
+            - containerPort: {{ .Values.mylar3.ports.http }}
+          volumeMounts:
+            - name: media
+              mountPath: /downloads
+              subPath: downloads
+            - name: media
+              mountPath: /comics
+              subPath: comics
+            - name: config
+              mountPath: /config
+              subPath: mylar3
+          # Not a Servarr app - no /ping endpoint, so fall back to tcpSocket/httpGet on the web root
+          # like Bazarr and Heimdall.
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.mylar3.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.mylar3.ports.http }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.mylar3.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1
+---
+{{ include "tailscaleIngress" (dict
+     "name" "mylar3-ingress"
+     "subdomain" .Values.mylar3.subdomain
+     "service" "mylar3-service"
+     "port" .Values.mylar3.ports.http
+     "proxyGroup" .Values.tailscale.proxyGroup.name) }}

@@ -1,0 +1,141 @@
+# Self-hosted https://github.com/blampe/rreading-glasses (the software behind the public
+# hardcover.bookinfo.pro proxy), giving Bookshelf its own Hardcover API quota instead of sharing
+# the public instance's rate limit with every other self-hosted Bookshelf out there. Postgres runs
+# as a sidecar in the same pod, reached over localhost - the same pattern gramps.yaml uses for its
+# own redis, and simpler than a second Service/clusterIP for a database nothing else talks to.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rreading-glasses-service
+spec:
+  clusterIP: {{ .Values.rreadingGlasses.clusterIP }}
+  ports:
+  - name: http
+    port: {{ .Values.rreadingGlasses.ports.http }}
+    targetPort: {{ .Values.rreadingGlasses.ports.http }}
+    protocol: TCP
+  selector:
+    app: rreading-glasses
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rreading-glasses
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rreading-glasses
+  template:
+    metadata:
+      labels:
+        app: rreading-glasses
+    spec:
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: config
+      initContainers:
+        # The official postgres image insists its data directory already belongs to its own fixed
+        # postgres user (uid/gid 999) and, unlike the linuxserver images elsewhere in this chart,
+        # never chowns it itself from root - so without this it fails to initdb on a freshly
+        # created subPath directory, which the kubelet always creates owned by root:root.
+        - name: chown-postgres-data
+          image: {{ include "image" .Values.hostStorageBootstrap.image }}
+          imagePullPolicy: {{ .Values.hostStorageBootstrap.image.pullPolicy }}
+          securityContext:
+            runAsUser: 0
+          command:
+            - sh
+            - -c
+            - chown -R 999:999 /var/lib/postgresql
+          volumeMounts:
+            - name: config
+              mountPath: /var/lib/postgresql
+              subPath: rreading-glasses/postgres
+      containers:
+        - name: postgres
+          image: {{ include "image" .Values.rreadingGlasses.postgres.image }}
+          imagePullPolicy: {{ .Values.rreadingGlasses.postgres.image.pullPolicy }}
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.rreadingGlasses.postgres.user }}
+            - name: POSTGRES_DB
+              value: {{ .Values.rreadingGlasses.postgres.database }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.rreadingGlasses.auth.secret.keys.postgres_password }}
+                  name: {{ .Values.rreadingGlasses.auth.secret.name }}
+          resources:
+            limits:
+              memory: 256Mi
+          ports:
+            - containerPort: {{ .Values.rreadingGlasses.postgres.ports.postgres }}
+          volumeMounts:
+            # Postgres 18+ stores data in a major-version-specific subdirectory
+            # (/var/lib/postgresql/18/docker) so that in-place `pg_upgrade --link` never has to
+            # cross a mount boundary, and the image refuses to start if it finds an older
+            # version's data at the pre-18 location of /var/lib/postgresql/data. The mount
+            # therefore sits one level up, at /var/lib/postgresql, and the image picks the
+            # subdirectory. See https://github.com/docker-library/postgres/pull/1259.
+            - name: config
+              mountPath: /var/lib/postgresql
+              subPath: rreading-glasses/postgres
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.rreadingGlasses.postgres.ports.postgres }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.rreadingGlasses.postgres.ports.postgres }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+        - name: rreading-glasses
+          image: {{ include "image" .Values.rreadingGlasses.image }}
+          imagePullPolicy: {{ .Values.rreadingGlasses.image.pullPolicy }}
+          command:
+            - /main
+          args:
+            - serve
+            - --verbose
+          env:
+            - name: HARDCOVER_AUTH
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.rreadingGlasses.auth.secret.keys.hardcover_auth }}
+                  name: {{ .Values.rreadingGlasses.auth.secret.name }}
+            - name: POSTGRES_HOST
+              value: localhost
+            - name: POSTGRES_DATABASE
+              value: {{ .Values.rreadingGlasses.postgres.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.rreadingGlasses.postgres.user }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: {{ .Values.rreadingGlasses.auth.secret.keys.postgres_password }}
+                  name: {{ .Values.rreadingGlasses.auth.secret.name }}
+          resources:
+            limits:
+              memory: 128Mi
+          ports:
+            - containerPort: {{ .Values.rreadingGlasses.ports.http }}
+          startupProbe:
+            tcpSocket:
+              port: {{ .Values.rreadingGlasses.ports.http }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 20
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.rreadingGlasses.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3

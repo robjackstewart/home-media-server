@@ -56,6 +56,13 @@ spec:
 # every boot makes that self-healing instead of a one-off manual fix. Skips silently if
 # config.xml doesn't exist yet (a brand new install's first boot, before the app has created it);
 # takes effect from that pod's next restart onward.
+#
+# Searches for config.xml with `find` rather than assuming it sits directly at /config/config.xml,
+# because not every *arr image puts it there: Bookshelf's Dockerfile sets XDG_CONFIG_HOME=/config/xdg
+# (unlike the mainline linuxserver Sonarr/Radarr/Prowlarr images this was written against), so its
+# config.xml actually lands a couple of directories deeper, under /config/xdg/<app>/. The search is
+# still scoped correctly since this container's /config is already that one app's own subPath, never
+# shared with another app's config.
 
 # image: dict    - {registry, repository, tag, pullPolicy} - reuses hostStorageBootstrap's busybox
 # subPath: string - the app's own subdirectory under the shared config PVC (e.g. "sonarr")
@@ -68,9 +75,7 @@ spec:
     - sh
     - -c
     - |
-      if [ -f /config/config.xml ]; then
-        sed -i 's|<AuthenticationMethod>.*</AuthenticationMethod>|<AuthenticationMethod>External</AuthenticationMethod>|' /config/config.xml
-      fi
+      find /config -name config.xml -exec sed -i 's|<AuthenticationMethod>.*</AuthenticationMethod>|<AuthenticationMethod>External</AuthenticationMethod>|' {} +
   volumeMounts:
     - name: config
       mountPath: /config

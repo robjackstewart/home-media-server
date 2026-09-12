@@ -130,3 +130,25 @@ variable "tailscale_operator_oauth_secret_name" {
   description = "The name of the kubernetes secret in which the Tailscale operator's OAuth credentials will be stored. Must be 'operator-oauth' - this name and its client_id/client_secret keys are hardcoded by the tailscale-operator Helm chart."
   default     = "operator-oauth"
 }
+
+variable "azure_common_keyvault_hardcover_api_token_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the bare Hardcover.app API token (no 'Bearer ' prefix - Terraform adds that when building the Kubernetes secret) used by the self-hosted rreading-glasses metadata service that Bookshelf reads from. Mint it at Hardcover.app -> account icon -> Settings -> Hardcover API; it expires annually on January 1st and must be renewed by hand there."
+}
+
+variable "rreading_glasses_secret_name" {
+  type        = string
+  description = "The name of the kubernetes secret in which the rreading-glasses Hardcover token and its generated Postgres password will be stored."
+  default     = "rreading-glasses-credentials"
+}
+
+variable "azure_common_keyvault_comicvine_api_key_secret_name" {
+  type        = string
+  description = "The name of the secret in the common keyvault holding the bare ComicVine API key Mylar3 needs to search for comics. Mint it (free) at https://comicvine.gamespot.com/api/ while signed into a GameSpot account."
+}
+
+variable "mylar3_secret_name" {
+  type        = string
+  description = "The name of the kubernetes secret in which Mylar3's ComicVine API key will be stored."
+  default     = "mylar3-credentials"
+}
