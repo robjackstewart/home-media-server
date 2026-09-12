@@ -49,10 +49,10 @@ spec:
           command:
             - sh
             - -c
-            - chown -R 999:999 /var/lib/postgresql/data
+            - chown -R 999:999 /var/lib/postgresql
           volumeMounts:
             - name: config
-              mountPath: /var/lib/postgresql/data
+              mountPath: /var/lib/postgresql
               subPath: rreading-glasses/postgres
       containers:
         - name: postgres
@@ -74,8 +74,14 @@ spec:
           ports:
             - containerPort: {{ .Values.rreadingGlasses.postgres.ports.postgres }}
           volumeMounts:
+            # Postgres 18+ stores data in a major-version-specific subdirectory
+            # (/var/lib/postgresql/18/docker) so that in-place `pg_upgrade --link` never has to
+            # cross a mount boundary, and the image refuses to start if it finds an older
+            # version's data at the pre-18 location of /var/lib/postgresql/data. The mount
+            # therefore sits one level up, at /var/lib/postgresql, and the image picks the
+            # subdirectory. See https://github.com/docker-library/postgres/pull/1259.
             - name: config
-              mountPath: /var/lib/postgresql/data
+              mountPath: /var/lib/postgresql
               subPath: rreading-glasses/postgres
           startupProbe:
             tcpSocket:
