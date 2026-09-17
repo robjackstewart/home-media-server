@@ -8,7 +8,8 @@ tailnet. Nothing is reachable from the public internet.
 ## Requirements
 
 1. A Tailscale account and tailnet, with MagicDNS and HTTPS Certificates enabled
-1. An Azure account and subscription
+1. An Azure account and subscription (also used for [Azure Arc](#deploying), which connects the
+   cluster so [Flux](https://fluxcd.io) can deploy it and so it can be managed remotely)
 1. A Linux host with an NVIDIA GPU (Ubuntu 24.04 LTS or similar)
 
 Note this runs **directly on the host**, not inside Docker or WSL2. Docker is not required.
@@ -88,11 +89,19 @@ so `task recreate` prepares them. Only data you restore onto the host by hand ne
     accounts/API keys this depends on, and [Remote access](#remote-access) for the Tailscale ones
     specifically. Secret *values* live in Azure Key Vault; only their names go here.
 
-1. Deploy:
+1. Deploy - see [Deploying](#deploying) below for what this actually does and what to expect on a
+   first run (it Arc-connects the cluster and sets up Flux; Flux does the actual chart install a
+   short while after, not this command itself):
 
     ``` shell
     task recreate
     ```
+
+1. **First run only**: `terraform output -raw external_secrets_identity_client_id`, paste the
+   result into `clusters/home/external-secrets.yaml`'s
+   `azure.workload.identity/client-id` annotation, commit, and push - see that file's own comment
+   for why this one value can't be filled in ahead of time. Until it's filled in, External Secrets
+   Operator can't authenticate to Key Vault and the chart never deploys.
 
 1. Configure the individual apps via their UIs. See [Books & comics](#books--comics) below for
    the one-time wiring needed between Prowlarr, Bookshelf/Mylar3 and Kavita.
@@ -151,9 +160,11 @@ tracking by memory, so here's the full list. The rule throughout this repo (see 
 philosophy: infrastructure lives in the repo, not configured by hand on the host) is: if
 Terraform can plumb a credential in automatically, it goes in the common Azure Key Vault, named
 by a variable in `config/variables.tfvars`, and flows Key Vault → this project's own Key Vault →
-a Kubernetes Secret → the pod that needs it. If a credential only ever matters inside one app's
-own UI and doesn't gate whether `task recreate` reproduces a working deployment, it's entered
-there directly instead, to avoid plumbing that buys nothing.
+synced by External Secrets Operator into a Kubernetes Secret ([Deploying](#deploying) explains
+why Terraform itself no longer writes that last step directly) → the pod that needs it. If a
+credential only ever matters inside one app's own UI and doesn't gate whether `task recreate`
+reproduces a working deployment, it's entered there directly instead, to avoid plumbing that buys
+nothing.
 
 **Key Vault-managed** (`config/variables.tfvars` names the secret; `infrastructure/main.tf` does
 the wiring):
@@ -174,10 +185,14 @@ the wiring):
 | Private tracker accounts | Prowlarr → Indexers, per indexer added | Same reasoning - one-off, app-local, doesn't gate a reproducible deploy |
 
 If a Key Vault-managed credential is ever rotated or expires (the Hardcover token expires
-annually on 1 January), update its value in the common Key Vault and run `task recreate` -
-Terraform picks up the new value and the owning pod gets a fresh Secret automatically. A pod does
-**not** hot-reload an env var sourced from a Secret though, so if `task recreate` doesn't restart
-it for you, `kubectl delete pod -n home-media-server <pod>` to force it to pick the new value up.
+annually on 1 January), update its value in the common Key Vault and run `task recreate` so
+Terraform copies the new value into this project's own Key Vault. From there, External Secrets
+Operator picks it up on its own within the hour (each `ExternalSecret` in
+`clusters/home/external-secret.yaml` has a 1-hour `refreshInterval`) - no `task recreate`-triggered
+pod restart needed for the Secret itself to update. A pod does **not** hot-reload an env var
+sourced from a Secret though, so restart the owning pod to pick the new value up:
+`kubectl delete pod -n home-media-server <pod>` (or `task arc:reconcile` first, to force ESO's
+sync immediately instead of waiting up to an hour).
 
 ## LAN access
 
@@ -285,12 +300,107 @@ nvidia-smi dmon      # the `enc` column must be non-zero
 ## Notes on the cluster lifecycle
 
 k3s is a long-lived systemd service, not a disposable container. `task recreate` applies
-infrastructure and upgrades the Helm release **against the existing cluster** — it does not
-tear the cluster down first, as the previous k3d-based setup did.
+infrastructure **against the existing cluster** — it does not tear the cluster down first, as the
+previous k3d-based setup did.
 
 To rebuild the cluster from scratch:
 
 ``` shell
 task k3s:cluster:delete     # destructive, prompts for confirmation
 task k3s:cluster:install
+terraform apply -replace=terraform_data.arc_connect   # redo the Arc/workload-identity bootstrap
 ```
+
+## Deploying
+
+Deployment is [GitOps](https://fluxcd.io), not a direct `helm upgrade`: **Flux**, running
+in-cluster as the Azure Arc-managed `microsoft.flux` extension, reconciles the chart from this
+repository on its own, on an interval - nothing pushes it there. `task recreate` doesn't install
+the chart itself; it applies Terraform, which:
+
+1. Connects (or updates) this cluster's [Azure Arc](https://learn.microsoft.com/azure/azure-arc/kubernetes/)
+   registration, with [Workload Identity Federation](https://learn.microsoft.com/azure/azure-arc/kubernetes/workload-identity)
+   enabled (`infrastructure/arc.tf`, run once via `infrastructure/scripts/arc-connect.sh` - this
+   is the one step that has to run locally, since it needs `~/.kube/config` for this cluster).
+2. Installs Flux as the `microsoft.flux` cluster extension.
+3. Writes every Secret and value the chart needs into this project's own Key Vault - what used to
+   be written directly into the cluster (a `kubernetes_secret_v1`/`kubernetes_namespace_v1` per
+   thing, plus a gitignored `helm/infrastructure.values.yaml`) now goes to Key Vault instead, and
+   [External Secrets Operator](https://external-secrets.io) (installed in-cluster by Flux, reading
+   Key Vault via the same workload identity from step 1 - no stored credential anywhere) syncs it
+   into Kubernetes Secrets. Terraform itself never touches the Kubernetes API.
+4. Points Flux's Arc Flux configuration at the **specific commit** currently checked out here
+   (not `main` in general) - this is always the last step of an apply, so Flux is never told to
+   deploy a chart change before the Secrets/values it depends on actually exist. Whatever runs the
+   apply works this commit out itself (`git rev-parse HEAD` locally, `$GITHUB_SHA` in CI).
+
+**Day to day, merging a PR to `main` is what constitutes "deploying"**:
+`.github/workflows/deploy.yml` runs the Terraform apply above on every push to `main`, on a
+GitHub-hosted runner with **no self-hosted runner and no stored Azure credential** - it
+authenticates via GitHub's own OIDC token against the CI identity `infrastructure/ci.tf` creates,
+and never touches the Kubernetes API (Flux does the actual deploying, from inside the cluster).
+Every PR also gets a `terraform plan` posted to its job summary.
+
+**One-time setup, before this workflow can run at all:**
+
+1. Run `task recreate` locally once, to create the Arc connection and this CI identity itself -
+   CI can't create its own credentials.
+1. Set three GitHub repository *variables* (Settings → Secrets and variables → Actions →
+   Variables - not Secrets, since none of these three are actually secret; the federated trust
+   relationship is what gates access, not these IDs) from `terraform output`:
+
+    ``` shell
+    cd infrastructure
+    gh variable set AZURE_CLIENT_ID --body "$(terraform output -raw ci_azure_client_id)"
+    gh variable set AZURE_TENANT_ID --body "$(terraform output -raw ci_azure_tenant_id)"
+    gh variable set AZURE_SUBSCRIPTION_ID --body "$(terraform output -raw ci_azure_subscription_id)"
+    ```
+
+1. **First run only** (also see [Getting started](#getting-started)):
+   `terraform output -raw external_secrets_identity_client_id`, paste the result into
+   `clusters/home/external-secrets.yaml`, commit, push.
+
+Flux then reconciles on its own `interval` (30 minutes, or immediately if it was already behind).
+Watch it directly instead of waiting:
+
+``` shell
+task arc:status       # Arc connection state, Flux GitOps compliance, `flux get all -A`
+task arc:reconcile     # force an immediate reconcile instead of waiting for the interval
+```
+
+If a release misbehaves, suspend it without losing the live deployment:
+
+``` shell
+flux suspend hr home-media-server -n home-media-server
+# ... investigate, fix, commit and push ...
+flux resume hr home-media-server -n home-media-server
+```
+
+Two things Terraform still can't do from CI, and which stay local/manual for now (see
+`helm/Taskfile.yml`'s `tailscale:crds:apply` and `infrastructure/scripts/arc-connect.sh` for why):
+the initial Arc/workload-identity bootstrap, and re-applying the tailscale-operator CRDs after a
+chart bump changes them. Both need direct access to the cluster's own kubeconfig, which only a
+locally-run `task recreate` has.
+
+## Remote management
+
+Because the cluster is Azure Arc-connected, it doesn't have to be managed from the home LAN.
+`az connectedk8s proxy` ("cluster connect") opens a `kubectl`/`flux`-compatible tunnel to the
+cluster from anywhere with `az login` access, authenticated via Entra ID and Azure RBAC (see
+`infrastructure/arc.tf`'s `azurerm_role_assignment "arc_cluster_admin"` - only your own account
+gets this by default):
+
+``` shell
+az login
+task arc:proxy   # runs in the foreground; Ctrl+C to stop
+# in another shell:
+export KUBECONFIG=<path task arc:proxy printed>
+kubectl get pods -n home-media-server
+```
+
+The Azure portal's Arc → GitOps blade also shows Flux's compliance state without needing a shell
+at all. The Arc agents only make outbound connections to Azure - nothing new is opened on the home
+network for this. A cheaper/simpler fallback for `kubectl` access alone, without Arc, would be the
+Tailscale operator's own API-server proxy over the existing tailnet - not set up here, but worth
+knowing about if Arc's cost (the GitOps/Flux extension bills per vCPU beyond a small free
+allowance - confirm current pricing before relying on it) ever stops being worth it.

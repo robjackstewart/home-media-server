@@ -33,5 +33,12 @@ RUN curl -L "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_a
     -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq
 
-# Install k3d
-RUN curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+# Install the flux CLI, pinned - used for `task arc:status`/`arc:reconcile` and general
+# troubleshooting. The az CLI itself, and this cluster's connectedk8s/k8s-extension/
+# k8s-configuration extensions, come from the azure-cli devcontainer feature in devcontainer.json
+# and its postCreateCommand respectively, not from here - Dockerfile RUN steps execute before
+# devcontainer features are applied, so `az` isn't on PATH yet at this point in the build.
+ARG FLUX_VERSION=2.9.5
+RUN curl -L "https://github.com/fluxcd/flux2/releases/download/v${FLUX_VERSION}/flux_${FLUX_VERSION}_linux_amd64.tar.gz" \
+    | tar -xz -C /usr/local/bin flux \
+    && chmod +x /usr/local/bin/flux

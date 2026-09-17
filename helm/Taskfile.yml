@@ -4,7 +4,6 @@ env:
   HELM_RELEASE_NAME: home-media-server
   HELM_RELEASE_NAMESPACE: home-media-server
   HELM_VALUES_FILE: values.yaml
-  HELM_INFRASTRUCTURE_VALUES_FILE: infrastructure.values.yaml
 
 tasks:
   environment:check:
@@ -53,6 +52,13 @@ tasks:
       on .Values.installCRDs rather than in a genuine crds/ directory, so `helm show crds` won't
       find them - `helm template` with --show-only does. The published .tgz filename carries a
       build suffix and digest, hence the glob.
+
+      Must run somewhere with a working kubeconfig for this cluster - i.e. locally
+      (`task recreate` calls this), not from CI, which has no Kubernetes access at all (see
+      .github/workflows/deploy.yml). Needs re-running by hand whenever a tailscale-operator chart
+      bump changes these CRDs, until improvements.md's OPS-1 follow-up (splitting this subchart
+      into its own Flux-managed HelmRelease with installCRDs: true) removes the need for this
+      task entirely.
     cmds:
       - |
         TS_VERSION=$(grep -A2 'tailscale-operator' Chart.lock | grep version | awk '{print $2}')
@@ -64,15 +70,33 @@ tasks:
           --show-only templates/tailnet.yaml --show-only templates/peerrelay.yaml \
           | kubectl apply --server-side -f -
 
-  release:
-    desc: Create a helm release
+  lint:
+    desc: |
+      Lint the chart against the CI fixture values (sample.infrastructure.values.yaml stands in
+      for what External Secrets Operator syncs into infrastructure-values at runtime - see
+      ../clusters/home/external-secret.yaml). Used by ci.yml; also useful locally.
     preconditions:
-      - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
       - test -f $HELM_VALUES_FILE
+      - test -f sample.infrastructure.values.yaml
+    deps:
+      - dependencies:build
     cmds:
-      - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --create-namespace --timeout 3000s {{.CLI_ARGS}} --skip-crds
+      - helm lint . --values $HELM_VALUES_FILE --values sample.infrastructure.values.yaml
 
-  release:uninstall:
-    desc: Create a helm release
+  template:
+    desc: Render the chart against the CI fixture values, for a quick local sanity check.
+    preconditions:
+      - test -f $HELM_VALUES_FILE
+      - test -f sample.infrastructure.values.yaml
+    deps:
+      - dependencies:build
     cmds:
-      - helm uninstall "$HELM_RELEASE_NAME" --namespace "$HELM_RELEASE_NAMESPACE" --wait {{.CLI_ARGS}}
+      - helm template "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values sample.infrastructure.values.yaml {{.CLI_ARGS}}
+
+  values:pull:
+    desc: |
+      Fetch the live infrastructure-values Secret ESO has synced from Key Vault, for rendering
+      the chart against real values instead of the CI fixture (e.g. `task helm:template --
+      --values <(task helm:values:pull)`).
+    cmds:
+      - kubectl get secret infrastructure-values -n "$HELM_RELEASE_NAMESPACE" -o go-template='{{"{{"}} index .data "values.yaml" | base64decode {{"}}"}}'

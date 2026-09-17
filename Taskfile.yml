@@ -6,7 +6,9 @@ env:
   # Read-only commands work (write-kubeconfig-mode makes it 0644), but any command that
   # WRITES the kubeconfig - `kubectl config use-context` - fails trying to create
   # /etc/rancher/k3s/k3s.yaml.lock in that root-owned directory. Pin every task to the
-  # user's own copy so kubectl, helm and the terraform kubernetes provider all agree.
+  # user's own copy so kubectl and helm agree (Terraform itself no longer touches the
+  # Kubernetes API at all - see infrastructure/arc.tf - but `az connectedk8s connect` in
+  # arc-connect.sh, and helm:crds:apply, still need this).
   KUBECONFIG: '{{.HOME}}/.kube/config'
 
 includes:
@@ -19,6 +21,9 @@ includes:
   k3s:
     taskfile: k3s/Taskfile.yml
     dir: k3s
+  arc:
+    taskfile: arc/Taskfile.yml
+    dir: arc
 
 tasks:
   environment:check:
@@ -26,17 +31,35 @@ tasks:
       - task: infrastructure:environment:check
       - task: helm:environment:check
       - task: k3s:environment:check
+      - task: arc:environment:check
 
   recreate:
     desc: |
-      Redeploy onto the existing native k3s cluster.
+      Bring the existing native k3s cluster up to date with this repo.
       Initialise Terraform.
-      Apply the infrastructure state.
-      Create a helm release.
+      Apply the infrastructure state - this connects/updates the cluster's Azure Arc
+      registration, installs Flux (as the microsoft.flux extension) and points it at the
+      commit currently checked out here, and writes every Secret/value the chart needs
+      into this project's own Key Vault for External Secrets Operator to sync in.
+      Fetch the chart's Helm dependencies and apply the tailscale-operator CRDs, which
+      still need a one-time local pre-apply (the umbrella chart deliberately never manages
+      them itself - see helm/Taskfile.yml's tailscale:crds:apply).
+
+      Deploying the chart itself is no longer part of this task - Flux does that once the
+      commit above is actually on `origin` (see infrastructure/Taskfile.yml's apply
+      precondition) and reconciles it. Watch progress with `task arc:status`.
+
+      Day to day, this Terraform apply happens automatically on every push to `main` via
+      .github/workflows/deploy.yml (a GitHub-hosted runner, no self-hosted runner or stored
+      Azure credential involved) - running this locally is mainly for the one-time bootstrap
+      (see infrastructure/arc.tf and infrastructure/ci.tf's own comments) or for the two
+      steps CI can't do at all (the Arc/workload-identity bootstrap and
+      helm:crds:apply, both of which need direct local cluster access).
 
       Note: unlike the old k3d setup, this does NOT tear the cluster down first.
       k3s is a long-lived systemd service, not a disposable container. To rebuild it
-      from scratch, run `task k3s:cluster:delete` then `task k3s:cluster:install`.
+      from scratch, run `task k3s:cluster:delete` then `task k3s:cluster:install`, then
+      `terraform apply -replace=terraform_data.arc_connect` to redo the Arc bootstrap.
     cmds:
       - task: infrastructure:init
       - task: infrastructure:apply
@@ -44,4 +67,3 @@ tasks:
           CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
       - task: helm:dependencies:build
       - task: helm:crds:apply
-      - task: helm:release

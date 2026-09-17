@@ -23,11 +23,52 @@ jobs:
         run: devcontainer up --workspace-folder .
 
       # Note: the full `task environment:check` is deliberately not run here. It now includes
-      # k3s:environment:check, which requires a running k3s service and /dev/nvidia0 - neither
-      # of which exists on a GitHub-hosted runner. Those are checked on the self-hosted runner
-      # at deploy time instead.
+      # k3s:environment:check, which requires a running k3s service and /dev/nvidia0 - neither of
+      # which exists on a GitHub-hosted runner, or on any runner in this workflow's own deploy.yml
+      # for that matter (that workflow doesn't touch the cluster at all - see its own comment).
+      # k3s:environment:check only ever runs locally, as part of `task recreate`.
       - name: Check helm environment
         run: devcontainer exec --workspace-folder . -- task helm:environment:check
 
       - name: Check infrastructure environment
         run: devcontainer exec --workspace-folder . -- task infrastructure:environment:check
+
+  # Catches a broken chart template or a Flux manifest that doesn't build before it merges,
+  # rather than only surfacing when a real deploy runs (OPS-8 in improvements.md).
+  validate-chart:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Install node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install devcontainer CLI
+        run: npm install -g @devcontainers/cli
+
+      - name: Start dev container
+        run: devcontainer up --workspace-folder .
+
+      # Lints/renders against helm/sample.infrastructure.values.yaml, the fixture standing in for
+      # what External Secrets Operator syncs into the infrastructure-values Secret at runtime -
+      # see helm/Taskfile.yml's lint/template tasks.
+      - name: Lint chart
+        run: devcontainer exec --workspace-folder . -- task helm:lint
+
+      - name: Render chart
+        run: devcontainer exec --workspace-folder . -- task helm:template
+
+      # kubectl (not the standalone kustomize binary) has a built-in `kustomize` subcommand, so no
+      # extra tool install is needed - just confirms clusters/home builds into valid-looking YAML.
+      - name: Build Flux manifests
+        run: devcontainer exec --workspace-folder . -- kubectl kustomize clusters/home
+
+      - name: Validate Terraform
+        run: |
+          devcontainer exec --workspace-folder . -- sh -c '
+            cd infrastructure &&
+            terraform init -backend=false -input=false &&
+            terraform validate &&
+            terraform fmt -check -recursive .
+          '

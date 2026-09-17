@@ -16,11 +16,6 @@ provider "azurerm" {
   resource_providers_to_register = ["Microsoft.KeyVault"]
 }
 
-provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = var.kubernetes_context
-}
-
 provider "tailscale" {
   oauth_client_id     = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_id.value
   oauth_client_secret = data.azurerm_key_vault_secret.tailscale_terraform_oauth_client_secret.value
@@ -209,77 +204,49 @@ resource "tailscale_oauth_client" "k8s_operator" {
   tags        = ["tag:k8s-operator"]
 }
 
-resource "kubernetes_namespace_v1" "home-media-server" {
-  metadata {
-    name = var.kubernetes_namespace
-  }
+# Everything below used to be written directly into the cluster (a Namespace + four Secrets via
+# the `kubernetes` provider, plus a gitignored `helm/infrastructure.values.yaml` via `local_file`).
+# Terraform no longer touches the Kubernetes API at all - see arc.tf. Instead every one of these
+# values is written to this project's own Key Vault, and External Secrets Operator (installed
+# in-cluster by Flux, see clusters/home/) pulls them into Kubernetes Secrets, authenticating via
+# Workload Identity Federation on the Arc-connected cluster (arc.tf). The namespace itself is
+# created by Flux/Kustomize instead (clusters/home/namespace.yaml).
+
+resource "azurerm_key_vault_secret" "tailscale_operator_oauth_client_id" {
+  name         = "tailscale-operator-oauth-client-id"
+  value        = tailscale_oauth_client.k8s_operator.id
+  key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "kubernetes_secret_v1" "tailscale_operator_oauth" {
-  metadata {
-    name      = var.tailscale_operator_oauth_secret_name
-    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
-  }
-
-  data = {
-    client_id     = tailscale_oauth_client.k8s_operator.id
-    client_secret = tailscale_oauth_client.k8s_operator.key
-  }
-
-  type = "Opaque"
+resource "azurerm_key_vault_secret" "tailscale_operator_oauth_client_secret" {
+  name         = "tailscale-operator-oauth-client-secret"
+  value        = tailscale_oauth_client.k8s_operator.key
+  key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "kubernetes_secret_v1" "vpn_credentials" {
-  metadata {
-    name = var.transmission_vpn_secret_name
-    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
-  }
-
-  data = {
-    wireguard_private_key = azurerm_key_vault_secret.vpn_wireguard_private_key.value
-  }
-
-  type = "Opaque"
+resource "azurerm_key_vault_secret" "rreading_glasses_hardcover_auth" {
+  # rreading-glasses wants the literal "Bearer <token>" Authorization header value verbatim in its
+  # own env var, so that prefix is added here rather than asking for it to be pasted in by hand
+  # (trimspace guards against a stray trailing newline from copy/paste too) - same as before, just
+  # landing in Key Vault instead of directly in a Kubernetes Secret.
+  name         = "rreading-glasses-hardcover-auth"
+  value        = "Bearer ${trimspace(azurerm_key_vault_secret.hardcover_api_token.value)}"
+  key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "kubernetes_secret_v1" "mylar3_credentials" {
-  metadata {
-    name      = var.mylar3_secret_name
-    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
-  }
-
-  data = {
-    comicvine_api_key = azurerm_key_vault_secret.comicvine_api_key.value
-  }
-
-  type = "Opaque"
+resource "azurerm_key_vault_secret" "rreading_glasses_postgres_password" {
+  name         = "rreading-glasses-postgres-password"
+  value        = random_password.rreading_glasses_postgres_password.result
+  key_vault_id = azurerm_key_vault.keyvault.id
 }
 
-resource "kubernetes_secret_v1" "rreading_glasses_credentials" {
-  metadata {
-    name      = var.rreading_glasses_secret_name
-    namespace = kubernetes_namespace_v1.home-media-server.metadata[0].name
-  }
-
-  data = {
-    # Key Vault holds the bare token, like every other secret in this repo - rreading-glasses is
-    # just unusual in wanting the literal "Bearer <token>" Authorization header value verbatim in
-    # its own env var, so that prefix is added here rather than asking for it to be pasted in by
-    # hand (trimspace guards against a stray trailing newline from copy/paste too).
-    hardcover_auth    = "Bearer ${trimspace(azurerm_key_vault_secret.hardcover_api_token.value)}"
-    postgres_password = random_password.rreading_glasses_postgres_password.result
-  }
-
-  type = "Opaque"
-}
-
-resource "local_file" "values" {
-  filename = "../helm/infrastructure.values.yaml"
-  content = yamlencode({
-    # These key names must match what the Helm templates read. They previously emitted
-    # `timezone` and `GUID` while every template read `.Values.Timezone` and `.Values.PGID`,
-    # so TZ and PGID silently rendered as empty strings across the chart (20 env vars,
-    # verified with `helm template` before and after).
+locals {
+  # These key names must match what the Helm templates read. They previously emitted `timezone`
+  # and `GUID` while every template read `.Values.Timezone` and `.Values.PGID`, so TZ and PGID
+  # silently rendered as empty strings across the chart (20 env vars, verified with `helm
+  # template` before and after) - kept exactly as before, just synced via Key Vault + ESO now
+  # instead of written to a `local_file`.
+  infrastructure_values = {
     Timezone = var.timezone
     PUID     = var.puid
     PGID     = var.guid
@@ -289,7 +256,7 @@ resource "local_file" "values" {
     vpn = {
       provider = {
         name = var.transmission_vpn_provider_name
-        env = var.transmission_vpn_provider_environment_variables
+        env  = var.transmission_vpn_provider_environment_variables
       }
       auth = {
         secret = {
@@ -334,5 +301,11 @@ resource "local_file" "values" {
         }
       }
     }
-  })
+  }
+}
+
+resource "azurerm_key_vault_secret" "infrastructure_values" {
+  name         = "infrastructure-values"
+  value        = yamlencode(local.infrastructure_values)
+  key_vault_id = azurerm_key_vault.keyvault.id
 }
