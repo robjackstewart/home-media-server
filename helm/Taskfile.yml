@@ -78,8 +78,9 @@ tasks:
     preconditions:
       - test -f $HELM_VALUES_FILE
       - test -f sample.infrastructure.values.yaml
+    deps:
+      - dependencies:build
     cmds:
-      - helm dependency build
       - helm lint . --values $HELM_VALUES_FILE --values sample.infrastructure.values.yaml
 
   template:
@@ -87,8 +88,9 @@ tasks:
     preconditions:
       - test -f $HELM_VALUES_FILE
       - test -f sample.infrastructure.values.yaml
+    deps:
+      - dependencies:build
     cmds:
-      - helm dependency build
       - helm template "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values sample.infrastructure.values.yaml {{.CLI_ARGS}}
 
   values:pull:
