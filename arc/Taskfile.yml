@@ -1,0 +1,39 @@
+version: '3'
+
+env:
+  # Match infrastructure/variables.tf's arc_cluster_name/azure_resource_group_name defaults - if
+  # either is overridden in config/variables.tfvars, override these too (e.g. via a local .env).
+  ARC_CLUSTER_NAME: home-media-server
+  ARC_RESOURCE_GROUP: home-media-server-rg
+
+tasks:
+  environment:check:
+    preconditions:
+      - sh: az extension show --name connectedk8s
+        msg: "az extension add --name connectedk8s"
+      - sh: az extension show --name k8s-extension
+        msg: "az extension add --name k8s-extension"
+      - sh: az extension show --name k8s-configuration
+        msg: "az extension add --name k8s-configuration"
+
+  proxy:
+    desc: |
+      Open a local kubectl/flux proxy to the cluster via Azure Arc "cluster connect" - works from
+      anywhere with `az login` access, not just the home LAN. Runs in the foreground; Ctrl+C to
+      stop. In another shell, `export KUBECONFIG=<path printed above>` (or pass `--file` yourself)
+      and use kubectl/flux as normal.
+    cmds:
+      - az connectedk8s proxy --name "$ARC_CLUSTER_NAME" --resource-group "$ARC_RESOURCE_GROUP"
+
+  status:
+    desc: Show Arc connection, Flux compliance and Flux resource status all in one place.
+    cmds:
+      - az connectedk8s show --name "$ARC_CLUSTER_NAME" --resource-group "$ARC_RESOURCE_GROUP" --output table
+      - az k8s-configuration flux show --name home-media-server --cluster-name "$ARC_CLUSTER_NAME" --resource-group "$ARC_RESOURCE_GROUP" --cluster-type connectedClusters --output table
+      - flux get all -A
+
+  reconcile:
+    desc: Force an immediate Flux reconcile instead of waiting for the next sync interval.
+    cmds:
+      - flux reconcile source git home-media-server -n flux-system
+      - flux reconcile kustomization home-media-server-cluster -n flux-system

@@ -3,5 +3,10 @@
     "features": {
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
         "ghcr.io/devcontainers/features/azure-cli:1": {}
-    }
+    },
+    // Runs after the azure-cli feature is installed, unlike the Dockerfile's RUN steps - these
+    // three extensions are what infrastructure/Taskfile.yml and arc/Taskfile.yml's
+    // environment:check preconditions look for (Arc connect, the Flux extension, and Arc's
+    // GitOps/flux-configuration commands respectively).
+    "postCreateCommand": "az extension add --name connectedk8s --only-show-errors && az extension add --name k8s-extension --only-show-errors && az extension add --name k8s-configuration --only-show-errors"
 }

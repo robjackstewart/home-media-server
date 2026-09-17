@@ -1,0 +1,12 @@
+# Additional k3s API server args enabling Azure Arc Workload Identity Federation, merged onto
+# k3s/config.yaml by infrastructure/scripts/arc-connect.sh after the cluster is Arc-connected
+# (the issuer URL is only known at that point - see arc.tf's terraform_data "arc_connect").
+#
+# NOT applied by `task k3s:config:install`/`cluster:install` on their own - those install the
+# baseline k3s/config.yaml only, which is what a genuinely fresh cluster needs before it can be
+# Arc-connected in the first place. Re-running arc-connect.sh (e.g. via
+# `terraform apply -replace=terraform_data.arc_connect` after a from-scratch cluster rebuild)
+# regenerates the merged live config with the new issuer URL and reapplies it.
+kube-apiserver-arg:
+  - "service-account-issuer=__OIDC_ISSUER_URL__"
+  - "service-account-max-token-expiration=24h"

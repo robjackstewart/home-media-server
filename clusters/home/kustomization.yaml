@@ -1,0 +1,13 @@
+# Everything Flux reconciles onto this cluster. Applied by the top-level Kustomization Azure Arc's
+# Flux configuration generates (see infrastructure/arc.tf's azurerm_arc_kubernetes_flux_configuration
+# "home", kustomizations block: name = "cluster", path = "./clusters/home") - that object itself is
+# named "home-media-server-cluster" (Arc's convention: "<flux config name>-<kustomization name>"),
+# not anything declared here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - external-secrets.yaml
+  - secret-store.yaml
+  - external-secret.yaml
+  - home-media-server.yaml

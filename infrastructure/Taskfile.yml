@@ -10,6 +10,8 @@ tasks:
         msg: Terraform must be installed
       - sh: az version
         msg: Azure CLI must be installed
+      - sh: az extension show --name connectedk8s
+        msg: "The connectedk8s az extension is required: az extension add --name connectedk8s"
 
   init:
     desc: Initialise terraform
@@ -30,6 +32,11 @@ tasks:
         msg: You must be logged in with the Azure CLI
       - sh: test -f $VARIABLES_TFVARS_PATH
         msg: "File must exist: $VARIABLES_TFVARS_PATH"
-      
+      # Flux is pointed at a specific commit (var.git_revision), not at `main` - so that commit
+      # has to actually exist on `origin` before Flux can fetch and deploy it. Local, uncommitted
+      # or unpushed work would otherwise apply the Azure/Arc side successfully while Flux sits
+      # unable to find the revision it was told to deploy.
+      - sh: git merge-base --is-ancestor HEAD @{u} 2>/dev/null || git merge-base --is-ancestor HEAD origin/main
+        msg: "HEAD isn't on its remote yet - push this commit before applying, so Flux can fetch it"
     cmds:
-      - terraform apply -var-file=$VARIABLES_TFVARS_PATH {{.CLI_ARGS}}
+      - terraform apply -var-file=$VARIABLES_TFVARS_PATH -var git_revision=$(git rev-parse HEAD) {{.CLI_ARGS}}

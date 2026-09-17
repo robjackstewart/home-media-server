@@ -13,17 +13,17 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 - **Auth**: tailnet membership (`tailscale_acl`) - no separate auth layer; nothing is publicly reachable
 - **Secrets**: Azure Key Vault → Kubernetes Secrets (injected via Terraform)
 - **Infra**: Terraform on Azure (Key Vault) and Tailscale (ACL policy, OAuth-driven operator)
-- **Deployment**: `task recreate` runs Terraform then `helm upgrade --install`, triggered manually on a self-hosted GitHub Actions runner living on the host itself (see **SEC-8**, **OPS-1**)
+- **Deployment**: GitOps via Flux (running as the Azure Arc `microsoft.flux` extension), reconciling from a commit Terraform pins on every push to `main` via a GitHub-hosted Actions runner authenticated over OIDC - no self-hosted runner, no stored Azure credential in GitHub, no Kubernetes access from CI at all (see **SEC-8**, **OPS-1** - merged but not yet verified live)
 
 ---
 
 ## 🔴 HIGH PRIORITY — Security
 
-### SEC-8: Self-Hosted Runner Is Reachable From Any Approved Contributor
+### SEC-8: Self-Hosted Runner Is Reachable From Any Approved Contributor 🚧 IN PROGRESS
 **Requirement:** Stop a public repo's CI from being a path to cluster-admin on the home host
-- **Current State:** This repo is public. `.github/workflows/deploy.yml` runs on a self-hosted runner registered to this host, which is logged into Azure CLI and holds a full cluster-admin kubeconfig. The repo's fork-PR approval setting only requires manual approval for *first-time* contributors — anyone who has ever had one PR merged can open a new PR that edits a workflow to `runs-on: self-hosted` and run arbitrary code on the home server.
-- **Improvement:** Immediately: change fork-PR approval to require review for all outside collaborators, not just first-timers. Add `permissions: contents: read` (least privilege) to both workflows, and pin third-party Actions to commit SHAs rather than floating tags. Longer-term: retire the self-hosted runner entirely — see **OPS-1**, which moves deployment to GitOps (Flux) plus a GitHub-hosted runner authenticated to Azure via OIDC, so no long-lived cluster credential needs to live outside the cluster at all.
-- **Caveat:** This is the single highest-risk item in this roadmap — it's a path from "anyone with a merged PR" to full control of the physical host — and should land before any other item here.
+- **Current State:** ⚠️ **Revised** — `deploy.yml` (`.github/workflows/deploy.yml`) no longer references `runs-on: self-hosted` at all: it runs on `ubuntu-24.04` and authenticates to Azure directly via GitHub OIDC (`infrastructure/ci.tf`'s federated identity), with no stored Azure credential in GitHub and no Kubernetes access of any kind (Flux, not this workflow, deploys the chart - see **OPS-1**). The repo's fork-PR approval setting is still only `first_time_contributors`, and no `permissions:`/SHA-pinning audit has happened yet on `ci.yml`, so those two remain open. The runner registered on the home host is now unused by any workflow but has **not yet been unregistered** - do that once the new pipeline is confirmed working (`gh api repos/{owner}/{repo}/actions/runners` should return empty after), then remove its systemd service from the host.
+- **Improvement:** Tighten fork-PR approval to require review for all outside collaborators, not just first-timers. Add `permissions: contents: read` to `ci.yml` (`deploy.yml` already has it). Pin third-party Actions to commit SHAs rather than floating tags, across both workflows. Unregister the now-unused self-hosted runner.
+- **Caveat:** The remaining fork-PR-approval and SHA-pinning gaps are lower severity now that no workflow can reach the host at all - the worst a malicious PR can do today is waste GitHub-hosted runner minutes or attempt a `terraform plan` (read-only; `apply` only runs on `push` to `main`, which forks can't trigger).
 
 ### SEC-1: Add Resource Requests/Limits to All Pods
 **Requirement:** Scheduler efficiency, OOM prevention, and noisy-neighbour protection
@@ -47,10 +47,10 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 - **Improvement:** Split the ACL `grants` into a consumer tier (Jellyfin, Seerr, Kavita, Heimdall) open to `autogroup:member`, and an admin tier (Sonarr, Radarr, Prowlarr, Transmission, Bazarr, Mylar3, Bookshelf, Home Assistant, BabyBuddy, Gramps) restricted to a new `group:admins`. Add the ACL policy's `tests` block so a bad grant fails `terraform apply` instead of silently widening access.
 - **Caveat:** Needs tagging each app's Service/Ingress by tier, and deciding who belongs in `group:admins` in the Tailscale admin console first.
 
-### SEC-3: Enable Key Vault Purge Protection — on the Common Vault
+### SEC-3: Enable Key Vault Purge Protection — on the Project Vault
 **Requirement:** Secret durability
-- **Current State:** The project's own `home-media-server-kv` (`azurerm_key_vault.keyvault` in `infrastructure/main.tf`) is a pure pass-through: Terraform copies the WireGuard key, Hardcover token and ComicVine key into it from the shared/common vault and nothing else ever reads it back out — the actual Kubernetes Secrets are built from the *common* vault's data sources directly further down the same file. Purge protection on the pass-through vault protects a copy nobody uses. The vault that actually matters, `robstewart-terraform-kv` (the common vault), is managed outside this repo and its retention posture isn't visible here.
-- **Improvement:** Once **MAINT-3** removes the pass-through vault, this item is just "confirm purge protection and a ≥90-day soft-delete window on the common vault", done wherever that vault's own Terraform/config lives, not in this repo.
+- **Current State:** ⚠️ **Revised** — the previous version of this item (and **MAINT-3**, below) described `home-media-server-kv` as a dead pass-through nobody read from. That's no longer true as of the Flux/Azure-Arc GitOps work (**OPS-1**): this vault is now the sync source External Secrets Operator reads from, via Workload Identity Federation (`infrastructure/arc.tf`) — every Secret the chart needs, and the merged `infrastructure-values` blob, live here and are pulled into the cluster from here on an hourly refresh. `purge_protection_enabled = false` and `soft_delete_retention_days = 7` (`infrastructure/main.tf`) genuinely matter now: losing this vault means every app loses its credentials and the chart's own values, not just a stale copy.
+- **Improvement:** Set `purge_protection_enabled = true`; increase `soft_delete_retention_days` to 90.
 - **Caveat:** `purge_protection_enabled` is one-way on Azure — it cannot be turned back off once set on a vault.
 
 ### SEC-11: Harden the Terraform State Storage Account
@@ -153,15 +153,14 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 
 ### OPS-1: GitOps with Flux, via Azure Arc 🚧 IN PROGRESS
 **Requirement:** Declarative deployment, drift detection, audit trail, and — critically — a path off the self-hosted runner (**SEC-8**)
-- **Current State:** Deployments are push-based: `task recreate` runs Terraform, then `helm upgrade --install` with no automatic rollback, manually triggered on a self-hosted runner living on the host itself. No drift detection, no audit trail beyond the workflow run log, and a cancelled run can leave Terraform or Helm half-applied.
-- **Improvement:** Connect the k3s cluster to Azure Arc, and install Flux as the Microsoft-managed `microsoft.flux` cluster extension (configured from Terraform, so there's no hand-maintained `flux install` output to keep in sync). Flux reconciles the chart from a specific commit that Terraform pins as the final step of each `apply` — so infrastructure (Secrets, an in-cluster values ConfigMap Terraform writes) always lands before the chart that depends on it, and a merge to `main` only deploys once the accompanying Terraform apply has actually succeeded. Terraform itself moves to a GitHub-hosted runner authenticated to Azure via OIDC (no stored credential) plus Arc's "cluster connect" for API access, which removes the need for the self-hosted runner (closing **SEC-8**) and gives remote `kubectl`/`flux` access from anywhere, not just the home LAN.
-- **Note:** This is the active work — see the project's own implementation plan for the step-by-step PR sequence (Terraform publishes values as a ConfigMap → Arc-connect + Flux extension, adopting the existing release → move Terraform to GitHub-hosted runners → split the tailscale-operator/nvidia-device-plugin subcharts into their own HelmReleases).
+- **Current State:** Deployments are GitOps-based: Flux, running in-cluster as the Azure Arc-managed `microsoft.flux` extension, reconciles the chart from a specific commit that Terraform pins as the final step of each `apply` (`infrastructure/arc.tf`) — so infrastructure (the Secrets and merged values External Secrets Operator syncs from Key Vault, see **OPS-2**) always lands before the chart that depends on it. `.github/workflows/deploy.yml` runs that Terraform apply on every push to `main`, on a GitHub-hosted runner authenticated to Azure via OIDC (`infrastructure/ci.tf`) — no stored Azure credential in GitHub, and no Kubernetes access of any kind, since Terraform never touches the Kubernetes API at all (the `kubernetes` provider is gone entirely). This closes **SEC-8**'s core risk directly: nothing CI runs can reach the cluster.
+- **Note:** The code is merged but **not yet applied/verified against the live cluster** — see `infrastructure/arc.tf`'s and `.github/workflows/deploy.yml`'s own comments for the bootstrap sequence (a human runs `task recreate` locally once to create the Arc connection and the CI identity itself, sets three GitHub repository variables from `terraform output`, then pushes are what deploy from then on). Once confirmed working: unregister the self-hosted runner (**SEC-8**) → split the tailscale-operator/nvidia-device-plugin subcharts into their own HelmReleases, which also removes the last locally-run step (`task helm:crds:apply`, still needed as a manual local task until then - see that task's own comment).
 - **Caveat:** The Arc GitOps (Flux) extension is billed per vCPU beyond a small free allowance — expect roughly $10–15/month on this host's core count. Confirm current pricing before merging. A cheaper fallback for remote `kubectl` alone, without Arc/Flux, is the Tailscale operator's own API-server proxy over the existing tailnet.
 
-### OPS-2: Azure Key Vault CSI Driver / External Secrets Operator for Secret Rotation
+### OPS-2: External Secrets Operator for Secret Rotation 🚧 IN PROGRESS
 **Requirement:** Zero-downtime secret rotation
-- **Current State:** Secrets are injected at `terraform apply` time. Rotating a secret (e.g. VPN private key) requires a full apply and pod restart.
-- **Improvement:** Once **OPS-1** lands, install External Secrets Operator (itself Flux-managed) instead of running it by hand — it can read directly from Key Vault and keep Kubernetes Secrets in sync, which also lets Terraform drop its `kubernetes` provider and the values it currently injects as Secrets, simplifying the Arc "cluster connect" step in CI down to just what the Flux configuration itself needs.
+- **Current State:** ⚠️ **Revised** — folded into the **OPS-1** work rather than left as a follow-up: External Secrets Operator is now declared (`clusters/home/external-secrets.yaml`, `secret-store.yaml`, `external-secret.yaml`), installed in-cluster by Flux, and reads this project's Key Vault via Workload Identity Federation (`infrastructure/arc.tf`) — no stored credential anywhere. Terraform's `kubernetes` provider is gone entirely; every Secret the chart needs, and the merged `infrastructure-values` blob, are written to Key Vault instead and synced in on a 1-hour `refreshInterval`. Not yet verified against the live cluster — see **OPS-1**'s own note.
+- **Improvement:** Mark this ✅ DONE once the live cutover (see **OPS-1**) is confirmed working end-to-end.
 
 ### OPS-3: Extend Renovate to Track All Image Tags ✅ FOLDED INTO SEC-5
 **Previous State:** Believed Renovate couldn't track floating-tag images (`gluetun`, `transmission`, `rreading-glasses`, etc.) at all.
@@ -301,10 +300,9 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 - **Current State:** The `calibre` block in `helm/values.yaml` has no corresponding template — Calibre-Web was superseded by Bookshelf/Kavita and never cleaned up. Every app's `clusterIP` is also hardcoded to a specific address, which no template actually references by that literal value (they're all read back out of `.Values.<app>.clusterIP` and only used to pin the Service's own IP) and which risks an "field is immutable" apply failure or an address collision if the cluster's Service CIDR ever changes.
 - **Improvement:** Remove the `calibre` block entirely. For the `clusterIP` pins, first confirm (by checking each app's own persisted config, not just the chart) that nothing depends on a specific IP rather than the `*-service` DNS name, then either remove the pins or replace them with a documented reason where one is genuinely needed.
 
-### MAINT-3: Remove the Pass-Through Key Vault
-**Requirement:** Fewer copies of every secret, fewer resources to lock down
-- **Current State:** `infrastructure/main.tf` creates `azurerm_key_vault.keyvault` and copies the WireGuard key, Hardcover token and ComicVine key into it from the common vault — a redundant hop, since the Kubernetes Secrets are built directly from the common vault's data sources anyway (see **SEC-3**).
-- **Improvement:** Remove `azurerm_key_vault.keyvault` and its three `azurerm_key_vault_secret` copies. Have the `kubernetes_secret_v1` resources read the common-vault data sources directly, as some of them already do.
+### MAINT-3: Remove the Pass-Through Key Vault ✅ SUPERSEDED
+**Previous State:** Believed `home-media-server-kv` was a dead pass-through nobody read from, copying secrets from the common vault for no reason.
+- **Resolution:** Superseded by the Flux/Azure-Arc GitOps work (**OPS-1**) — that premise is no longer true. The project vault is now External Secrets Operator's real sync source (see **SEC-3**'s revised entry), holding every Secret the chart needs plus the merged `infrastructure-values` blob. Removing it would break every app's config, not clean up dead weight.
 
 ### MAINT-4: DRY the Helm Templates
 **Requirement:** Reduce copy-paste drift across near-identical apps
@@ -323,21 +321,21 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 
 | # | ID | Title | Category |
 |---|-----|-------|----------|
-| 1 | SEC-8 | Lock down the self-hosted runner (immediate mitigations) | Security |
-| 2 | OPS-1 | GitOps with Flux, via Azure Arc — retires the self-hosted runner | Operations |
-| 3 | REL-3 | Back up config data (Gramps/BabyBuddy is irreplaceable) | Reliability |
-| 4 | SEC-5 | Pin all images to a real tag or digest | Security |
-| 5 | REL-6 | Switch pinned images from `pullPolicy: Always` to `IfNotPresent` | Reliability |
-| 6 | SEC-9 | Split the tailnet ACL into consumer/admin tiers | Security |
-| 7 | OPS-8 | Validate the Helm chart in CI (`helm template`/`helm lint`) | Operations |
-| 8 | REL-1 | Add missing health probes (Gluetun, Home Assistant, Bazarr) | Reliability |
-| 9 | SEC-1 | Add resource requests/limits to all pods | Security |
-| 10 | OPS-5 | Profile resource usage over a representative period (VPA recommend mode) | Operations |
-| 11 | PERF-2 | Prioritize Jellyfin under contention (PriorityClass + guaranteed QoS) | Performance |
-| 12 | MAINT-2 | Remove dead values (`calibre` block, unused `clusterIP` pins) | Maintainability |
-| 13 | MAINT-3 | Remove the pass-through Key Vault | Maintainability |
-| 14 | SEC-3 | Confirm purge protection on the common Key Vault | Security |
-| 15 | SEC-11 | Harden the Terraform state storage account | Security |
+| 1 | OPS-1 | GitOps with Flux, via Azure Arc — apply/verify live, then unregister the runner | Operations |
+| 2 | SEC-8 | Remaining self-hosted-runner cleanup + fork-PR approval + SHA-pinning | Security |
+| 3 | OPS-2 | External Secrets Operator for secret rotation (folded into OPS-1) | Operations |
+| 4 | SEC-3 | Enable purge protection on the project Key Vault (now live, not a copy) | Security |
+| 5 | SEC-11 | Harden the Terraform state storage account | Security |
+| 6 | REL-3 | Back up config data (Gramps/BabyBuddy is irreplaceable) | Reliability |
+| 7 | SEC-5 | Pin all images to a real tag or digest | Security |
+| 8 | REL-6 | Switch pinned images from `pullPolicy: Always` to `IfNotPresent` | Reliability |
+| 9 | SEC-9 | Split the tailnet ACL into consumer/admin tiers | Security |
+| 10 | OPS-8 | Validate the Helm chart in CI (`helm template`/`helm lint`) | Operations |
+| 11 | REL-1 | Add missing health probes (Gluetun, Home Assistant, Bazarr) | Reliability |
+| 12 | SEC-1 | Add resource requests/limits to all pods | Security |
+| 13 | OPS-5 | Profile resource usage over a representative period (VPA recommend mode) | Operations |
+| 14 | PERF-2 | Prioritize Jellyfin under contention (PriorityClass + guaranteed QoS) | Performance |
+| 15 | MAINT-2 | Remove dead values (`calibre` block, unused `clusterIP` pins) | Maintainability |
 | 16 | OPS-4 | Add Azure resource locks | Operations |
 | 17 | OPS-9 | Detect app-level config drift after infra changes | Operations |
 | 18 | SEC-2 | Add pod security contexts (test per-image first — see caveat) | Security |
@@ -348,19 +346,18 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 | 23 | PERF-1 | Scale-to-zero for idle apps (KEDA, cron tier first) | Performance |
 | 24 | OBS-1 | Deploy kube-prometheus-stack | Observability |
 | 25 | OBS-2 | Deploy Loki + Promtail | Observability |
-| 26 | OPS-2 | External Secrets Operator for secret rotation | Operations |
-| 27 | SEC-6 | Container vulnerability scanning (Trivy/Polaris/Falco) | Security |
-| 28 | OPS-10 | Pin the k3s version | Operations |
-| 29 | OBS-4 | Application-level metrics (APM) | Observability |
-| 30 | STOR-1 | Storage class tiering | Storage |
-| 31 | STOR-2 | PostgreSQL for *arr metadata | Storage |
-| 32 | MAINT-4 | DRY the Helm templates | Maintainability |
-| 33 | MAINT-5 | Pin the dev toolchain | Maintainability |
-| 34 | FEAT-2 | Unpackerr auto-extraction | Features |
-| 35 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
-| 36 | OPS-7 | IaC enhancement (Terraform-provisioned k3s, reusable modules) | Operations |
-| 37 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
-| 38 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
+| 26 | SEC-6 | Container vulnerability scanning (Trivy/Polaris/Falco) | Security |
+| 27 | OPS-10 | Pin the k3s version | Operations |
+| 28 | OBS-4 | Application-level metrics (APM) | Observability |
+| 29 | STOR-1 | Storage class tiering | Storage |
+| 30 | STOR-2 | PostgreSQL for *arr metadata | Storage |
+| 31 | MAINT-4 | DRY the Helm templates | Maintainability |
+| 32 | MAINT-5 | Pin the dev toolchain | Maintainability |
+| 33 | FEAT-2 | Unpackerr auto-extraction | Features |
+| 34 | FEAT-5 | GPU time-slicing / NVIDIA GPU Operator | Features |
+| 35 | OPS-7 | IaC enhancement (Terraform-provisioned k3s, reusable modules) | Operations |
+| 36 | REL-5 | Multi-node cluster support (needs new hardware — see caveat) | Reliability |
+| 37 | QA-1 | Helm chart automated testing (broader than OPS-8) | Quality |
 | 39 | PERF-3 | Usage-aware dynamic throttling (custom build — see note) | Performance |
 
 ---

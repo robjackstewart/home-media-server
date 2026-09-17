@@ -1,0 +1,12 @@
+# Terraform no longer creates these - it never touches the Kubernetes API at all (see
+# infrastructure/arc.tf). "home-media-server" is where the umbrella chart and its ESO-synced
+# Secrets live; "external-secrets" is where External Secrets Operator itself runs.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: home-media-server
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets

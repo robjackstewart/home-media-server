@@ -1,17 +1,87 @@
 name: Home Media Server Deployment
 
+# No self-hosted runner: Terraform's azurerm/azuread providers authenticate straight to Azure via
+# GitHub's own OIDC token (ARM_USE_OIDC below) - no stored Azure credential in GitHub at all, and
+# no `az`/kubeconfig on this runner either, since this job never touches the Kubernetes API (see
+# infrastructure/arc.tf and the "Design decision" section of the implementation plan). Flux, not
+# this workflow, deploys the chart - this only ever applies infrastructure/.
+#
+# One-time setup before this workflow can run at all: a human runs `task recreate` locally once
+# (creates infrastructure/ci.tf's identity, among everything else), then sets three repository
+# *variables* (Settings -> Secrets and variables -> Actions -> Variables) from
+# `terraform output` - see infrastructure/outputs.tf's ci_azure_* outputs for the exact commands.
 on:
+  push:
+    branches: [main]
+    paths:
+      - infrastructure/**
+      - config/variables.tfvars
+      - helm/**
+      - clusters/**
+      - .github/workflows/deploy.yml
+  pull_request:
+    paths:
+      - infrastructure/**
+      - config/variables.tfvars
+      - .github/workflows/deploy.yml
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 concurrency:
-  group: main-deploy
-  cancel-in-progress: true
+  group: deploy
+  # A cancelled `terraform apply` mid-run can leave more than just Terraform state
+  # half-applied - it also writes this project's Key Vault secrets and moves Flux's pinned
+  # commit (infrastructure/arc.tf). Let a run finish; start a new one afterwards instead.
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: infrastructure
+
+env:
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC: "true"
 
 jobs:
-  deploy:
-    runs-on: self-hosted
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Recreate cluster
-        run: INFRASTRUCTURE_APPLY_ARGS="-auto-approve" task recreate
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Terraform init
+        run: terraform init
+      - name: Terraform plan
+        run: |
+          terraform plan -input=false -no-color \
+            -var-file=../config/variables.tfvars \
+            -var git_revision=${{ github.event.pull_request.head.sha }} \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+  apply:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: Terraform init
+        run: terraform init
+      - name: Terraform apply
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var-file=../config/variables.tfvars \
+            -var git_revision=${{ github.sha }}
