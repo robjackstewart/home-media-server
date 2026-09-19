@@ -303,7 +303,7 @@ babybuddy:
   clusterIP: 10.43.178.132
   image:
     repository: linuxserver/babybuddy
-    tag: '2.10.1'
+    tag: '2.11.0'
     registry: lscr.io
     pullPolicy: Always
   ports:
