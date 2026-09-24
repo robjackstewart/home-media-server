@@ -7,5 +7,5 @@ dependencies:
     version: '0.20.0'
     repository: https://nvidia.github.io/k8s-device-plugin
   - name: tailscale-operator
-    version: '1.102.3'
+    version: '1.102.4'
     repository: https://pkgs.tailscale.com/helmcharts
