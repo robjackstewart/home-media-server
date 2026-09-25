@@ -11,8 +11,12 @@ tasks:
         msg: k3s must be installed
       - sh: systemctl is-active --quiet k3s
         msg: "The k3s service is not running: sudo systemctl start k3s"
-      - sh: test -e /dev/nvidia0
-        msg: NVIDIA device nodes are missing - check the driver and nvidia-persistenced
+    cmds:
+      # Replaces a bare `test -e /dev/nvidia0` precondition. The compat check covers those device
+      # nodes and the kernel/module/driver state behind them, and when a kernel upgrade has outrun
+      # its NVIDIA modules it names the missing linux-modules-nvidia package instead of just
+      # reporting the missing /dev node.
+      - task: gpu:compat:check
 
   config:install:
     desc: Install the declarative k3s config and restart the service.
@@ -30,6 +34,11 @@ tasks:
       - sudo cp {{.TASKFILE_DIR}}/resolv.conf $K3S_CONFIG_DIR/resolv.conf
       - curl -sfL https://get.k3s.io | sh -
       - sudo systemctl enable --now k3s
+
+  gpu:compat:check:
+    desc: Confirm the NVIDIA kernel module matches the running and next-boot kernel (read-only).
+    cmds:
+      - bash {{.TASKFILE_DIR}}/scripts/check-nvidia-compat.sh
 
   gpu:check:
     desc: Confirm k3s auto-detected the NVIDIA container runtime and the GPU is schedulable.

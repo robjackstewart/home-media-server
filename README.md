@@ -46,6 +46,12 @@ Order matters: install the container toolkit **before** k3s, because k3s only pr
     task k3s:gpu:check
     ```
 
+    The kernel and its NVIDIA module are upgraded independently, so a kernel can be installed (and
+    booted by the nightly reboot) before the matching `linux-modules-nvidia-<major>-<kernel>` package
+    lands. `task k3s:gpu:compat:check` — run as part of `task k3s:environment:check` — fails loudly
+    and names the package to install when that happens, instead of it surfacing later as a
+    crash-looping device plugin and a Pending Jellyfin.
+
 Host storage needs no step of its own. The `config` and `media` directories are created and
 chowned to `puid`/`guid` by a pre-install/pre-upgrade hook in the chart
 ([`helm/templates/host-storage.bootstrap.yaml`](helm/templates/host-storage.bootstrap.yaml)),
@@ -281,6 +287,23 @@ encoder is actually busy:
 ``` shell
 nvidia-smi dmon      # the `enc` column must be non-zero
 ```
+
+### Kernel / driver compatibility
+
+The GPU workloads depend on a kernel module (`nvidia.ko`) that is packaged separately from the
+userspace driver and is built per kernel version. Because the host's HWE kernel and its NVIDIA
+modules are upgraded independently, a kernel upgrade can outrun its modules: the kernel boots
+without `nvidia.ko`, NVML reports `Driver Not Loaded`, the device plugin crash-loops, and the node
+advertises `nvidia.com/gpu: 0`. Run the read-only check after any kernel or driver upgrade (it is
+also part of `task k3s:environment:check`):
+
+``` shell
+task k3s:gpu:compat:check
+```
+
+It verifies the module exists for both the running and the next-boot kernel, that it is loaded,
+that the module and userspace versions match, and that the device nodes are present — naming the
+missing `linux-modules-nvidia-<major>-<kernel>` package when they are not. It installs nothing.
 
 ## Notes on the cluster lifecycle
 

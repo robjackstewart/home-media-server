@@ -201,7 +201,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 **Requirement:** Reproducible cluster installs
 - **Current State:** `k3s:cluster:install` in `k3s/Taskfile.yml` pipes the latest `get.k3s.io` installer straight into `sh`, so a cluster rebuild today can land on a different k3s version than the one currently running, with no record of which version is live.
 - **Improvement:** Pin an explicit `INSTALL_K3S_VERSION` (the installer script's own supported pinning mechanism) in the Taskfile, and track it with a Renovate regex/custom manager the same way other unmanaged version strings in this repo are tracked.
-- **Note:** The host's NVIDIA driver and container toolkit remain outside this repo's version tracking — k3s auto-detects them but doesn't manage their versions, and there's no in-repo equivalent of the old CUDA node image to pin them from anymore.
+- **Note:** The host's NVIDIA driver and container toolkit remain outside this repo's version tracking — k3s auto-detects them but doesn't manage their versions, and there's no in-repo equivalent of the old CUDA node image to pin them from anymore. The concrete failure that leaves open is a kernel upgrade outrunning its separately-packaged `linux-modules-nvidia-<major>-<kernel>` module: the kernel boots without `nvidia.ko`, the device plugin crash-loops, and Jellyfin sits Pending. `task k3s:gpu:compat:check` (run as part of `k3s:environment:check`) now detects that — for both the running and next-boot kernel — and names the missing package, but it only *reports*; nothing installs the module or blocks the reboot, so the manual fix is still needed.
 
 ---
 
