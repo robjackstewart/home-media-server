@@ -315,7 +315,7 @@ gramps:
   tree: Family Tree
   image:
     repository: gramps-project/grampsweb
-    tag: '26.9.0'
+    tag: '26.9.1'
     registry: ghcr.io
     pullPolicy: Always
   redis:
