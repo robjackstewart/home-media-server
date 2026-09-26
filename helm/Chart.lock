@@ -1,9 +1,9 @@
 dependencies:
 - name: nvidia-device-plugin
   repository: https://nvidia.github.io/k8s-device-plugin
-  version: 0.20.0
+  version: 0.20.1
 - name: tailscale-operator
   repository: https://pkgs.tailscale.com/helmcharts
   version: 1.102.4
-digest: sha256:ed58f741a03261c124b3bb82cc820ccf40988ea387a771dc6cf29415cb422d54
-generated: "2026-09-24T22:47:17.247391181Z"
+digest: sha256:675b715f1e68b1f2110305dca34515b1834bb4250e468ca4025d549c28fe20fc
+generated: "2026-09-26T07:31:27.008635004Z"
