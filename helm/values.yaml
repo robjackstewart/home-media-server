@@ -292,7 +292,7 @@ seerr:
   clusterIP: 10.43.178.131
   image:
     repository: seerr-team/seerr
-    tag: 'v3.4.1'
+    tag: 'v3.5.0'
     registry: ghcr.io
     pullPolicy: Always
   ports:
