@@ -18,7 +18,7 @@ kind: StatefulSet
 metadata:
   name: babybuddy
 spec:
-  replicas: 1
+  # replicas is owned by the KEDA ScaledObject below (0-1), not by this chart.
   selector:
     matchLabels:
       app: babybuddy
@@ -27,6 +27,7 @@ spec:
       labels:
         app: babybuddy
     spec:
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -82,4 +83,22 @@ spec:
      "subdomain" .Values.babybuddy.subdomain
      "service" "babybuddy-service"
      "port" .Values.babybuddy.ports.http
-     "proxyGroup" .Values.tailscale.proxyGroup.name) }}
+     "proxyGroup" .Values.tailscale.proxyGroup.name
+     "interceptor" (ternary .Values.keda.interceptor nil .Values.babybuddy.onDemand.enabled)) }}
+{{- if .Values.babybuddy.onDemand.enabled }}
+---
+{{ include "kedaInterceptorRoute" (dict
+     "name" "babybuddy"
+     "service" "babybuddy-service"
+     "port" .Values.babybuddy.ports.http
+     "host" (printf "%s.%s" .Values.babybuddy.subdomain .Values.tailnet)
+     "readinessTimeout" .Values.babybuddy.onDemand.readinessTimeout) }}
+---
+{{ include "kedaScaledObject" (dict
+     "name" "babybuddy"
+     "cooldownPeriod" .Values.babybuddy.onDemand.cooldownPeriod
+     "timezone" .Values.Timezone
+     "cronStart" .Values.keda.cron.start
+     "cronEnd" .Values.keda.cron.end
+     "scalerAddress" .Values.keda.scalerAddress) }}
+{{- end }}

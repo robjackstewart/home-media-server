@@ -69,6 +69,13 @@ tasks:
     preconditions:
       - test -f $HELM_INFRASTRUCTURE_VALUES_FILE
       - test -f $HELM_VALUES_FILE
+      # The chart renders ScaledObject/InterceptorRoute custom resources for its on-demand apps,
+      # so KEDA and its HTTP Add-on must be installed first. `task recreate` does this; a direct
+      # `task helm:release` needs `task keda:http:install` run once beforehand.
+      - sh: kubectl get crd scaledobjects.keda.sh
+        msg: KEDA is not installed - run `task keda:install` (or `task keda:http:install`) first.
+      - sh: kubectl get crd interceptorroutes.http.keda.sh
+        msg: The KEDA HTTP Add-on is not installed - run `task keda:http:install` first.
     cmds:
       - helm upgrade --install "$HELM_RELEASE_NAME" . --namespace "$HELM_RELEASE_NAMESPACE" --values $HELM_VALUES_FILE --values $HELM_INFRASTRUCTURE_VALUES_FILE --create-namespace --timeout 3000s {{.CLI_ARGS}} --skip-crds
 

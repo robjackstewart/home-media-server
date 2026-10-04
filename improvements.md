@@ -7,7 +7,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 - **Media**: Jellyfin (GPU-accelerated), Sonarr, Radarr, Bazarr, Prowlarr, Transmission+Gluetun (Mullvad WireGuard VPN), Seerr (media request portal)
 - **Books & comics**: Bookshelf (ebook downloader, a maintained Readarr fork, backed by a self-hosted rreading-glasses + Postgres metadata service for its own Hardcover API quota), Mylar3 (comic downloader), Kavita (reader + Send-to-Kindle, the only reader in this stack) - all synced to Prowlarr/Transmission the same way as Sonarr/Radarr
 - **Automation**: Home Assistant
-- **Household**: BabyBuddy (childcare tracking), Gramps Web (genealogy, with a Celery worker + Valkey broker)
+- **Household**: BabyBuddy (childcare tracking)
 - **Dashboard**: Heimdall
 - **Ingress**: Tailscale Kubernetes operator, each app its own `Ingress` behind a shared `ProxyGroup`, reachable only over the tailnet at `https://<subdomain>.<tailnet>.ts.net`
 - **Auth**: tailnet membership (`tailscale_acl`) - no separate auth layer; nothing is publicly reachable
@@ -44,7 +44,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 ### SEC-9: Tailnet ACL Grants Every Member Full Admin on Every App
 **Requirement:** Least-privilege authorization, not just authentication, over the tailnet
 - **Current State:** `tailscale_acl` in `infrastructure/main.tf` grants `autogroup:member` unrestricted `ip: ["*"]` access to every device tagged `tag:k8s` — i.e. every app. Combined with the `arrExternalAuthInitContainer` helper, which forces Sonarr/Radarr/Prowlarr/etc.'s own `AuthenticationMethod` to `External` (because tailnet membership was assumed to *be* the authorization boundary), any tailnet member — including a shared or guest device — has full admin on every *arr app, Transmission (which has no RPC auth of its own either) and Home Assistant, not just consumer apps like Jellyfin/Seerr/Kavita.
-- **Improvement:** Split the ACL `grants` into a consumer tier (Jellyfin, Seerr, Kavita, Heimdall) open to `autogroup:member`, and an admin tier (Sonarr, Radarr, Prowlarr, Transmission, Bazarr, Mylar3, Bookshelf, Home Assistant, BabyBuddy, Gramps) restricted to a new `group:admins`. Add the ACL policy's `tests` block so a bad grant fails `terraform apply` instead of silently widening access.
+- **Improvement:** Split the ACL `grants` into a consumer tier (Jellyfin, Seerr, Kavita, Heimdall) open to `autogroup:member`, and an admin tier (Sonarr, Radarr, Prowlarr, Transmission, Bazarr, Mylar3, Bookshelf, Home Assistant, BabyBuddy) restricted to a new `group:admins`. Add the ACL policy's `tests` block so a bad grant fails `terraform apply` instead of silently widening access.
 - **Caveat:** Needs tagging each app's Service/Ingress by tier, and deciding who belongs in `group:admins` in the Tailscale admin console first.
 
 ### SEC-3: Enable Key Vault Purge Protection — on the Common Vault
@@ -90,9 +90,9 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 
 ### REL-3: Back Up Config Data
 **Requirement:** Data protection & disaster recovery — some of this data is irreplaceable
-- **Current State:** No backup or restore strategy at all. All application state lives in host-path PVCs: 5 Gi config, 600 Gi media. Gramps (genealogy) and BabyBuddy (childcare tracking) hold data that cannot be re-downloaded or regenerated if the config volume is lost, unlike media libraries or *arr app state.
-- **Improvement:** A CronJob (declared in this chart, not configured by hand on the host) running restic or kopia against `/srv/home-media-server/config` only — not the 600 Gi media volume — to Azure Blob Storage. Lean on the *arr apps' own scheduled backup/export features (Sonarr/Radarr's built-in zip backups, a Gramps export) to get consistent snapshots of SQLite-backed state rather than risking a live copy of an open database file. Document and actually test a restore.
-- **Note:** Raised in priority relative to the old Velero-based version of this item: Velero doesn't suit `local` PersistentVolumes well (no CSI snapshotter here, so it would need node-agent file-level backup) for comparatively little gain over a much simpler in-repo CronJob, and the irreplaceable-data risk (Gramps/BabyBuddy) makes this more urgent than "medium reliability" implies.
+- **Current State:** No backup or restore strategy at all. All application state lives in host-path PVCs: 5 Gi config, 600 Gi media. BabyBuddy (childcare tracking) holds data that cannot be re-downloaded or regenerated if the config volume is lost, unlike media libraries or *arr app state.
+- **Improvement:** A CronJob (declared in this chart, not configured by hand on the host) running restic or kopia against `/srv/home-media-server/config` only — not the 600 Gi media volume — to Azure Blob Storage. Lean on the *arr apps' own scheduled backup/export features (Sonarr/Radarr's built-in zip backups) to get consistent snapshots of SQLite-backed state rather than risking a live copy of an open database file. Document and actually test a restore.
+- **Note:** Raised in priority relative to the old Velero-based version of this item: Velero doesn't suit `local` PersistentVolumes well (no CSI snapshotter here, so it would need node-agent file-level backup) for comparatively little gain over a much simpler in-repo CronJob, and the irreplaceable-data risk (BabyBuddy) makes this more urgent than "medium reliability" implies.
 - **Caveat:** Carries an ongoing Azure Blob Storage cost (storage + egress for restores). The config-only footprint (a few GB) keeps this small; size it before picking a retention window.
 
 ### REL-1: Add Missing Health Probes
@@ -221,12 +221,15 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 
 ## ⚡ MEDIUM PRIORITY — Performance Management
 
-### PERF-1: Scale-to-Zero for Idle Apps
+### PERF-1: Scale-to-Zero for Idle Apps 🚧 IN PROGRESS
 **Requirement:** Don't run rarely-used apps 24/7 on a single-node box
-**Current State:** All services run a static 1 replica permanently, regardless of actual usage. State lives on the shared `config`/`media` PVCs rather than per-pod storage, so scaling a StatefulSet to 0 and back is safe here in a way it wouldn't be with per-pod PVs.
-- **Improvement:** Deploy KEDA. Two tiers of ambition:
-  - **Near-term, low effort:** cron-based scaling (KEDA's cron scaler, or even a plain `CronJob` running `kubectl scale`) for genuinely low-traffic apps like Bazarr/Prowlarr overnight.
-  - **Stretch goal:** true on-demand scaling via `keda-http-add-on`, which wakes a pod on the next incoming request. This needs real re-plumbing of the routing layer — requests would go through KEDA's proxy instead of directly to each app's Service, which today is a Tailscale `Ingress` per app (see the `tailscaleIngress` helper in `helm/templates/functions.tpl`).
+**Current State:** Most services run a static 1 replica permanently, regardless of actual usage. State lives on the shared `config`/`media` PVCs rather than per-pod storage, so scaling a StatefulSet to 0 and back is safe here in a way it wouldn't be with per-pod PVs.
+- **Implemented for:** `babybuddy`, `heimdall`, `kavita` — user-facing, request-driven apps that nothing else calls over cluster DNS, so they can safely sit at zero. (`gramps` was removed outright rather than made on-demand; its Celery worker could be killed mid-import by a scale-down, and its broker was an in-pod sidecar with no endpoints to trigger a wake.)
+- **Mechanism:** KEDA core (`keda` namespace) plus the KEDA HTTP Add-on (`keda/Taskfile.yml`, installed into the app namespace so each Tailscale `Ingress` can point at the interceptor Service as a same-namespace backend). Each on-demand app gets an `InterceptorRoute` (routes the MagicDNS `Host` to its Service) and a `ScaledObject` (`minReplicaCount: 0`, `maxReplicaCount: 1`, an `external-push` trigger from the HTTP scaler, plus an off-hours `cron` trigger that forces zero overnight). Cold starts are covered by a `coldStart.placeholder` page with a 5s meta-refresh, served immediately so the Tailscale proxy never holds a long request.
+- **Not on-demand:** `jellyfin` (LAN clients reach it via ServiceLB on host ports, bypassing the interceptor, and streams are long-lived), `transmission`+`gluetun`, `indexer-proxy`, `home-assistant` (automations), and the `*arr` hubs (`sonarr`, `radarr`, `prowlarr`) which are called by each other and run scheduled work.
+- **Caveat (hard gate):** the whole design assumes the Tailscale L7 proxy forwards the original `Host` header to the interceptor. This must be verified on one pilot app (`kavita`) before trusting the rest — if the proxy rewrites `Host`, all on-demand apps present the same host and a shared interceptor can't route them; stop and re-plan.
+- **Caveat:** the KEDA HTTP Add-on is still **beta** (v0.16; v1.0 unreleased). The chart's multi-node defaults are pinned down (`interceptor.replicas.min/max: 1`, `scaler.replicas: 1`) for this single node. `maxReplicaCount: 1` is deliberate — every app keeps state in SQLite on a shared PVC, so a second replica would corrupt it (see REL-4).
+- **Note:** `heimdall` may be replaced by Homepage (FEAT-4), in which case its on-demand config moves with it.
 
 ### PERF-2: Prioritize Jellyfin Under Resource Contention
 **Requirement:** Protect the app people are actively watching when the node is under load
@@ -309,7 +312,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 **Requirement:** Reduce copy-paste drift across near-identical apps
 - **Current State:** The chart's ~22 templates (roughly 1,900 lines) repeat the same shape for every linuxserver-style app: a Service, a single-replica StatefulSet, the `media`/`config` volumes, the `TZ`/`PUID`/`PGID` env block, and startup/liveness/readiness HTTP probes — with only the app name, image, port and mount paths actually varying.
 - **Improvement:** Extend `helm/templates/functions.tpl` (which already has a `tailscaleIngress` and `arrExternalAuthInitContainer` helper following this pattern) with a few more named templates — e.g. `linuxserverEnv` for the TZ/PUID/PGID block, `httpProbes` for the standard probe shape — and migrate the simpler apps over one at a time.
-- **Caveat:** Not every app fits the pattern (Transmission's Gluetun sidecar, Gramps' Celery worker) — this is about the ~15 apps that do, not a wholesale rewrite. Migrating to a full third-party library chart (e.g. bjw-s `app-template`) isn't worth it for this scale; a few more in-repo helpers is enough.
+- **Caveat:** Not every app fits the pattern (Transmission's Gluetun sidecar) — this is about the ~15 apps that do, not a wholesale rewrite. Migrating to a full third-party library chart (e.g. bjw-s `app-template`) isn't worth it for this scale; a few more in-repo helpers is enough.
 
 ### MAINT-5: Pin the Dev Toolchain
 **Requirement:** Reproducible tooling, not just reproducible cluster/app state
@@ -324,7 +327,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 |---|-----|-------|----------|
 | 1 | SEC-8 | Lock down the self-hosted runner (immediate mitigations) | Security |
 | 2 | OPS-1 | GitOps with Flux, via Azure Arc — retires the self-hosted runner | Operations |
-| 3 | REL-3 | Back up config data (Gramps/BabyBuddy is irreplaceable) | Reliability |
+| 3 | REL-3 | Back up config data (BabyBuddy is irreplaceable) | Reliability |
 | 4 | SEC-5 | Pin all images to a real tag or digest | Security |
 | 5 | REL-6 | Switch pinned images from `pullPolicy: Always` to `IfNotPresent` | Reliability |
 | 6 | SEC-9 | Split the tailnet ACL into consumer/admin tiers | Security |
@@ -344,7 +347,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 | 20 | SEC-4 | Add NetworkPolicies | Security |
 | 21 | OPS-6 | Rely on Flux's automated rollback on failed deploy | Operations |
 | 22 | FEAT-4 | Homepage dashboard (also closes one OPS-9 drift source) | Features |
-| 23 | PERF-1 | Scale-to-zero for idle apps (KEDA, cron tier first) | Performance |
+| 23 | PERF-1 | Scale-to-zero for idle apps (KEDA HTTP Add-on) | Performance |
 | 24 | OBS-1 | Deploy kube-prometheus-stack | Observability |
 | 25 | OBS-2 | Deploy Loki + Promtail | Observability |
 | 26 | OPS-2 | External Secrets Operator for secret rotation | Operations |

@@ -73,6 +73,28 @@ tailscale:
         cpu: 200m
         memory: 128Mi
 
+# Wiring for the KEDA HTTP Add-on, which lets the apps below with `onDemand.enabled: true` scale
+# to zero when idle and be woken by the next incoming request. KEDA core and the add-on are
+# installed by `task keda:install` / `task keda:http:install` (see keda/Taskfile.yml), not by this
+# chart. The add-on is installed into this same namespace so each on-demand app's Tailscale
+# Ingress can point at the interceptor Service directly - an Ingress backend must live in the
+# same namespace as the Ingress.
+keda:
+  interceptor:
+    service: keda-add-ons-http-interceptor-proxy
+    port: 8080
+  # The HTTP Add-on's external scaler gRPC endpoint, referenced by each ScaledObject's
+  # external-push trigger.
+  scalerAddress: keda-add-ons-http-external-scaler.home-media-server:9090
+  # Off-hours window in which on-demand apps are forced to zero. There is deliberately no
+  # day-warm window: the HTTP scaler already keeps an app at 1 while it is being used and scales
+  # it to zero after `cooldownPeriod`, so this cron only guarantees a genuinely idle app reaches
+  # zero overnight rather than being pinned up by a stray request or probe. A request during the
+  # window still wakes the app - HPA takes the max across triggers.
+  cron:
+    start: "0 1 * * *"
+    end: "0 7 * * *"
+
 heimdall:
   subdomain: heimdall
   clusterIP: 10.43.181.121
@@ -83,6 +105,12 @@ heimdall:
     pullPolicy: Always
   ports:
     http: 80
+  # Heimdall is a static link dashboard with no background work, so it is safe to run only when
+  # someone is looking at it. See the `keda` block above.
+  onDemand:
+    enabled: true
+    cooldownPeriod: 900
+    readinessTimeout: 180s
 
 # Creates and chowns the host directories behind the `config` and `media` local PVs, as a
 # pre-install/pre-upgrade hook. See templates/host-storage.bootstrap.yaml.
@@ -140,6 +168,13 @@ kavita:
     pullPolicy: Always
   ports:
     http: 5000
+  # A reader is mostly idle between page turns, but the HTTP scaler's cooldown is measured from
+  # the last request, so a long reading session is only at risk of being scaled down if nothing
+  # at all is requested for `cooldownPeriod`. Keep it long. See the `keda` block above.
+  onDemand:
+    enabled: true
+    cooldownPeriod: 3600
+    readinessTimeout: 180s
 
 prowlarr:
   subdomain: prowlarr
@@ -332,23 +367,9 @@ babybuddy:
     pullPolicy: Always
   ports:
     http: 8000
-
-gramps:
-  subdomain: gramps
-  clusterIP: 10.43.178.133
-  tree: Family Tree
-  image:
-    repository: gramps-project/grampsweb
-    tag: '26.9.1'
-    registry: ghcr.io
-    pullPolicy: Always
-  redis:
-    image:
-      repository: valkey/valkey
-      tag: '9-alpine'
-      registry: docker.io
-      pullPolicy: Always
-    ports:
-      redis: 6379
-  ports:
-    http: 5000
+  # Request-driven Django app with no long-running background jobs, so it is safe to run only
+  # while it is being used. See the `keda` block above.
+  onDemand:
+    enabled: true
+    cooldownPeriod: 900
+    readinessTimeout: 180s

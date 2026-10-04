@@ -16,7 +16,7 @@ kind: StatefulSet
 metadata:
   name: heimdall
 spec:
-  replicas: 1
+  # replicas is owned by the KEDA ScaledObject below (0-1), not by this chart.
   selector:
     matchLabels:
       app: heimdall
@@ -25,6 +25,7 @@ spec:
       labels:
         app: heimdall
     spec:
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -72,4 +73,22 @@ spec:
      "subdomain" .Values.heimdall.subdomain
      "service" "heimdall-service"
      "port" .Values.heimdall.ports.http
-     "proxyGroup" .Values.tailscale.proxyGroup.name) }}
+     "proxyGroup" .Values.tailscale.proxyGroup.name
+     "interceptor" (ternary .Values.keda.interceptor nil .Values.heimdall.onDemand.enabled)) }}
+{{- if .Values.heimdall.onDemand.enabled }}
+---
+{{ include "kedaInterceptorRoute" (dict
+     "name" "heimdall"
+     "service" "heimdall-service"
+     "port" .Values.heimdall.ports.http
+     "host" (printf "%s.%s" .Values.heimdall.subdomain .Values.tailnet)
+     "readinessTimeout" .Values.heimdall.onDemand.readinessTimeout) }}
+---
+{{ include "kedaScaledObject" (dict
+     "name" "heimdall"
+     "cooldownPeriod" .Values.heimdall.onDemand.cooldownPeriod
+     "timezone" .Values.Timezone
+     "cronStart" .Values.keda.cron.start
+     "cronEnd" .Values.keda.cron.end
+     "scalerAddress" .Values.keda.scalerAddress) }}
+{{- end }}

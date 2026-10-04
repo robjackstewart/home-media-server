@@ -1,0 +1,66 @@
+version: '3'
+
+# KEDA (event-driven autoscaling) plus its HTTP Add-on, which lets the chart's on-demand apps
+# scale to zero and be woken by the next incoming request. Installed as its own Helm release(s)
+# rather than as subcharts of the app chart: KEDA ships cluster-scoped CRDs (ScaledObject,
+# TriggerAuthentication, ...) that the app chart's --skip-crds must not manage, and the add-on's
+# CRDs are shipped as ordinary templates (not a crds/ directory) so they have to be applied by
+# their own release too. `task keda:install` covers KEDA core; `task keda:http:install` adds the
+# HTTP Add-on on top. Both are wired into the root `recreate` task before the app release.
+
+env:
+  KEDA_NAMESPACE: keda
+  KEDA_HTTP_NAMESPACE: home-media-server
+  KEDA_RELEASE_NAME: keda
+  KEDA_HTTP_RELEASE_NAME: keda-add-ons-http
+  # Pinned chart versions. Renovate's helm manager can track these the same way it tracks the
+  # subcharts in helm/Chart.yaml.
+  KEDA_CHART_VERSION: '2.21.0'
+  KEDA_HTTP_CHART_VERSION: '0.16.0'
+
+tasks:
+  repos:add:
+    desc: Register the KEDA Helm chart repository.
+    cmds:
+      - helm repo add kedacore https://kedacore.github.io/charts --force-update
+      - helm repo update kedacore
+
+  install:
+    desc: Install KEDA core into its own namespace.
+    deps:
+      - repos:add
+    cmds:
+      - |
+        helm upgrade --install "$KEDA_RELEASE_NAME" kedacore/keda \
+          --namespace "$KEDA_NAMESPACE" --create-namespace \
+          --version "$KEDA_CHART_VERSION" \
+          --wait --timeout 300s {{.CLI_ARGS}}
+
+  http:install:
+    desc: |
+      Install the KEDA HTTP Add-on (interceptor + external scaler + operator) into the app
+      namespace, so a Tailscale Ingress can point at the interceptor Service as a same-namespace
+      backend. The chart's defaults are sized for a multi-node cluster (interceptor min 3, scaler
+      3); both are pinned to 1 here for this single-node box. `operator.watchNamespace` keeps the
+      operator scoped to this namespace's InterceptorRoute/ScaledObject resources.
+    deps:
+      - install
+    cmds:
+      - |
+        helm upgrade --install "$KEDA_HTTP_RELEASE_NAME" kedacore/keda-add-ons-http \
+          --namespace "$KEDA_HTTP_NAMESPACE" --create-namespace \
+          --version "$KEDA_HTTP_CHART_VERSION" \
+          --set operator.watchNamespace="$KEDA_HTTP_NAMESPACE" \
+          --set scaler.replicas=1 \
+          --set interceptor.replicas.min=1 \
+          --set interceptor.replicas.max=1 \
+          --wait --timeout 300s {{.CLI_ARGS}}
+
+  uninstall:
+    desc: |
+      Remove the HTTP Add-on and KEDA core. CRDs are deliberately left behind (removing them
+      deletes every ScaledObject/InterceptorRoute in the cluster); delete them by hand only if
+      you are sure.
+    cmds:
+      - helm uninstall "$KEDA_HTTP_RELEASE_NAME" --namespace "$KEDA_HTTP_NAMESPACE" --ignore-not-found
+      - helm uninstall "$KEDA_RELEASE_NAME" --namespace "$KEDA_NAMESPACE" --ignore-not-found

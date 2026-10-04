@@ -19,6 +19,9 @@ includes:
   k3s:
     taskfile: k3s/Taskfile.yml
     dir: k3s
+  keda:
+    taskfile: keda/Taskfile.yml
+    dir: keda
 
 tasks:
   environment:check:
@@ -44,4 +47,7 @@ tasks:
           CLI_ARGS: $INFRASTRUCTURE_APPLY_ARGS
       - task: helm:dependencies:build
       - task: helm:crds:apply
+      # KEDA and its HTTP Add-on own the CRDs (ScaledObject, InterceptorRoute, ...) that the
+      # on-demand app templates in the chart depend on, so they must exist before helm:release.
+      - task: keda:http:install
       - task: helm:release

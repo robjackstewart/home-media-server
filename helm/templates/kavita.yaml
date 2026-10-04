@@ -18,7 +18,7 @@ kind: StatefulSet
 metadata:
   name: kavita
 spec:
-  replicas: 1
+  # replicas is owned by the KEDA ScaledObject below (0-1), not by this chart.
   selector:
     matchLabels:
       app: kavita
@@ -27,6 +27,7 @@ spec:
       labels:
         app: kavita
     spec:
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: media
           persistentVolumeClaim:
@@ -98,4 +99,22 @@ spec:
      "subdomain" .Values.kavita.subdomain
      "service" "kavita-service"
      "port" .Values.kavita.ports.http
-     "proxyGroup" .Values.tailscale.proxyGroup.name) }}
+     "proxyGroup" .Values.tailscale.proxyGroup.name
+     "interceptor" (ternary .Values.keda.interceptor nil .Values.kavita.onDemand.enabled)) }}
+{{- if .Values.kavita.onDemand.enabled }}
+---
+{{ include "kedaInterceptorRoute" (dict
+     "name" "kavita"
+     "service" "kavita-service"
+     "port" .Values.kavita.ports.http
+     "host" (printf "%s.%s" .Values.kavita.subdomain .Values.tailnet)
+     "readinessTimeout" .Values.kavita.onDemand.readinessTimeout) }}
+---
+{{ include "kedaScaledObject" (dict
+     "name" "kavita"
+     "cooldownPeriod" .Values.kavita.onDemand.cooldownPeriod
+     "timezone" .Values.Timezone
+     "cronStart" .Values.keda.cron.start
+     "cronEnd" .Values.keda.cron.end
+     "scalerAddress" .Values.keda.scalerAddress) }}
+{{- end }}

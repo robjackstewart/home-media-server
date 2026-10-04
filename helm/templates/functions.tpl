@@ -17,8 +17,18 @@
 # service: string    - backend Service name
 # port: int          - backend Service port
 # proxyGroup: string - the ProxyGroup (see templates/tailscale.yaml) to proxy through
+# interceptor: dict  - optional {service, port}. When set, the Ingress routes to the KEDA HTTP
+#                      Add-on interceptor instead of the app's own Service, so the app can be
+#                      scaled to zero and woken by the next request (see kedaInterceptorRoute /
+#                      kedaScaledObject below and the `keda` values block).
 
 {{- define "tailscaleIngress" -}}
+{{- $backendService := .service -}}
+{{- $backendPort := .port -}}
+{{- if .interceptor -}}
+{{- $backendService = .interceptor.service -}}
+{{- $backendPort = .interceptor.port -}}
+{{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -37,9 +47,114 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ .service }}
+            name: {{ $backendService }}
             port:
-              number: {{ .port }}
+              number: {{ $backendPort }}
+{{- end -}}
+
+# kedaInterceptorRoute - renders the KEDA HTTP Add-on InterceptorRoute that maps an on-demand
+# app's MagicDNS Host to its Service and tells the interceptor how to behave during a cold start.
+#
+# The interceptor routes by the request's Host header, which is why `host` must be the full
+# MagicDNS name the Tailscale proxy forwards (https://<subdomain>.<tailnet>). This is the one
+# assumption the whole on-demand design rests on: verify on the pilot app that the interceptor
+# sees that Host (kubectl logs on the interceptor) before trusting it for the rest.
+#
+# A placeholder is served immediately while the app scales from zero, rather than the
+# interceptor holding the connection for the whole cold start - the Tailscale proxy's timeout
+# for a held request is undocumented, and returning fast sidesteps it entirely. The meta-refresh
+# re-requests every 5s until the app is ready and the request is forwarded through.
+#
+# name: string             - app name, also the InterceptorRoute/ScaledObject name
+# service: string          - the app's own Service (the interceptor's target)
+# port: int                - the app's Service port
+# host: string             - full MagicDNS hostname, e.g. kavita.<tailnet>
+# readinessTimeout: string - how long the interceptor waits for a cold start before giving up
+#                            (the request deadline itself is disabled so long downloads stream)
+
+{{- define "kedaInterceptorRoute" -}}
+apiVersion: http.keda.sh/v1beta1
+kind: InterceptorRoute
+metadata:
+  name: {{ .name }}
+spec:
+  target:
+    service: {{ .service }}
+    port: {{ .port }}
+  rules:
+    - hosts:
+        - {{ .host }}
+  scalingMetric:
+    concurrency:
+      targetValue: 1
+  coldStart:
+    placeholder:
+      response:
+        statusCode: 200
+        headers:
+          Content-Type: text/html; charset=utf-8
+        body: |
+          <!doctype html>
+          <html>
+            <head>
+              <meta http-equiv="refresh" content="5">
+              <title>Starting {{ .name }}</title>
+            </head>
+            <body>
+              <p>{{ .name }} is starting up. This can take up to a minute; this page will refresh automatically.</p>
+            </body>
+          </html>
+  timeouts:
+    readiness: {{ .readinessTimeout }}
+    request: 0s
+{{- end -}}
+
+# kedaScaledObject - scales an on-demand app's StatefulSet between 0 and 1. maxReplicaCount is
+# pinned to 1 because every app here keeps its state in SQLite on a shared PVC - a second
+# replica would corrupt it rather than share load (see improvements.md REL-4).
+#
+# Two triggers:
+#   - external-push: the HTTP Add-on's scaler, which counts in-flight requests. A request for a
+#     scaled-to-zero app wakes it.
+#   - cron: forces the app to zero during an off-hours window, so an otherwise-idle app reliably
+#     reaches zero instead of being pinned up by a stray request. A request during the window
+#     still wakes it - KEDA's HPA takes the max across triggers.
+#
+# Emit this *after* the matching InterceptorRoute: KEDA reconciles a ScaledObject with an
+# external-push trigger by calling the scaler's GetMetricSpec, and if the InterceptorRoute does
+# not exist yet it falls back to a CPU metric and scale-from-zero never works.
+#
+# name: string           - app name; must match the InterceptorRoute name and StatefulSet name
+# cooldownPeriod: int    - seconds idle before scaling to zero (measured from the last request)
+# timezone: string       - IANA timezone for the cron window
+# cronStart: string      - cron expression for the start of the off-hours window
+# cronEnd: string        - cron expression for the end of the off-hours window
+# scalerAddress: string  - the HTTP Add-on external scaler gRPC address
+
+{{- define "kedaScaledObject" -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .name }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: {{ .name }}
+  minReplicaCount: 0
+  maxReplicaCount: 1
+  cooldownPeriod: {{ .cooldownPeriod }}
+  triggers:
+    - type: external-push
+      metadata:
+        scalerAddress: {{ .scalerAddress }}
+        interceptorRoute: {{ .name }}
+    - type: cron
+      metadata:
+        timezone: {{ .timezone }}
+        start: {{ .cronStart }}
+        end: {{ .cronEnd }}
+        desiredReplicas: "0"
 {{- end -}}
 
 # arrExternalAuthInitContainer - patches a *arr app's config.xml to AuthenticationMethod:External
