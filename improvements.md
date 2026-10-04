@@ -100,7 +100,6 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 - **Current State:** Incomplete probe coverage across the cluster:
   - **Home Assistant**: no liveness, readiness, or startup probes
   - **Gluetun**: no probes at all (both the Transmission sidecar and the standalone `indexer-proxy` instance)
-  - **Bazarr**: startup probe only, no liveness or readiness
 - **Improvement:** Add appropriate startup, liveness, and readiness probes for each, using the existing port-9999 Gluetun health endpoint for its `livenessProbe`/`readinessProbe`.
 - **Note:** The only protection today against a torrent leaking outside the tunnel if Gluetun's connection drops is its own iptables kill-switch (`FIREWALL=on` by default), which blocks the traffic at the network layer but won't stop Transmission from queuing/retrying against a dead tunnel. Worth deciding deliberately whether the kill-switch alone is sufficient or whether a monitor that stops Transmission on Gluetun-unhealthy should be added as part of this item.
 
@@ -330,7 +329,7 @@ A native k3s single-node cluster (installed as a systemd service, configured dec
 | 5 | REL-6 | Switch pinned images from `pullPolicy: Always` to `IfNotPresent` | Reliability |
 | 6 | SEC-9 | Split the tailnet ACL into consumer/admin tiers | Security |
 | 7 | OPS-8 | Validate the Helm chart in CI (`helm template`/`helm lint`) | Operations |
-| 8 | REL-1 | Add missing health probes (Gluetun, Home Assistant, Bazarr) | Reliability |
+| 8 | REL-1 | Add missing health probes (Gluetun, Home Assistant) | Reliability |
 | 9 | SEC-1 | Add resource requests/limits to all pods | Security |
 | 10 | OPS-5 | Profile resource usage over a representative period (VPA recommend mode) | Operations |
 | 11 | PERF-2 | Prioritize Jellyfin under contention (PriorityClass + guaranteed QoS) | Performance |

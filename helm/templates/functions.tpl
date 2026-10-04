@@ -81,3 +81,39 @@ spec:
       mountPath: /config
       subPath: {{ .subPath }}
 {{- end -}}
+
+# bazarrSubsyncInitContainer - patches Bazarr's config.yaml subsync settings on every pod start,
+# before the main container reads them. Bazarr's own UI is the only place these are otherwise
+# settable, so without this a redeploy or a fresh PVC silently loses them - and off is a bad
+# default: `use_subsync: false` means subtitles are never aligned to the film's audio, while
+# `no_fix_framerate: true` skips the 23.976-vs-25fps correction that is the classic cause of drift
+# that gets steadily worse through a film.
+#
+# Runs on every start, not just once, so the settings self-heal if the app rewrites them, and
+# skips silently if config.yaml doesn't exist yet (a brand new install's first boot, before the
+# app has created it); takes effect from that pod's next restart onward. The sed is scoped to the
+# top-level `subsync:` block so it can never touch a same-named key elsewhere (e.g. `subtitlecat:`),
+# and anchors each key with its exact `: ` suffix so `use_subsync` never matches
+# `use_subsync_threshold`. Both `use_subsync_*_threshold` flags are forced on so the series/movie
+# thresholds actually gate syncing rather than being ignored.
+#
+# image: dict    - {registry, repository, tag, pullPolicy} - reuses hostStorageBootstrap's busybox
+# subPath: string - the app's own subdirectory under the shared config PVC (e.g. "bazarr")
+# subsync: dict  - {useSubsync, seriesThreshold, movieThreshold, fixFramerate, maxOffsetSeconds}
+
+{{- define "bazarrSubsyncInitContainer" -}}
+- name: force-subsync
+  image: {{ include "image" .image }}
+  imagePullPolicy: {{ .image.pullPolicy }}
+  command:
+    - sh
+    - -c
+    - |
+      if [ -f /config/config/config.yaml ]; then
+        sed -i -e '/^subsync:/,/^[a-z_]*:$/{ s|^  use_subsync: .*|  use_subsync: {{ .subsync.useSubsync }}|; s|^  use_subsync_threshold: .*|  use_subsync_threshold: true|; s|^  use_subsync_movie_threshold: .*|  use_subsync_movie_threshold: true|; s|^  subsync_threshold: .*|  subsync_threshold: {{ .subsync.seriesThreshold }}|; s|^  subsync_movie_threshold: .*|  subsync_movie_threshold: {{ .subsync.movieThreshold }}|; s|^  no_fix_framerate: .*|  no_fix_framerate: {{ not .subsync.fixFramerate }}|; s|^  max_offset_seconds: .*|  max_offset_seconds: {{ .subsync.maxOffsetSeconds }}| }' /config/config/config.yaml
+      fi
+  volumeMounts:
+    - name: config
+      mountPath: /config
+      subPath: {{ .subPath }}
+{{- end -}}
