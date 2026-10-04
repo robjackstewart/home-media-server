@@ -34,6 +34,11 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: config
+      initContainers:
+      {{- include "bazarrSubsyncInitContainer" (dict
+           "image" .Values.hostStorageBootstrap.image
+           "subPath" "bazarr"
+           "subsync" .Values.bazarr.subsync) | nindent 6 }}
       containers:
       - env:
         - name: TZ
@@ -43,9 +48,7 @@ spec:
         - name: PGID
           value: "{{ .Values.PGID }}"
         resources:
-          limits:
-            cpu: '1'
-            memory: 250Mi
+          {{- toYaml .Values.bazarr.resources | nindent 10 }}
         image: {{ include "image" .Values.bazarr.image }}
         imagePullPolicy: {{ .Values.bazarr.image.pullPolicy }}
         name: bazarr
@@ -67,6 +70,24 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 5
           failureThreshold: 20
+        # Bazarr's unauthenticated health endpoint (returns 200 on the live instance). Without
+        # these a hung process was never restarted - the "appears to crash" half of the bug.
+        livenessProbe:
+          httpGet:
+            path: /api/system/ping
+            port: {{ .Values.bazarr.ports.http }}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/system/ping
+            port: {{ .Values.bazarr.ports.http }}
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 1
 ---
 {{ include "tailscaleIngress" (dict
      "name" "bazarr-ingress"

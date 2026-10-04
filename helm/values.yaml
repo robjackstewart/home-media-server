@@ -8,6 +8,27 @@ bazarr:
     pullPolicy: Always
   ports:
     http: 6767
+  # 250Mi (the old limit) vs ~211Mi idle left no headroom for a provider search, ffprobe pass or
+  # Jellyfin refresh, so the kernel OOM-killed the container on a roughly daily schedule. 1Gi
+  # matches Sonarr/Radarr and covers ffsubsync's audio-processing peaks; 2 CPUs speed up those
+  # CPU-only (no CUDA path) sync jobs on the 12-core host.
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '2'
+      memory: 1Gi
+  # Enforced into config.yaml on every start by the bazarr-subsync init container
+  # (templates/functions.tpl) - automatic syncing was off, and no_fix_framerate skipped the
+  # 23.976-vs-25fps correction that causes the drift. Thresholds only sync subs scoring below
+  # them, so perfect hash matches are left alone.
+  subsync:
+    useSubsync: true
+    seriesThreshold: 96
+    movieThreshold: 86
+    fixFramerate: true
+    maxOffsetSeconds: 60
 
 # Kubernetes operator that joins the cluster to the tailnet and exposes each app as its own
 # Tailscale Ingress (helper in templates/functions.tpl). oauth.clientId/clientSecret are
