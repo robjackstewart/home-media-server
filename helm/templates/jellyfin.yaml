@@ -110,6 +110,19 @@ spec:
           - name: media
             mountPath: /tv
             subPath: tv
+        # Jellyfin 12 rewrites the library database on first boot, and its release notes are
+        # explicit that the server must not be interrupted while that runs. The liveness probe
+        # alone would kill the container after ~150s of an unresponsive /health and restart the
+        # migration from scratch, so gate liveness/readiness behind a startup probe with room
+        # for the migration to finish. Kubernetes suppresses both other probes until it passes.
+        startupProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.jellyfin.ports.http.cluster }}
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 240   # ~60 min, comfortably beyond a 50 MB database's migration
         livenessProbe:
           httpGet:
             path: /health
