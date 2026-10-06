@@ -114,7 +114,7 @@ jellyfin:
     # LinuxServer stopped publishing plain semver tags for Jellyfin 12+; the multi-arch tag is
     # now `version-<major>.<minor>ubu<ubuntu-release>`. Renovate needs a custom versioning rule
     # to parse it - see the linuxserver/jellyfin packageRule in renovate.json.
-    tag: 'version-12.1ubu2604'
+    tag: 'version-12.2ubu2604'
     registry: lscr.io
     pullPolicy: Always
   # ServiceLB binds these directly onto the host's LAN interface, so the port the Shield
