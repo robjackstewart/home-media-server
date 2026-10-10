@@ -63,15 +63,16 @@ tailscale:
     # Single-node cluster, so extra replicas buy no availability. Raise alongside REL-5.
     replicas: 1
     # This proxy now fronts every app's remote access - a single point of failure for all of it,
-    # unlike any individual app's own limits. Modest values for a TLS-terminating reverse proxy;
-    # revisit if `kubectl top pod` on the proxy StatefulSet ever shows it pressed.
+    # unlike any individual app's own limits. The 128Mi limit it started with was OOM-killed twice
+    # (2026-09-09 and 2026-10-02, tailscaled at ~121MB RSS), so the limit is 256Mi; it idles
+    # around 70Mi.
     resources:
       requests:
         cpu: 50m
         memory: 64Mi
       limits:
         cpu: 200m
-        memory: 128Mi
+        memory: 256Mi
 
 heimdall:
   subdomain: heimdall

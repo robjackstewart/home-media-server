@@ -261,6 +261,16 @@ already carries `import /etc/coredns/custom/*.server`).
 `k3s/resolv.conf` only takes effect after `task k3s:config:install` (or `k3s:cluster:install`) has
 run and the k3s service restarted.
 
+## Graceful shutdown
+
+The host reboots nightly at 05:00. `k3s/kubelet-graceful-shutdown.yaml` is installed as a kubelet
+config drop-in (`/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/10-graceful-shutdown.conf`) and sets
+`shutdownGracePeriod`, so kubelet stops pods gracefully before the reboot proceeds. Without it
+systemd kills every container's processes itself after a 90s timeout, which leaves SQLite-backed
+apps (Jellyfin, Sonarr, Radarr, Home Assistant, ...) uncleanly shut down every night. It takes
+effect after `task k3s:config:install` (or `k3s:cluster:install`) has run and k3s restarted;
+confirm with `kubectl get --raw /api/v1/nodes/<node>/proxy/configz | grep shutdownGracePeriod`.
+
 ## GPU scheduling
 
 Pods that need the GPU set `runtimeClassName: nvidia` (see
