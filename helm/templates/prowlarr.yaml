@@ -83,7 +83,9 @@ spec:
         resources:
           limits:
             cpu: '1'
-            memory: 250Mi
+            # Idled at ~227Mi of the old 250Mi limit, leaving no room for an indexer search or
+            # app sync - the same shape as the Bazarr OOM kills.
+            memory: 512Mi
         image: {{ include "image" .Values.prowlarr.image }}
         imagePullPolicy: {{ .Values.prowlarr.image.pullPolicy }}
 

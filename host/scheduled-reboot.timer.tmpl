@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly reboot at @REBOOT_TIME@
+
+[Timer]
+# @REBOOT_TIME@ is substituted by `task host:install` (REBOOT_TIME, default 05:00).
+OnCalendar=*-*-* @REBOOT_TIME@:00
+Persistent=false
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target
