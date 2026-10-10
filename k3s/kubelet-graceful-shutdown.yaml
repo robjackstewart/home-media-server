@@ -2,7 +2,7 @@
 # Installed to /var/lib/rancher/k3s/agent/etc/kubelet.conf.d/ by `task k3s:config:install`.
 # k3s reads this on start, so changes require a service restart.
 
-# This host reboots nightly at 05:00 (scheduled-reboot.timer). Kubelet's default
+# This host reboots nightly (scheduled-reboot.timer, see host/). Kubelet's default
 # shutdownGracePeriod is 0s, so it does nothing about the reboot and systemd tears each container
 # scope down itself: it SIGTERMs every process at once, s6 respawns the app mid-shutdown, and
 # whatever is left is SIGKILLed after systemd's 90s stop timeout. That left containers exiting

@@ -1,0 +1,6 @@
+[Unit]
+Description=Scheduled nightly reboot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/shutdown -r now "Scheduled nightly reboot"
