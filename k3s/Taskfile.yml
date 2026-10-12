@@ -3,6 +3,7 @@ version: '3'
 env:
   K3S_CONFIG_DIR: /etc/rancher/k3s
   K3S_CONFIG_FILE: /etc/rancher/k3s/config.yaml
+  KUBELET_CONFIG_DIR: /var/lib/rancher/k3s/agent/etc/kubelet.conf.d
 
 tasks:
   environment:check:
@@ -20,6 +21,7 @@ tasks:
       - sudo mkdir -p $K3S_CONFIG_DIR
       - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
       - sudo cp {{.TASKFILE_DIR}}/resolv.conf $K3S_CONFIG_DIR/resolv.conf
+      - sudo install -D -m 644 {{.TASKFILE_DIR}}/kubelet-graceful-shutdown.yaml $KUBELET_CONFIG_DIR/10-graceful-shutdown.conf
       - sudo systemctl restart k3s
 
   cluster:install:
@@ -28,6 +30,7 @@ tasks:
       - sudo mkdir -p $K3S_CONFIG_DIR
       - sudo cp {{.TASKFILE_DIR}}/config.yaml $K3S_CONFIG_FILE
       - sudo cp {{.TASKFILE_DIR}}/resolv.conf $K3S_CONFIG_DIR/resolv.conf
+      - sudo install -D -m 644 {{.TASKFILE_DIR}}/kubelet-graceful-shutdown.yaml $KUBELET_CONFIG_DIR/10-graceful-shutdown.conf
       - curl -sfL https://get.k3s.io | sh -
       - sudo systemctl enable --now k3s
 

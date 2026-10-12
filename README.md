@@ -261,6 +261,30 @@ already carries `import /etc/coredns/custom/*.server`).
 `k3s/resolv.conf` only takes effect after `task k3s:config:install` (or `k3s:cluster:install`) has
 run and the k3s service restarted.
 
+## Nightly reboot
+
+The host reboots nightly so kernel and driver updates (installed by unattended-upgrades, which
+does not reboot itself) take effect. The schedule is declared in [`host/`](host/) and defaults to
+05:00; install or change it with:
+
+```sh
+task host:install                    # 05:00
+task host:install REBOOT_TIME=04:30  # any 24h HH:MM, host-local time
+```
+
+This also installs `hms-healthcheck`, which runs 10 minutes after every boot
+(`journalctl -u hms-healthcheck`). It is relative to boot, so it follows the reboot time.
+
+## Graceful shutdown
+
+The host reboots nightly (see above). `k3s/kubelet-graceful-shutdown.yaml` is installed as a kubelet
+config drop-in (`/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/10-graceful-shutdown.conf`) and sets
+`shutdownGracePeriod`, so kubelet stops pods gracefully before the reboot proceeds. Without it
+systemd kills every container's processes itself after a 90s timeout, which leaves SQLite-backed
+apps (Jellyfin, Sonarr, Radarr, Home Assistant, ...) uncleanly shut down every night. It takes
+effect after `task k3s:config:install` (or `k3s:cluster:install`) has run and k3s restarted;
+confirm with `kubectl get --raw /api/v1/nodes/<node>/proxy/configz | grep shutdownGracePeriod`.
+
 ## GPU scheduling
 
 Pods that need the GPU set `runtimeClassName: nvidia` (see

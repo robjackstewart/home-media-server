@@ -1,0 +1,19 @@
+# Kubelet configuration drop-in.
+# Installed to /var/lib/rancher/k3s/agent/etc/kubelet.conf.d/ by `task k3s:config:install`.
+# k3s reads this on start, so changes require a service restart.
+
+# This host reboots nightly (scheduled-reboot.timer, see host/). Kubelet's default
+# shutdownGracePeriod is 0s, so it does nothing about the reboot and systemd tears each container
+# scope down itself: it SIGTERMs every process at once, s6 respawns the app mid-shutdown, and
+# whatever is left is SIGKILLed after systemd's 90s stop timeout. That left containers exiting
+# 255, Home Assistant warning "sqlite3 database was not shutdown cleanly" every morning, and
+# SQLite-backed apps (Jellyfin, *arr, Gramps, BabyBuddy) exposed to a corrupted database.
+#
+# With a grace period, kubelet holds a logind shutdown inhibitor and terminates the pods
+# gracefully (SIGTERM, then each pod's own terminationGracePeriodSeconds - 30s here) before
+# letting the shutdown proceed. 60s total, 10s of it reserved for critical pods (CoreDNS,
+# metrics-server, local-path-provisioner), leaves 50s for everything else.
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+shutdownGracePeriod: 60s
+shutdownGracePeriodCriticalPods: 10s

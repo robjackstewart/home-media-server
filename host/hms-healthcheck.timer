@@ -1,0 +1,10 @@
+[Unit]
+Description=Home media server health check shortly after boot
+
+[Timer]
+# Relative to boot rather than a wall-clock time, so it follows the reboot schedule wherever
+# that is set (and also covers unplanned reboots).
+OnBootSec=10min
+
+[Install]
+WantedBy=timers.target

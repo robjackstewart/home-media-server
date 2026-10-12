@@ -1,0 +1,23 @@
+version: '3'
+
+vars:
+  # 24h HH:MM, host-local time. Override per run: `task host:install REBOOT_TIME=04:30`.
+  REBOOT_TIME: '{{.REBOOT_TIME | default "05:00"}}'
+  SYSTEMD_DIR: /etc/systemd/system
+
+tasks:
+  install:
+    desc: Install the nightly reboot timer (at REBOOT_TIME, default 05:00) and the post-boot health check.
+    preconditions:
+      - sh: echo '{{.REBOOT_TIME}}' | grep -Eq '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        msg: "REBOOT_TIME must be 24h HH:MM, got '{{.REBOOT_TIME}}'"
+    cmds:
+      - sudo install -m 755 {{.TASKFILE_DIR}}/hms-healthcheck.sh /usr/local/bin/hms-healthcheck.sh
+      - sudo install -m 644 {{.TASKFILE_DIR}}/scheduled-reboot.service {{.SYSTEMD_DIR}}/scheduled-reboot.service
+      - sed 's|@REBOOT_TIME@|{{.REBOOT_TIME}}|g' {{.TASKFILE_DIR}}/scheduled-reboot.timer.tmpl | sudo tee {{.SYSTEMD_DIR}}/scheduled-reboot.timer >/dev/null
+      - sudo install -m 644 {{.TASKFILE_DIR}}/hms-healthcheck.service {{.SYSTEMD_DIR}}/hms-healthcheck.service
+      - sudo install -m 644 {{.TASKFILE_DIR}}/hms-healthcheck.timer {{.SYSTEMD_DIR}}/hms-healthcheck.timer
+      - sudo systemctl daemon-reload
+      - sudo systemctl enable scheduled-reboot.timer hms-healthcheck.timer
+      - sudo systemctl restart scheduled-reboot.timer hms-healthcheck.timer
+      - systemctl list-timers scheduled-reboot.timer --no-pager

@@ -19,6 +19,9 @@ includes:
   k3s:
     taskfile: k3s/Taskfile.yml
     dir: k3s
+  host:
+    taskfile: host/Taskfile.yml
+    dir: host
 
 tasks:
   environment:check:
